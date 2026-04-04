@@ -1,0 +1,223 @@
+package com.warpath.engine
+
+import com.warpath.model.*
+import kotlin.random.Random
+
+class CampaignManager {
+    var gameState: GameState = GameState.newGame()
+        private set
+    var campaignMap: List<CampaignNode> = emptyList()
+        private set
+
+    fun startNewCampaign(): GameState {
+        gameState = GameState.newGame()
+        campaignMap = generateMap()
+        gameState.currentNodeId = "start"
+        return gameState
+    }
+
+    fun getCurrentNode(): CampaignNode? =
+        campaignMap.find { it.id == gameState.currentNodeId }
+
+    fun getAccessibleNodes(): List<CampaignNode> {
+        val current = getCurrentNode() ?: return emptyList()
+        return current.connections.mapNotNull { connId ->
+            campaignMap.find { it.id == connId && it.isRevealed }
+        }
+    }
+
+    fun moveToNode(nodeId: String): CampaignNode? {
+        val accessible = getAccessibleNodes()
+        val node = accessible.find { it.id == nodeId } ?: return null
+        gameState.currentNodeId = nodeId
+        return node
+    }
+
+    fun resolveNodeRewards(node: CampaignNode, battleWon: Boolean) {
+        if (battleWon) {
+            node.isCleared = true
+            gameState.supplies += node.suppliesReward
+            gameState.renown += node.renownReward
+            gameState.nodesCleared++
+            gameState.battlesWon++
+            // Reveal connected nodes
+            node.connections.forEach { connId ->
+                campaignMap.find { it.id == connId }?.isRevealed = true
+            }
+        } else {
+            gameState.battlesLost++
+            // Lose some supplies on defeat
+            gameState.supplies = (gameState.supplies * 0.7f).toInt()
+        }
+    }
+
+    fun resolveRecoveryCamp(node: CampaignNode) {
+        node.isCleared = true
+        val healCost = 20
+        if (gameState.supplies >= healCost) {
+            gameState.supplies -= healCost
+            gameState.healWarband(0.4f)
+            // Reveal connected nodes
+            node.connections.forEach { connId ->
+                campaignMap.find { it.id == connId }?.isRevealed = true
+            }
+        }
+    }
+
+    fun resolveResourceCache(node: CampaignNode) {
+        node.isCleared = true
+        gameState.supplies += node.suppliesReward
+        gameState.renown += node.renownReward
+        gameState.nodesCleared++
+        node.connections.forEach { connId ->
+            campaignMap.find { it.id == connId }?.isRevealed = true
+        }
+    }
+
+    fun recruitUnit(unitType: UnitType, count: Int, cost: Int): Boolean {
+        if (gameState.supplies < cost) return false
+        if (!gameState.canRecruit()) return false
+        gameState.supplies -= cost
+        val squad = Squad(
+            id = "squad_${unitType.id}_${System.currentTimeMillis()}",
+            unitType = unitType,
+            count = count,
+            isPlayerOwned = true
+        )
+        return gameState.addSquad(squad)
+    }
+
+    fun isRunOver(): Boolean {
+        if (gameState.warband.isEmpty()) return true
+        // Check if boss is cleared
+        val boss = campaignMap.find { it.type == NodeType.BOSS }
+        if (boss?.isCleared == true) return true
+        return !gameState.isRunActive
+    }
+
+    fun getRunSummary(): String {
+        val boss = campaignMap.find { it.type == NodeType.BOSS }
+        val won = boss?.isCleared == true
+        return if (won) {
+            "VICTORY! Region conquered!\nBattles: ${gameState.battlesWon}W/${gameState.battlesLost}L\n" +
+            "Nodes Cleared: ${gameState.nodesCleared}\nRenown Earned: ${gameState.renown}"
+        } else {
+            "DEFEAT. Your warband has fallen.\nBattles: ${gameState.battlesWon}W/${gameState.battlesLost}L\n" +
+            "Nodes Cleared: ${gameState.nodesCleared}\nRenown Earned: ${gameState.renown}"
+        }
+    }
+
+    private fun generateMap(): List<CampaignNode> {
+        val nodes = mutableListOf<CampaignNode>()
+
+        // Start node
+        nodes.add(CampaignNode(
+            id = "start", type = NodeType.START, name = "War Camp",
+            description = "Your warband's staging ground.",
+            mapX = 0.1f, mapY = 0.5f, isCleared = true, isRevealed = true
+        ))
+
+        // Layer 1 (3 nodes)
+        nodes.add(CampaignNode(
+            id = "patrol_1", type = NodeType.ENEMY_PATROL, name = "Bandit Roadblock",
+            description = "A small group of bandits blocking the road.",
+            mapX = 0.25f, mapY = 0.2f, isRevealed = true,
+            enemySquads = listOf(EnemyTemplate("bandit_thug", 6), EnemyTemplate("bandit_archer", 3)),
+            suppliesReward = 30, renownReward = 10
+        ))
+        nodes.add(CampaignNode(
+            id = "resource_1", type = NodeType.RESOURCE_CACHE, name = "Abandoned Supply Wagon",
+            description = "An unguarded supply wagon on the road.",
+            mapX = 0.25f, mapY = 0.5f, isRevealed = true,
+            suppliesReward = 50, renownReward = 5
+        ))
+        nodes.add(CampaignNode(
+            id = "patrol_2", type = NodeType.ENEMY_PATROL, name = "Wolf Den",
+            description = "Wild wolves have made a den near the path.",
+            mapX = 0.25f, mapY = 0.8f, isRevealed = true,
+            enemySquads = listOf(EnemyTemplate("wolf_pack", 5)),
+            suppliesReward = 15, renownReward = 15
+        ))
+
+        // Layer 2 (3 nodes)
+        nodes.add(CampaignNode(
+            id = "camp_1", type = NodeType.RECOVERY_CAMP, name = "Roadside Inn",
+            description = "A safe place to rest and recover.",
+            mapX = 0.45f, mapY = 0.15f,
+            suppliesReward = 0, renownReward = 0
+        ))
+        nodes.add(CampaignNode(
+            id = "outpost_1", type = NodeType.FACTION_OUTPOST, name = "Merchant's Guild Post",
+            description = "A trading outpost. Recruit new troops here.",
+            mapX = 0.45f, mapY = 0.5f,
+            suppliesReward = 20, renownReward = 10
+        ))
+        nodes.add(CampaignNode(
+            id = "patrol_3", type = NodeType.ENEMY_PATROL, name = "Militia Checkpoint",
+            description = "Local militia demands a toll... or a fight.",
+            mapX = 0.45f, mapY = 0.85f,
+            enemySquads = listOf(
+                EnemyTemplate("militia_guard", 6),
+                EnemyTemplate("militia_spear", 4)
+            ),
+            suppliesReward = 40, renownReward = 20
+        ))
+
+        // Layer 3 (2 nodes)
+        nodes.add(CampaignNode(
+            id = "elite_1", type = NodeType.ELITE_CHALLENGE, name = "Retainer Ambush",
+            description = "Elite soldiers lie in wait. High risk, high reward.",
+            mapX = 0.65f, mapY = 0.3f,
+            enemySquads = listOf(
+                EnemyTemplate("elite_retainer", 4),
+                EnemyTemplate("bandit_archer", 5)
+            ),
+            suppliesReward = 60, renownReward = 30
+        ))
+        nodes.add(CampaignNode(
+            id = "camp_2", type = NodeType.RECOVERY_CAMP, name = "Forest Clearing",
+            description = "A peaceful clearing to tend wounds.",
+            mapX = 0.65f, mapY = 0.7f,
+            suppliesReward = 0, renownReward = 0
+        ))
+
+        // Layer 4 (Boss)
+        nodes.add(CampaignNode(
+            id = "boss_1", type = NodeType.BOSS, name = "Warlord's Stronghold",
+            description = "The regional warlord awaits. Defeat him to conquer the region.",
+            mapX = 0.85f, mapY = 0.5f,
+            enemySquads = listOf(
+                EnemyTemplate("elite_retainer", 5),
+                EnemyTemplate("militia_guard", 6),
+                EnemyTemplate("bandit_archer", 4),
+                EnemyTemplate("bandit_thug", 4)
+            ),
+            suppliesReward = 100, renownReward = 50
+        ))
+
+        // Connect nodes
+        connect(nodes, "start", "patrol_1")
+        connect(nodes, "start", "resource_1")
+        connect(nodes, "start", "patrol_2")
+
+        connect(nodes, "patrol_1", "camp_1")
+        connect(nodes, "patrol_1", "outpost_1")
+        connect(nodes, "resource_1", "outpost_1")
+        connect(nodes, "resource_1", "patrol_3")
+        connect(nodes, "patrol_2", "patrol_3")
+
+        connect(nodes, "camp_1", "elite_1")
+        connect(nodes, "outpost_1", "elite_1")
+        connect(nodes, "outpost_1", "camp_2")
+        connect(nodes, "patrol_3", "camp_2")
+
+        connect(nodes, "elite_1", "boss_1")
+        connect(nodes, "camp_2", "boss_1")
+
+        return nodes
+    }
+
+    private fun connect(nodes: List<CampaignNode>, fromId: String, toId: String) {
+        nodes.find { it.id == fromId }?.connections?.add(toId)
+    }
+}

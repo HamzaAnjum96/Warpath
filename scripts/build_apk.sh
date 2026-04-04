@@ -9,8 +9,10 @@ if [[ ! -x "$GRADLE_CMD" ]]; then
   GRADLE_CMD="gradle"
 fi
 
+VERSION="${1:-v0_5_0}"
+
 $GRADLE_CMD assembleDebug
 mkdir -p APK
-cp app/build/outputs/apk/debug/app-debug.apk APK/Warpath_v0_0_1.apk
+cp app/build/outputs/apk/debug/app-debug.apk "APK/Warpath_${VERSION}.apk"
 
-echo "Built APK at APK/Warpath_v0_0_1.apk"
+echo "Built APK at APK/Warpath_${VERSION}.apk"

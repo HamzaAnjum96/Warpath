@@ -1,5 +1,18 @@
 # APK build status
 
+## v0.7.0 - Real-Time Free Movement Campaign Update
+**Status: BUILD SUCCESSFUL (artifact not committed)**
+
+Output (local build): `app/build/outputs/apk/debug/app-debug.apk` (~6.1 MB debug build)
+
+> Note: The v0.7.0 binary is intentionally not checked into git because binary uploads are not supported in this PR flow.
+
+### What's in v0.7.0
+- Free-movement campaign map with joystick-driven traversal
+- Enemy party encounters across a live map view
+- Enhanced battle results flow and richer encounter transitions
+- Existing touch-first campaign and battle systems retained
+
 ## v0.5.0 - Touch-First Prototype
 **Status: BUILD SUCCESSFUL**
 
@@ -29,5 +42,5 @@ Output: `APK/Warpath_v0_0_1.apk` (5.9 MB debug build)
 To rebuild locally on a machine with Android SDK + network access:
 
 ```bash
-./scripts/build_apk.sh v0_5_0
+./scripts/build_apk.sh v0_7_0
 ```

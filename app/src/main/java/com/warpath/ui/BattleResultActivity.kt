@@ -1,8 +1,11 @@
 package com.warpath.ui
 
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.view.View
 import android.widget.Button
@@ -11,6 +14,8 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 
 class BattleResultActivity : AppCompatActivity() {
+
+    private val uiHandler = Handler(Looper.getMainLooper())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -26,117 +31,135 @@ class BattleResultActivity : AppCompatActivity() {
         val suppliesReward = intent.getIntExtra("supplies_reward", 0)
         val renownReward = intent.getIntExtra("renown_reward", 0)
         val enemiesKilled = intent.getIntExtra("enemies_killed", 0)
-        val squadsLost = intent.getIntExtra("squads_lost", 0)
+        val enemiesStarted = intent.getIntExtra("enemies_started", 0)
+        val moraleEnd = intent.getIntExtra("morale_end", 0)
+        val casualtiesRows = intent.getStringArrayListExtra("casualties_rows") ?: arrayListOf()
+        val suppliesLost = intent.getIntExtra("supplies_lost", 0)
+        val warbandStatus = intent.getStringExtra("warband_status") ?: "Unknown"
+        val nodeId = intent.getStringExtra("node_id") ?: ""
 
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setBackgroundColor(Color.parseColor("#1a1a2e"))
+            setBackgroundColor(if (playerWon) Color.parseColor("#1a1a2e") else Color.parseColor("#220707"))
             setPadding(60, 80, 60, 80)
         }
 
-        // Result header
         val resultText = TextView(this).apply {
             text = if (playerWon) "VICTORY" else "DEFEAT"
             textSize = 42f
-            setTextColor(if (playerWon) Color.parseColor("#e6c84c") else Color.parseColor("#cc3333"))
+            setTextColor(if (playerWon) Color.parseColor("#e6c84c") else Color.parseColor("#ff4a4a"))
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
-            setShadowLayer(6f, 2f, 2f, Color.parseColor("#80000000"))
         }
-        layout.addView(resultText, marginParams(bottom = 16))
+        layout.addView(resultText, marginParams(bottom = 8))
 
-        // Battle name
-        val nameText = TextView(this).apply {
+        if (!playerWon) {
+            layout.addView(TextView(this).apply {
+                text = "☠"
+                textSize = 44f
+                gravity = Gravity.CENTER
+                setTextColor(Color.parseColor("#ff8888"))
+            }, marginParams(bottom = 8))
+        }
+
+        layout.addView(TextView(this).apply {
             text = nodeName
             textSize = 18f
             setTextColor(Color.parseColor("#aaaacc"))
             gravity = Gravity.CENTER
+        }, marginParams(bottom = 24))
+
+        val statsContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
         }
-        layout.addView(nameText, marginParams(bottom = 40))
-
-        // Divider
-        val divider = View(this).apply {
-            setBackgroundColor(Color.parseColor("#333355"))
-        }
-        layout.addView(divider, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, 2
-        ).apply { bottomMargin = 30 })
-
-        // Stats
-        addStatRow(layout, "Enemies Defeated", "$enemiesKilled")
-        addStatRow(layout, "Squads Lost", "$squadsLost")
-
-        if (playerWon) {
-            val rewardDivider = View(this).apply {
-                setBackgroundColor(Color.parseColor("#333355"))
-            }
-            layout.addView(rewardDivider, LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, 2
-            ).apply { topMargin = 20; bottomMargin = 20 })
-
-            val rewardsTitle = TextView(this).apply {
-                text = "REWARDS"
-                textSize = 16f
-                setTextColor(Color.parseColor("#e6c84c"))
-                typeface = Typeface.DEFAULT_BOLD
-                gravity = Gravity.CENTER
-            }
-            layout.addView(rewardsTitle, marginParams(bottom = 16))
-
-            addStatRow(layout, "Supplies", "+$suppliesReward", Color.parseColor("#33aa33"))
-            addStatRow(layout, "Renown", "+$renownReward", Color.parseColor("#ccaa33"))
-        }
-
-        // Spacer
-        val spacer = View(this)
-        layout.addView(spacer, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f
-        ))
-
-        // Continue button
-        val continueBtn = Button(this).apply {
-            text = "Continue Campaign"
-            textSize = 18f
-            setTextColor(Color.WHITE)
-            setBackgroundColor(if (playerWon) Color.parseColor("#33aa33") else Color.parseColor("#cc3333"))
-            isAllCaps = false
-            typeface = Typeface.DEFAULT_BOLD
-            setPadding(40, 24, 40, 24)
-            stateListAnimator = null
-            setOnClickListener { finish() }
-        }
-        layout.addView(continueBtn, LinearLayout.LayoutParams(
+        layout.addView(statsContainer, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
         ))
 
+        val rows = mutableListOf<Triple<String, String, Int>>()
+        rows.add(Triple("Enemies Defeated", "$enemiesKilled / $enemiesStarted", Color.WHITE))
+        rows.add(Triple("Morale at End", "$moraleEnd%", Color.parseColor("#66ccaa")))
+        casualtiesRows.forEach { row ->
+            rows.add(Triple("Casualties", row, Color.parseColor("#ffcc99")))
+        }
+
+        if (playerWon) {
+            rows.add(Triple("Supplies", "+$suppliesReward", Color.parseColor("#33aa33")))
+            rows.add(Triple("Renown", "+$renownReward", Color.parseColor("#ccaa33")))
+        } else {
+            rows.add(Triple("Supplies Lost", "-$suppliesLost", Color.parseColor("#ff6666")))
+            rows.add(Triple("Warband Status", warbandStatus, Color.parseColor("#ff9999")))
+        }
+
+        var delay = 100L
+        for ((label, value, color) in rows) {
+            val rowView = buildStatRow(label, value, color).apply { alpha = 0f }
+            statsContainer.addView(rowView)
+            uiHandler.postDelayed({ rowView.animate().alpha(1f).setDuration(220).start() }, delay)
+            delay += 130L
+        }
+
+        layout.addView(View(this), LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f
+        ))
+
+        if (playerWon) {
+            layout.addView(makeActionButton("Continue Campaign", Color.parseColor("#33aa33")) {
+                finish()
+            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+        } else {
+            layout.addView(makeActionButton("⚔ Try Again", Color.parseColor("#aa2222")) {
+                val intent = Intent(this, BattleActivity::class.java)
+                intent.putExtra("node_id", nodeId)
+                startActivity(intent)
+                finish()
+            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = 14
+            })
+
+            layout.addView(makeActionButton("↩ Retreat", Color.parseColor("#555566")) {
+                finish()
+            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+        }
+
         setContentView(layout)
     }
 
-    private fun addStatRow(parent: LinearLayout, label: String, value: String, valueColor: Int = Color.WHITE) {
+    private fun makeActionButton(label: String, color: Int, action: () -> Unit): Button {
+        return Button(this).apply {
+            text = label
+            textSize = 18f
+            setTextColor(Color.WHITE)
+            setBackgroundColor(color)
+            isAllCaps = false
+            typeface = Typeface.DEFAULT_BOLD
+            setPadding(40, 24, 40, 24)
+            stateListAnimator = null
+            setOnClickListener { action() }
+        }
+    }
+
+    private fun buildStatRow(label: String, value: String, valueColor: Int): LinearLayout {
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(20, 8, 20, 8)
         }
-        val labelTv = TextView(this).apply {
+        row.addView(TextView(this).apply {
             text = label
             textSize = 16f
             setTextColor(Color.parseColor("#8888aa"))
-        }
-        row.addView(labelTv, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        val valueTv = TextView(this).apply {
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+
+        row.addView(TextView(this).apply {
             text = value
             textSize = 16f
             setTextColor(valueColor)
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.END
-        }
-        row.addView(valueTv)
-        parent.addView(row, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        ))
+        })
+        return row
     }
 
     private fun marginParams(bottom: Int = 0): LinearLayout.LayoutParams {

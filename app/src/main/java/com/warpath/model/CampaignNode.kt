@@ -6,6 +6,8 @@ enum class NodeType(val displayName: String, val color: Long) {
     ELITE_CHALLENGE("Elite Challenge", 0xFFDD2222),
     RECOVERY_CAMP("Recovery Camp", 0xFF3388CC),
     FACTION_OUTPOST("Faction Outpost", 0xFFCC8833),
+    TOWN("Town", 0xFF8A4DCC),
+    VILLAGE("Village", 0xFF7A8A33),
     BOSS("Regional Boss", 0xFFAA0000),
     START("Start", 0xFF4488AA)
 }

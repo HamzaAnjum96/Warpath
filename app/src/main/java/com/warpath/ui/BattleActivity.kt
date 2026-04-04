@@ -26,6 +26,8 @@ class BattleActivity : AppCompatActivity() {
     private var isRunning = false
     private val tickInterval = 50L // 20 fps
     private var node: CampaignNode? = null
+    private val startingPlayerCounts = mutableMapOf<String, Int>()
+    private var startingEnemyCount: Int = 0
 
     private val commandButtons = mutableMapOf<BattleCommand, Button>()
 
@@ -48,6 +50,11 @@ class BattleActivity : AppCompatActivity() {
             CampaignActivity.campaignManager.gameState.warband,
             currentNode.enemySquads
         )
+        startingPlayerCounts.clear()
+        CampaignActivity.campaignManager.gameState.warband.forEach { squad ->
+            startingPlayerCounts[squad.id] = squad.count
+        }
+        startingEnemyCount = battleState.enemySquads.sumOf { it.count }
 
         val root = FrameLayout(this).apply {
             setBackgroundColor(Color.parseColor("#0a0a0a"))
@@ -233,10 +240,23 @@ class BattleActivity : AppCompatActivity() {
         intent.putExtra("supplies_reward", if (battleState.playerWon) currentNode.suppliesReward else 0)
         intent.putExtra("renown_reward", if (battleState.playerWon) currentNode.renownReward else 0)
         intent.putExtra("enemies_killed",
-            currentNode.enemySquads.sumOf { it.count } - battleState.enemySquads.sumOf { it.count })
+            startingEnemyCount - battleState.enemySquads.sumOf { it.count })
+        intent.putExtra("enemies_started", startingEnemyCount)
         intent.putExtra("squads_lost",
             CampaignActivity.campaignManager.gameState.warband.size -
             battleState.playerSquads.count { it.isAlive })
+        val casualtyRows = ArrayList<String>()
+        for (squad in battleState.playerSquads) {
+            val started = startingPlayerCounts[squad.id] ?: squad.count
+            val lost = (started - squad.count).coerceAtLeast(0)
+            casualtyRows.add("${squad.unitType.name}: -$lost")
+        }
+        intent.putStringArrayListExtra("casualties_rows", casualtyRows)
+        val avgMorale = if (battleState.playerSquads.isEmpty()) 0 else battleState.playerSquads.map { it.morale }.average().toInt()
+        intent.putExtra("morale_end", avgMorale)
+        intent.putExtra("supplies_lost", if (battleState.playerWon) 0 else (CampaignActivity.campaignManager.gameState.supplies * 0.3f).toInt())
+        intent.putExtra("warband_status", "${battleState.playerSquads.count { it.isAlive }}/${battleState.playerSquads.size} squads standing")
+        intent.putExtra("node_id", currentNode.id)
         startActivity(intent)
         finish()
     }

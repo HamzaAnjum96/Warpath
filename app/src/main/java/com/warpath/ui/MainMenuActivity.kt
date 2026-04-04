@@ -3,6 +3,7 @@ package com.warpath.ui
 import android.content.Intent
 import android.graphics.*
 import android.os.Bundle
+import android.view.Gravity
 import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
@@ -15,105 +16,128 @@ class MainMenuActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         supportActionBar?.hide()
+        @Suppress("DEPRECATION")
         window.decorView.systemUiVisibility = (
             View.SYSTEM_UI_FLAG_FULLSCREEN or
             View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
             View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
         )
 
-        val layout = LinearLayout(this).apply {
+        val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = android.view.Gravity.CENTER
-            setBackgroundColor(Color.parseColor("#1a1a2e"))
-            setPadding(60, 100, 60, 100)
+            gravity = Gravity.CENTER
+            setBackgroundColor(Color.parseColor("#0a0a18"))
+            setPadding(60, 80, 60, 80)
         }
 
-        // Title
+        // ── Title block ───────────────────────────────────────────────────────
         val title = TextView(this).apply {
             text = "WARPATH"
-            textSize = 48f
+            textSize = 54f
             setTextColor(Color.parseColor("#e6c84c"))
             typeface = Typeface.DEFAULT_BOLD
-            gravity = android.view.Gravity.CENTER
-            setShadowLayer(8f, 2f, 2f, Color.parseColor("#80000000"))
+            gravity = Gravity.CENTER
+            setShadowLayer(10f, 2f, 4f, Color.parseColor("#aa000000"))
+            letterSpacing = 0.12f
         }
-        layout.addView(title, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { bottomMargin = 16 })
+        root.addView(title, lp(bottom = 8))
 
-        // Subtitle
         val subtitle = TextView(this).apply {
             text = "Rise of the Warband"
-            textSize = 18f
-            setTextColor(Color.parseColor("#aa8844"))
-            gravity = android.view.Gravity.CENTER
+            textSize = 17f
+            setTextColor(Color.parseColor("#997744"))
+            gravity = Gravity.CENTER
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.ITALIC)
         }
-        layout.addView(subtitle, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { bottomMargin = 80 })
+        root.addView(subtitle, lp(bottom = 6))
 
-        // Version
-        val version = TextView(this).apply {
-            text = "v0.5.0 - Touch-First Prototype"
-            textSize = 12f
-            setTextColor(Color.parseColor("#666688"))
-            gravity = android.view.Gravity.CENTER
-        }
-        layout.addView(version, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { bottomMargin = 60 })
+        // Thin gold divider
+        root.addView(View(this).apply {
+            setBackgroundColor(Color.parseColor("#3a3010"))
+        }, LinearLayout.LayoutParams(200, 2, 0f).apply {
+            gravity = Gravity.CENTER_HORIZONTAL
+            bottomMargin = 70
+            topMargin = 10
+        })
 
-        // New Campaign button
-        val newCampaignBtn = createMenuButton("New Campaign")
+        // ── Menu buttons ──────────────────────────────────────────────────────
+        val newCampaignBtn = buildMenuBtn("⚔  New Campaign", "#cc2222", accent = true)
         newCampaignBtn.setOnClickListener {
             startActivity(Intent(this, CampaignActivity::class.java).apply {
                 putExtra("new_game", true)
             })
         }
-        layout.addView(newCampaignBtn, buttonParams())
+        root.addView(newCampaignBtn, lp(bottom = 16, hMargin = 20))
 
-        // Warband button
-        val warbandBtn = createMenuButton("View Warband")
+        val continueBtn = buildMenuBtn("▶  Continue Campaign", "#223355")
+        continueBtn.setOnClickListener {
+            // Continue without new_game flag — uses existing campaignManager state
+            startActivity(Intent(this, CampaignActivity::class.java))
+        }
+        root.addView(continueBtn, lp(bottom = 16, hMargin = 20))
+
+        val warbandBtn = buildMenuBtn("⚔  View Warband", "#223355")
         warbandBtn.setOnClickListener {
             startActivity(Intent(this, WarbandActivity::class.java))
         }
-        layout.addView(warbandBtn, buttonParams())
+        root.addView(warbandBtn, lp(bottom = 16, hMargin = 20))
 
-        // How to Play
-        val howToBtn = createMenuButton("How to Play")
+        val howToBtn = buildMenuBtn("?  How to Play", "#1a1a30")
         howToBtn.setOnClickListener {
             startActivity(Intent(this, HowToPlayActivity::class.java))
         }
-        layout.addView(howToBtn, buttonParams())
+        root.addView(howToBtn, lp(bottom = 0, hMargin = 20))
 
-        setContentView(layout)
+        // ── Feature stubs (not yet implemented — shown as disabled) ───────────
+        root.addView(buildStubLabel("Multiplayer, Save/Load & Upgrades — Coming Soon"), lp(top = 40))
+
+        // ── Version footer ────────────────────────────────────────────────────
+        root.addView(View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(0, 0, 1f)
+        })
+        val version = TextView(this).apply {
+            text = "v0.5.0  ·  Touch Prototype"
+            textSize = 11f
+            setTextColor(Color.parseColor("#333355"))
+            gravity = Gravity.CENTER
+        }
+        root.addView(version, lp(top = 30))
+
+        setContentView(root)
     }
 
-    private fun createMenuButton(text: String): Button {
+    private fun buildMenuBtn(label: String, bgHex: String, accent: Boolean = false): Button {
         return Button(this).apply {
-            this.text = text
-            textSize = 18f
-            setTextColor(Color.WHITE)
-            setBackgroundColor(Color.parseColor("#2a2a4e"))
-            setPadding(40, 28, 40, 28)
+            text = label
+            textSize = 17f
+            setTextColor(if (accent) Color.WHITE else Color.parseColor("#aaaacc"))
+            setBackgroundColor(Color.parseColor(bgHex))
+            setPadding(40, 26, 40, 26)
             isAllCaps = false
             typeface = Typeface.DEFAULT_BOLD
             stateListAnimator = null
         }
     }
 
-    private fun buttonParams(): LinearLayout.LayoutParams {
+    private fun buildStubLabel(msg: String): TextView {
+        return TextView(this).apply {
+            text = msg
+            textSize = 12f
+            setTextColor(Color.parseColor("#333350"))
+            gravity = Gravity.CENTER
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.ITALIC)
+        }
+    }
+
+    private fun lp(bottom: Int = 0, top: Int = 0, hMargin: Int = 0): LinearLayout.LayoutParams {
         return LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply {
-            bottomMargin = 24
-            marginStart = 40
-            marginEnd = 40
+            bottomMargin = bottom
+            topMargin    = top
+            marginStart  = hMargin
+            marginEnd    = hMargin
         }
     }
 }

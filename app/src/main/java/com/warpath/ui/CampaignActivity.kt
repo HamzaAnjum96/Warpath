@@ -1,8 +1,7 @@
 package com.warpath.ui
 
 import android.content.Intent
-import android.graphics.Color
-import android.graphics.Typeface
+import android.graphics.*
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -23,15 +22,21 @@ class CampaignActivity : AppCompatActivity() {
     private lateinit var infoPanel: LinearLayout
     private lateinit var suppliesText: TextView
     private lateinit var renownText: TextView
+    private lateinit var warbandText: TextView
     private lateinit var nodeNameText: TextView
+    private lateinit var nodeTypeChip: TextView
     private lateinit var nodeDescText: TextView
+    private lateinit var nodeStatsText: TextView
     private lateinit var actionButton: Button
+    private lateinit var panelAccentBar: View
+    private lateinit var statusText: TextView
 
     private var selectedNode: CampaignNode? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         supportActionBar?.hide()
+        @Suppress("DEPRECATION")
         window.decorView.systemUiVisibility = (
             View.SYSTEM_UI_FLAG_FULLSCREEN or
             View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
@@ -43,10 +48,10 @@ class CampaignActivity : AppCompatActivity() {
         }
 
         val root = FrameLayout(this).apply {
-            setBackgroundColor(Color.parseColor("#0d0d1a"))
+            setBackgroundColor(Color.parseColor("#0a0a18"))
         }
 
-        // Map view fills the screen
+        // ── Map view ──────────────────────────────────────────────────────────
         mapView = CampaignMapView(this).apply {
             nodes = campaignManager.campaignMap
             currentNodeId = campaignManager.gameState.currentNodeId
@@ -57,91 +62,32 @@ class CampaignActivity : AppCompatActivity() {
             FrameLayout.LayoutParams.MATCH_PARENT
         ))
 
-        // Top HUD bar
-        val topBar = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setBackgroundColor(Color.parseColor("#cc1a1a2e"))
-            setPadding(30, 16, 30, 16)
-            gravity = Gravity.CENTER_VERTICAL
-        }
-
-        val titleText = TextView(this).apply {
-            text = "Campaign Map"
-            textSize = 18f
-            setTextColor(Color.parseColor("#e6c84c"))
-            typeface = Typeface.DEFAULT_BOLD
-        }
-        topBar.addView(titleText, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-
-        suppliesText = TextView(this).apply {
-            textSize = 14f
-            setTextColor(Color.parseColor("#33aa33"))
-        }
-        topBar.addView(suppliesText)
-
-        val spacer = View(this)
-        topBar.addView(spacer, LinearLayout.LayoutParams(30, 1))
-
-        renownText = TextView(this).apply {
-            textSize = 14f
-            setTextColor(Color.parseColor("#ccaa33"))
-        }
-        topBar.addView(renownText)
-
-        root.addView(topBar, FrameLayout.LayoutParams(
+        // ── Top HUD ───────────────────────────────────────────────────────────
+        root.addView(buildTopHud(), FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.MATCH_PARENT,
             FrameLayout.LayoutParams.WRAP_CONTENT,
             Gravity.TOP
         ))
 
-        // Bottom info panel (hidden initially)
-        infoPanel = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.parseColor("#ee1a1a2e"))
-            setPadding(40, 30, 40, 30)
+        // ── Status bar (shows "Traveling...", centered over map) ──────────────
+        statusText = TextView(this).apply {
+            textSize = 15f
+            setTextColor(Color.parseColor("#e6c84c"))
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setPadding(24, 10, 24, 10)
+            setBackgroundColor(Color.parseColor("#cc0a0a18"))
             visibility = View.GONE
         }
+        val statusParams = FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.WRAP_CONTENT,
+            FrameLayout.LayoutParams.WRAP_CONTENT,
+            Gravity.CENTER_HORIZONTAL or Gravity.CENTER_VERTICAL
+        )
+        root.addView(statusText, statusParams)
 
-        nodeNameText = TextView(this).apply {
-            textSize = 20f
-            setTextColor(Color.WHITE)
-            typeface = Typeface.DEFAULT_BOLD
-        }
-        infoPanel.addView(nodeNameText)
-
-        nodeDescText = TextView(this).apply {
-            textSize = 14f
-            setTextColor(Color.parseColor("#aaaacc"))
-        }
-        infoPanel.addView(nodeDescText, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { topMargin = 8; bottomMargin = 16 })
-
-        actionButton = Button(this).apply {
-            textSize = 16f
-            setTextColor(Color.WHITE)
-            setBackgroundColor(Color.parseColor("#cc3333"))
-            isAllCaps = false
-            typeface = Typeface.DEFAULT_BOLD
-            setPadding(30, 16, 30, 16)
-        }
-        infoPanel.addView(actionButton)
-
-        val dismissBtn = Button(this).apply {
-            text = "Close"
-            textSize = 13f
-            setTextColor(Color.parseColor("#888888"))
-            setBackgroundColor(Color.TRANSPARENT)
-            isAllCaps = false
-            setOnClickListener { infoPanel.visibility = View.GONE }
-        }
-        infoPanel.addView(dismissBtn, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.WRAP_CONTENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { gravity = Gravity.END; topMargin = 8 })
-
-        root.addView(infoPanel, FrameLayout.LayoutParams(
+        // ── Bottom info panel ─────────────────────────────────────────────────
+        root.addView(buildInfoPanel(), FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.MATCH_PARENT,
             FrameLayout.LayoutParams.WRAP_CONTENT,
             Gravity.BOTTOM
@@ -151,12 +97,187 @@ class CampaignActivity : AppCompatActivity() {
         updateHud()
     }
 
+    // ── HUD construction ──────────────────────────────────────────────────────
+
+    private fun buildTopHud(): View {
+        val bar = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setBackgroundColor(Color.parseColor("#dd0a0a18"))
+            setPadding(28, 18, 28, 18)
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        // Left: title
+        val title = TextView(this).apply {
+            text = "WARPATH"
+            textSize = 17f
+            setTextColor(Color.parseColor("#e6c84c"))
+            typeface = Typeface.DEFAULT_BOLD
+            setShadowLayer(6f, 1f, 1f, Color.parseColor("#80000000"))
+        }
+        bar.addView(title, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+
+        // Resources row
+        suppliesText = hudStatText()
+        renownText   = hudStatText()
+        warbandText  = hudStatText()
+
+        bar.addView(suppliesText)
+        bar.addView(hudSpacer())
+        bar.addView(renownText)
+        bar.addView(hudSpacer())
+        bar.addView(warbandText)
+        bar.addView(hudSpacer())
+
+        // Warband button
+        val warbandBtn = Button(this).apply {
+            text = "⚔ Warband"
+            textSize = 12f
+            setTextColor(Color.parseColor("#aaaacc"))
+            setBackgroundColor(Color.parseColor("#33334a"))
+            isAllCaps = false
+            typeface = Typeface.DEFAULT_BOLD
+            setPadding(16, 8, 16, 8)
+            stateListAnimator = null
+            setOnClickListener {
+                startActivity(Intent(this@CampaignActivity, WarbandActivity::class.java))
+            }
+        }
+        bar.addView(warbandBtn)
+
+        return bar
+    }
+
+    private fun hudStatText() = TextView(this).apply {
+        textSize = 13f
+        setTextColor(Color.parseColor("#aaaacc"))
+        typeface = Typeface.DEFAULT_BOLD
+    }
+
+    private fun hudSpacer(): View = View(this).also {
+        it.layoutParams = LinearLayout.LayoutParams(20, 1)
+    }
+
+    // ── Info panel construction ───────────────────────────────────────────────
+
+    private fun buildInfoPanel(): View {
+        val container = FrameLayout(this)
+
+        infoPanel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(Color.parseColor("#f0090914"))
+            visibility = View.GONE
+        }
+
+        // Top accent bar (coloured by node type)
+        panelAccentBar = View(this)
+        infoPanel.addView(panelAccentBar, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, 5
+        ))
+
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(36, 20, 36, 20)
+        }
+
+        // Node type chip + name row
+        val headerRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        nodeTypeChip = TextView(this).apply {
+            textSize = 11f
+            setTextColor(Color.WHITE)
+            typeface = Typeface.DEFAULT_BOLD
+            setPadding(12, 5, 12, 5)
+        }
+        headerRow.addView(nodeTypeChip, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { marginEnd = 14 })
+
+        nodeNameText = TextView(this).apply {
+            textSize = 19f
+            setTextColor(Color.WHITE)
+            typeface = Typeface.DEFAULT_BOLD
+        }
+        headerRow.addView(nodeNameText, LinearLayout.LayoutParams(
+            0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
+        ))
+
+        // Dismiss X button
+        val dismissX = TextView(this).apply {
+            text = "✕"
+            textSize = 18f
+            setTextColor(Color.parseColor("#666688"))
+            setPadding(8, 0, 4, 0)
+            setOnClickListener { infoPanel.visibility = View.GONE }
+        }
+        headerRow.addView(dismissX)
+
+        content.addView(headerRow)
+
+        // Divider
+        content.addView(View(this).apply {
+            setBackgroundColor(Color.parseColor("#222244"))
+        }, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, 1
+        ).apply { topMargin = 10; bottomMargin = 10 })
+
+        // Description
+        nodeDescText = TextView(this).apply {
+            textSize = 13f
+            setTextColor(Color.parseColor("#9999bb"))
+            setLineSpacing(2f, 1f)
+        }
+        content.addView(nodeDescText, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { bottomMargin = 8 })
+
+        // Stats row (enemies / rewards)
+        nodeStatsText = TextView(this).apply {
+            textSize = 12f
+            setTextColor(Color.parseColor("#6688aa"))
+        }
+        content.addView(nodeStatsText, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { bottomMargin = 14 })
+
+        // Action button
+        actionButton = Button(this).apply {
+            textSize = 16f
+            setTextColor(Color.WHITE)
+            isAllCaps = false
+            typeface = Typeface.DEFAULT_BOLD
+            setPadding(24, 18, 24, 18)
+            stateListAnimator = null
+        }
+        content.addView(actionButton, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ))
+
+        infoPanel.addView(content)
+        container.addView(infoPanel, FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.WRAP_CONTENT
+        ))
+
+        return container
+    }
+
+    // ── Resume & HUD update ───────────────────────────────────────────────────
+
     override fun onResume() {
         super.onResume()
-        updateHud()
         mapView.nodes = campaignManager.campaignMap
         mapView.currentNodeId = campaignManager.gameState.currentNodeId
+        mapView.inputEnabled = true
         mapView.invalidate()
+        updateHud()
 
         if (campaignManager.isRunOver()) {
             showRunOverDialog()
@@ -164,90 +285,161 @@ class CampaignActivity : AppCompatActivity() {
     }
 
     private fun updateHud() {
-        suppliesText.text = "Supplies: ${campaignManager.gameState.supplies}"
-        renownText.text = "Renown: ${campaignManager.gameState.renown}"
+        val gs = campaignManager.gameState
+        suppliesText.text = "⚔ ${gs.supplies}"
+        renownText.text   = "★ ${gs.renown}"
+        val wSize = gs.warband.size
+        val wMax  = gs.maxWarbandSlots
+        warbandText.text  = "⚔ $wSize/$wMax"
     }
+
+    // ── Node selection ────────────────────────────────────────────────────────
 
     private fun onNodeSelected(node: CampaignNode) {
         selectedNode = node
         infoPanel.visibility = View.VISIBLE
+
+        // Accent bar color
+        panelAccentBar.setBackgroundColor(node.type.color.toInt())
+
+        // Type chip
+        nodeTypeChip.text = node.type.displayName.uppercase()
+        nodeTypeChip.setBackgroundColor(
+            Color.argb(180, Color.red(node.type.color.toInt()),
+                Color.green(node.type.color.toInt()),
+                Color.blue(node.type.color.toInt()))
+        )
+
         nodeNameText.text = node.name
         nodeNameText.setTextColor(node.type.color.toInt())
 
         val accessible = campaignManager.getAccessibleNodes()
         val isAccessible = accessible.any { it.id == node.id }
-        val isCurrent = node.id == campaignManager.gameState.currentNodeId
+        val isCurrent    = node.id == campaignManager.gameState.currentNodeId
+
+        // Reset
+        actionButton.alpha = 1f
+        actionButton.isEnabled = true
 
         if (node.isCleared) {
-            nodeDescText.text = "${node.description}\n[CLEARED]"
+            nodeDescText.text = node.description
+            nodeStatsText.text = "✓ Location cleared"
+            nodeStatsText.setTextColor(Color.parseColor("#44aa44"))
             actionButton.visibility = View.GONE
+
         } else if (isCurrent || isAccessible) {
+            nodeStatsText.setTextColor(Color.parseColor("#6688aa"))
             when (node.type) {
                 NodeType.ENEMY_PATROL, NodeType.ELITE_CHALLENGE, NodeType.BOSS -> {
                     val enemyCount = node.enemySquads.sumOf { it.count }
-                    nodeDescText.text = "${node.description}\nEnemy forces: $enemyCount troops" +
-                        "\nReward: ${node.suppliesReward} supplies, ${node.renownReward} renown"
-                    actionButton.text = "Attack!"
-                    actionButton.setBackgroundColor(Color.parseColor("#cc3333"))
+                    nodeDescText.text  = node.description
+                    nodeStatsText.text = "Enemies: $enemyCount  |  ⚔ +${node.suppliesReward}  ★ +${node.renownReward}"
+                    actionButton.text  = if (node.type == NodeType.BOSS) "⚔ Storm the Stronghold!" else "⚔ Attack!"
+                    actionButton.setBackgroundColor(Color.parseColor("#aa2222"))
                     actionButton.visibility = View.VISIBLE
-                    actionButton.setOnClickListener { engageBattle(node) }
+                    actionButton.setOnClickListener { animateAndThen(node) { engageBattle(node) } }
                 }
                 NodeType.RECOVERY_CAMP -> {
-                    nodeDescText.text = "${node.description}\nCost: 20 supplies to heal warband"
-                    actionButton.text = "Rest & Heal"
-                    actionButton.setBackgroundColor(Color.parseColor("#3388cc"))
+                    nodeDescText.text  = node.description
+                    nodeStatsText.text = "Cost: 20 supplies  |  Heal 40% HP"
+                    actionButton.text  = "♥ Rest & Heal"
+                    actionButton.setBackgroundColor(Color.parseColor("#225588"))
                     actionButton.visibility = View.VISIBLE
-                    actionButton.setOnClickListener { restAtCamp(node) }
+                    actionButton.setOnClickListener { animateAndThen(node) { restAtCamp(node) } }
                 }
                 NodeType.RESOURCE_CACHE -> {
-                    nodeDescText.text = "${node.description}\nReward: ${node.suppliesReward} supplies, ${node.renownReward} renown"
-                    actionButton.text = "Collect"
-                    actionButton.setBackgroundColor(Color.parseColor("#33aa33"))
+                    nodeDescText.text  = node.description
+                    nodeStatsText.text = "Reward: ⚔ +${node.suppliesReward}  ★ +${node.renownReward}"
+                    actionButton.text  = "◈ Collect Supplies"
+                    actionButton.setBackgroundColor(Color.parseColor("#226633"))
                     actionButton.visibility = View.VISIBLE
-                    actionButton.setOnClickListener { collectResources(node) }
+                    actionButton.setOnClickListener { animateAndThen(node) { collectResources(node) } }
                 }
                 NodeType.FACTION_OUTPOST -> {
-                    nodeDescText.text = "${node.description}\nRecruit troops and resupply."
-                    actionButton.text = "Visit Outpost"
-                    actionButton.setBackgroundColor(Color.parseColor("#cc8833"))
+                    nodeDescText.text  = node.description
+                    nodeStatsText.text = "Recruit troops and resupply"
+                    actionButton.text  = "⚑ Visit Outpost"
+                    actionButton.setBackgroundColor(Color.parseColor("#885522"))
                     actionButton.visibility = View.VISIBLE
-                    actionButton.setOnClickListener { visitOutpost(node) }
+                    actionButton.setOnClickListener { animateAndThen(node) { visitOutpost(node) } }
                 }
-                else -> {
-                    nodeDescText.text = node.description
+                NodeType.START -> {
+                    nodeDescText.text  = node.description
+                    nodeStatsText.text = "Your staging ground"
                     actionButton.visibility = View.GONE
                 }
             }
         } else {
-            nodeDescText.text = "${node.description}\n[Not accessible - clear a connected node first]"
+            nodeDescText.text  = node.description
+            nodeStatsText.text = "⚠ Not accessible — clear a connected node first"
+            nodeStatsText.setTextColor(Color.parseColor("#996633"))
             actionButton.visibility = View.GONE
         }
     }
 
+    // ── Animation wrapper ─────────────────────────────────────────────────────
+
+    /**
+     * Animates the player marker to [targetNode], then runs [action].
+     * If the player is already at that node the animation is skipped.
+     */
+    private fun animateAndThen(targetNode: CampaignNode, action: () -> Unit) {
+        val current = campaignManager.getCurrentNode()
+        if (current == null || current.id == targetNode.id) {
+            action()
+            return
+        }
+
+        // Disable input and show traveling state
+        mapView.inputEnabled = false
+        actionButton.text    = "  Traveling…"
+        actionButton.isEnabled = false
+        actionButton.alpha   = 0.5f
+        statusText.text      = "▶ Marching to ${targetNode.name}…"
+        statusText.visibility = View.VISIBLE
+
+        mapView.animatePlayerTo(targetNode) {
+            statusText.visibility = View.GONE
+            mapView.inputEnabled  = true
+            actionButton.isEnabled = true
+            actionButton.alpha     = 1f
+            action()
+        }
+    }
+
+    // ── Actions ───────────────────────────────────────────────────────────────
+
     private fun engageBattle(node: CampaignNode) {
         campaignManager.moveToNode(node.id)
+        infoPanel.visibility = View.GONE
         val intent = Intent(this, BattleActivity::class.java)
         intent.putExtra("node_id", node.id)
         startActivity(intent)
     }
 
     private fun restAtCamp(node: CampaignNode) {
+        val gs = campaignManager.gameState
+        if (gs.supplies < 20) {
+            Toast.makeText(this, "Not enough supplies to rest! (Need 20)", Toast.LENGTH_SHORT).show()
+            infoPanel.visibility = View.GONE
+            return
+        }
         campaignManager.moveToNode(node.id)
         campaignManager.resolveRecoveryCamp(node)
-        updateHud()
         mapView.currentNodeId = campaignManager.gameState.currentNodeId
         mapView.invalidate()
-        Toast.makeText(this, "Warband healed!", Toast.LENGTH_SHORT).show()
+        updateHud()
+        Toast.makeText(this, "♥ Warband healed!", Toast.LENGTH_SHORT).show()
         infoPanel.visibility = View.GONE
     }
 
     private fun collectResources(node: CampaignNode) {
         campaignManager.moveToNode(node.id)
         campaignManager.resolveResourceCache(node)
-        updateHud()
         mapView.currentNodeId = campaignManager.gameState.currentNodeId
         mapView.invalidate()
-        Toast.makeText(this, "+${node.suppliesReward} supplies!", Toast.LENGTH_SHORT).show()
+        updateHud()
+        Toast.makeText(this, "◈ +${node.suppliesReward} supplies collected!", Toast.LENGTH_SHORT).show()
         infoPanel.visibility = View.GONE
     }
 
@@ -257,10 +449,13 @@ class CampaignActivity : AppCompatActivity() {
         node.connections.forEach { connId ->
             campaignManager.campaignMap.find { it.id == connId }?.isRevealed = true
         }
+        infoPanel.visibility = View.GONE
         val intent = Intent(this, WarbandActivity::class.java)
         intent.putExtra("can_recruit", true)
         startActivity(intent)
     }
+
+    // ── End-of-run dialog ─────────────────────────────────────────────────────
 
     private fun showRunOverDialog() {
         AlertDialog.Builder(this)
@@ -268,10 +463,11 @@ class CampaignActivity : AppCompatActivity() {
             .setMessage(campaignManager.getRunSummary())
             .setPositiveButton("New Campaign") { _, _ ->
                 campaignManager.startNewCampaign()
-                updateHud()
-                mapView.nodes = campaignManager.campaignMap
+                mapView.nodes         = campaignManager.campaignMap
                 mapView.currentNodeId = campaignManager.gameState.currentNodeId
                 mapView.invalidate()
+                infoPanel.visibility  = View.GONE
+                updateHud()
             }
             .setNegativeButton("Main Menu") { _, _ -> finish() }
             .setCancelable(false)

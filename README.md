@@ -29,3 +29,16 @@ Design priorities:
 
 ## Scope Lock
 These constraints are repeated across planning docs and are treated as non-negotiable for v1 unless explicitly re-approved.
+
+## Android Prototype (Hello World)
+A minimal native Android app scaffold has been added under `app/`.
+
+### Build target
+- Output path: `APK/Warpath_v0_0_1.apk`
+
+### Build command
+```bash
+./scripts/build_apk.sh
+```
+
+> Note: this environment currently cannot download Android SDK/Gradle dependencies due network proxy restrictions, so `APK/Warpath_v0_0_1.apk` must be generated on a machine with Android network access.

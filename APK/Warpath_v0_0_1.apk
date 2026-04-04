@@ -1,0 +1,2 @@
+Placeholder artifact: build blocked in this environment (403 to Android repositories).
+Run ./scripts/build_apk.sh on a machine with Android SDK + network access to generate the real APK.

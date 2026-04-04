@@ -10,6 +10,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
 import com.warpath.model.CampaignNode
+import com.warpath.model.EnemyParty
 import com.warpath.model.NodeType
 import kotlin.math.hypot
 
@@ -31,6 +32,9 @@ class CampaignMapView @JvmOverloads constructor(
             }
             invalidate()
         }
+
+    var enemyParties: List<EnemyParty> = emptyList()
+        set(value) { field = value; invalidate() }
 
     var onNodeTapped: ((CampaignNode) -> Unit)? = null
     var inputEnabled: Boolean = true
@@ -219,6 +223,22 @@ class CampaignMapView @JvmOverloads constructor(
         }
     }
 
+    fun setPlayerPosition(normX: Float, normY: Float) {
+        playerNormX = normX
+        playerNormY = normY
+        if (!isMoving) {
+            trail.clear()
+        }
+        invalidate()
+    }
+
+    fun movePlayerBy(deltaX: Float, deltaY: Float) {
+        if (isMoving) return
+        playerNormX = (playerNormX + deltaX).coerceIn(0.02f, 0.98f)
+        playerNormY = (playerNormY + deltaY).coerceIn(0.02f, 0.98f)
+        invalidate()
+    }
+
     private fun finishMove(endX: Float, endY: Float, onComplete: () -> Unit) {
         isMoving = false
         playerNormX = endX
@@ -242,6 +262,7 @@ class CampaignMapView @JvmOverloads constructor(
         drawConnections(canvas)
         drawTrail(canvas)
         drawNodes(canvas)
+        drawEnemyParties(canvas)
         drawPlayerMarker(canvas)
     }
 
@@ -449,6 +470,27 @@ class CampaignMapView @JvmOverloads constructor(
         canvas.drawText("⚔", px, py + 7f, playerIconPaint)
     }
 
+    private fun drawEnemyParties(canvas: Canvas) {
+        val markerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.parseColor("#bb2222")
+            style = Paint.Style.FILL
+        }
+        val skullPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            textSize = 24f
+            textAlign = Paint.Align.CENTER
+            typeface = Typeface.DEFAULT_BOLD
+        }
+        for (party in enemyParties) {
+            val node = nodes.find { it.id == party.nodeId } ?: continue
+            if (!node.isRevealed) continue
+            val x = screenX(node.mapX) + 20f
+            val y = screenY(node.mapY) - 20f
+            canvas.drawCircle(x, y, 16f, markerPaint)
+            canvas.drawText("☠", x, y + 8f, skullPaint)
+        }
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private fun isAccessibleFromCurrent(node: CampaignNode): Boolean {
@@ -462,6 +504,8 @@ class CampaignMapView @JvmOverloads constructor(
         NodeType.ELITE_CHALLENGE -> "☠"
         NodeType.RECOVERY_CAMP   -> "♥"
         NodeType.FACTION_OUTPOST -> "⚑"
+        NodeType.TOWN            -> "♜"
+        NodeType.VILLAGE         -> "⌂"
         NodeType.BOSS            -> "♛"
         NodeType.START           -> "⌂"
     }

@@ -30,6 +30,7 @@ class CampaignActivity : AppCompatActivity() {
     private lateinit var actionButton: Button
     private lateinit var panelAccentBar: View
     private lateinit var statusText: TextView
+    private lateinit var joystickView: JoystickView
 
     private var selectedNode: CampaignNode? = null
 
@@ -55,6 +56,8 @@ class CampaignActivity : AppCompatActivity() {
         mapView = CampaignMapView(this).apply {
             nodes = campaignManager.campaignMap
             currentNodeId = campaignManager.gameState.currentNodeId
+            enemyParties = campaignManager.gameState.enemyParties
+            setPlayerPosition(campaignManager.gameState.playerMapX, campaignManager.gameState.playerMapY)
             onNodeTapped = { node -> onNodeSelected(node) }
         }
         root.addView(mapView, FrameLayout.LayoutParams(
@@ -92,6 +95,22 @@ class CampaignActivity : AppCompatActivity() {
             FrameLayout.LayoutParams.WRAP_CONTENT,
             Gravity.BOTTOM
         ))
+
+        joystickView = JoystickView(this).apply {
+            onMove = { x, y ->
+                campaignManager.movePlayerBy(x * 0.012f, y * 0.012f)
+                mapView.movePlayerBy(x * 0.012f, y * 0.012f)
+            }
+            onRelease = { x, y ->
+                campaignManager.findClosestRevealedNodeInDirection(x, y)?.let { node ->
+                    onNodeSelected(node)
+                }
+            }
+        }
+        root.addView(joystickView, FrameLayout.LayoutParams(220, 220, Gravity.BOTTOM or Gravity.START).apply {
+            leftMargin = 28
+            bottomMargin = 220
+        })
 
         setContentView(root)
         updateHud()
@@ -275,6 +294,8 @@ class CampaignActivity : AppCompatActivity() {
         super.onResume()
         mapView.nodes = campaignManager.campaignMap
         mapView.currentNodeId = campaignManager.gameState.currentNodeId
+        mapView.enemyParties = campaignManager.gameState.enemyParties
+        mapView.setPlayerPosition(campaignManager.gameState.playerMapX, campaignManager.gameState.playerMapY)
         mapView.inputEnabled = true
         mapView.invalidate()
         updateHud()
@@ -313,8 +334,7 @@ class CampaignActivity : AppCompatActivity() {
         nodeNameText.text = node.name
         nodeNameText.setTextColor(node.type.color.toInt())
 
-        val accessible = campaignManager.getAccessibleNodes()
-        val isAccessible = accessible.any { it.id == node.id }
+        val isAccessible = node.isRevealed
         val isCurrent    = node.id == campaignManager.gameState.currentNodeId
 
         // Reset
@@ -363,6 +383,22 @@ class CampaignActivity : AppCompatActivity() {
                     actionButton.visibility = View.VISIBLE
                     actionButton.setOnClickListener { animateAndThen(node) { visitOutpost(node) } }
                 }
+                NodeType.TOWN -> {
+                    nodeDescText.text = node.description
+                    nodeStatsText.text = "Cost: 35 supplies  |  Full heal + recruit support"
+                    actionButton.text = "♜ Rest in Town"
+                    actionButton.setBackgroundColor(Color.parseColor("#6b3ca8"))
+                    actionButton.visibility = View.VISIBLE
+                    actionButton.setOnClickListener { animateAndThen(node) { restAtSettlement(node, true) } }
+                }
+                NodeType.VILLAGE -> {
+                    nodeDescText.text = node.description
+                    nodeStatsText.text = "Cost: 15 supplies  |  Heal 50%"
+                    actionButton.text = "⌂ Rest in Village"
+                    actionButton.setBackgroundColor(Color.parseColor("#667733"))
+                    actionButton.visibility = View.VISIBLE
+                    actionButton.setOnClickListener { animateAndThen(node) { restAtSettlement(node, false) } }
+                }
                 NodeType.START -> {
                     nodeDescText.text  = node.description
                     nodeStatsText.text = "Your staging ground"
@@ -403,6 +439,12 @@ class CampaignActivity : AppCompatActivity() {
             mapView.inputEnabled  = true
             actionButton.isEnabled = true
             actionButton.alpha     = 1f
+            if (campaignManager.stepEnemyParties()) {
+                mapView.enemyParties = campaignManager.gameState.enemyParties
+                forceEnemyEngagement()
+                return@animatePlayerTo
+            }
+            mapView.enemyParties = campaignManager.gameState.enemyParties
             action()
         }
     }
@@ -411,6 +453,8 @@ class CampaignActivity : AppCompatActivity() {
 
     private fun engageBattle(node: CampaignNode) {
         campaignManager.moveToNode(node.id)
+        mapView.currentNodeId = campaignManager.gameState.currentNodeId
+        mapView.setPlayerPosition(campaignManager.gameState.playerMapX, campaignManager.gameState.playerMapY)
         infoPanel.visibility = View.GONE
         val intent = Intent(this, BattleActivity::class.java)
         intent.putExtra("node_id", node.id)
@@ -453,6 +497,38 @@ class CampaignActivity : AppCompatActivity() {
         val intent = Intent(this, WarbandActivity::class.java)
         intent.putExtra("can_recruit", true)
         startActivity(intent)
+    }
+
+    private fun restAtSettlement(node: CampaignNode, town: Boolean) {
+        val gs = campaignManager.gameState
+        val cost = if (town) 35 else 15
+        val heal = if (town) 1.0f else 0.5f
+        if (gs.supplies < cost) {
+            Toast.makeText(this, "Not enough supplies! (Need $cost)", Toast.LENGTH_SHORT).show()
+            infoPanel.visibility = View.GONE
+            return
+        }
+        campaignManager.moveToNode(node.id)
+        gs.supplies -= cost
+        gs.healWarband(heal)
+        node.isCleared = true
+        node.connections.forEach { connId ->
+            campaignManager.campaignMap.find { it.id == connId }?.isRevealed = true
+        }
+        mapView.currentNodeId = campaignManager.gameState.currentNodeId
+        mapView.setPlayerPosition(campaignManager.gameState.playerMapX, campaignManager.gameState.playerMapY)
+        updateHud()
+        Toast.makeText(this, if (town) "Warband fully restored!" else "Warband partially restored!", Toast.LENGTH_SHORT).show()
+        infoPanel.visibility = View.GONE
+    }
+
+    private fun forceEnemyEngagement() {
+        val enemyNodeIds = campaignManager.gameState.enemyParties.map { it.nodeId }.toSet()
+        val current = campaignManager.getCurrentNode()
+        if (current != null && enemyNodeIds.contains(current.id)) {
+            Toast.makeText(this, "☠ Enemy party intercepted your warband!", Toast.LENGTH_LONG).show()
+            engageBattle(current)
+        }
     }
 
     // ── End-of-run dialog ─────────────────────────────────────────────────────

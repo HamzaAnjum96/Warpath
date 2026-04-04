@@ -13,6 +13,20 @@ class CampaignManager {
         gameState = GameState.newGame()
         campaignMap = generateMap()
         gameState.currentNodeId = "start"
+        gameState.playerMapX = 0.1f
+        gameState.playerMapY = 0.5f
+        gameState.enemyParties = mutableListOf(
+            EnemyParty(
+                id = "enemy_patrol_a",
+                nodeId = "patrol_1",
+                unitTemplates = listOf(EnemyTemplate("bandit_thug", 4), EnemyTemplate("bandit_archer", 2))
+            ),
+            EnemyParty(
+                id = "enemy_patrol_b",
+                nodeId = "patrol_3",
+                unitTemplates = listOf(EnemyTemplate("militia_guard", 4))
+            )
+        )
         return gameState
     }
 
@@ -27,10 +41,61 @@ class CampaignManager {
     }
 
     fun moveToNode(nodeId: String): CampaignNode? {
-        val accessible = getAccessibleNodes()
-        val node = accessible.find { it.id == nodeId } ?: return null
+        val node = campaignMap.find { it.id == nodeId && it.isRevealed } ?: return null
         gameState.currentNodeId = nodeId
+        gameState.playerMapX = node.mapX
+        gameState.playerMapY = node.mapY
         return node
+    }
+
+    fun movePlayerBy(deltaX: Float, deltaY: Float) {
+        gameState.playerMapX = (gameState.playerMapX + deltaX).coerceIn(0.02f, 0.98f)
+        gameState.playerMapY = (gameState.playerMapY + deltaY).coerceIn(0.02f, 0.98f)
+    }
+
+    fun findClosestRevealedNodeInDirection(dirX: Float, dirY: Float): CampaignNode? {
+        val px = gameState.playerMapX
+        val py = gameState.playerMapY
+        val dirLen2 = dirX * dirX + dirY * dirY
+        val hasDirection = dirLen2 > 0.001f
+        return campaignMap
+            .asSequence()
+            .filter { it.isRevealed }
+            .filter {
+                if (!hasDirection) return@filter true
+                val nx = it.mapX - px
+                val ny = it.mapY - py
+                nx * dirX + ny * dirY > 0f
+            }
+            .minByOrNull {
+                val dx = it.mapX - px
+                val dy = it.mapY - py
+                dx * dx + dy * dy
+            }
+    }
+
+    fun stepEnemyParties(): Boolean {
+        var hitPlayer = false
+        for (party in gameState.enemyParties) {
+            val node = campaignMap.find { it.id == party.nodeId } ?: continue
+            if (node.connections.isEmpty()) continue
+
+            val nextId = when (party.behaviorType) {
+                EnemyPartyBehaviorType.PATROL -> {
+                    val sorted = node.connections.sorted()
+                    val choice = if (party.patrolForward) sorted.first() else sorted.last()
+                    if (sorted.size > 1) {
+                        party.patrolForward = !party.patrolForward
+                    }
+                    choice
+                }
+            }
+            party.nodeId = nextId
+            if (nextId == gameState.currentNodeId) {
+                hitPlayer = true
+            }
+        }
+        return hitPlayer
     }
 
     fun resolveNodeRewards(node: CampaignNode, battleWon: Boolean) {
@@ -163,6 +228,20 @@ class CampaignManager {
             suppliesReward = 40, renownReward = 20
         ))
 
+        nodes.add(CampaignNode(
+            id = "town_1", type = NodeType.TOWN, name = "Stonewatch Town",
+            description = "A fortified town with skilled healers and recruiters.",
+            mapX = 0.58f, mapY = 0.5f,
+            suppliesReward = 0, renownReward = 0
+        ))
+
+        nodes.add(CampaignNode(
+            id = "village_1", type = NodeType.VILLAGE, name = "Elderfield Village",
+            description = "A quiet village that can patch your warband for fewer supplies.",
+            mapX = 0.72f, mapY = 0.15f,
+            suppliesReward = 0, renownReward = 0
+        ))
+
         // Layer 3 (2 nodes)
         nodes.add(CampaignNode(
             id = "elite_1", type = NodeType.ELITE_CHALLENGE, name = "Retainer Ambush",
@@ -209,7 +288,11 @@ class CampaignManager {
         connect(nodes, "camp_1", "elite_1")
         connect(nodes, "outpost_1", "elite_1")
         connect(nodes, "outpost_1", "camp_2")
+        connect(nodes, "outpost_1", "town_1")
         connect(nodes, "patrol_3", "camp_2")
+        connect(nodes, "camp_1", "village_1")
+        connect(nodes, "village_1", "elite_1")
+        connect(nodes, "town_1", "camp_2")
 
         connect(nodes, "elite_1", "boss_1")
         connect(nodes, "camp_2", "boss_1")

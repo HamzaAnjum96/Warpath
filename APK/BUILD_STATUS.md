@@ -1,13 +1,13 @@
 # APK build status
 
-## v1.1.0 - POI Interaction Movement Update
+## v1.3.0 - Fog-of-War Discovery + UI Pass
 **Status: TARGETED IN THIS PASS**
 
-Scope for v1.1.0:
-- free joystick movement as direct character control
-- no path/edge rendering between map points
-- POIs are proximity interactions (no travel button)
-- POI popup uses direct interact action when in range
+Scope for v1.3.0:
+- POIs reveal when the warband scouts near them (fog-of-war style)
+- route-chain gating removed for most POIs
+- elite fight intel can reveal hideout location
+- updated campaign visuals and interaction copy for clarity
 
 ## v1.0.1 - Phase 1 Minimal POC
 **Status: COMPLETE**

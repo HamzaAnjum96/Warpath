@@ -19,11 +19,12 @@ Exit criteria:
 - Planning docs are internally consistent with Sarhad concept.
 - No conflicting old concept language in core planning pages.
 
-### v1.2.0 implementation slice (minor release)
+### v1.3.0 implementation slice (minor release)
 - Overworld camera follows the player by default with a larger navigable map feel.
 - Dragging the map enables free-look scouting; Recenter returns focus to the warband.
-- Nearby POIs open contextual interaction menus (fight/flee, buy/sell/recruit/rest variants).
-- Main menu and in-game help text are aligned to the current minor release scope.
+- POIs are discovered via proximity in fog-of-war style while roaming.
+- POI interaction is proximity-first and not route-chain gated (with optional intel-based hideout reveal from elite camp fights).
+- Visual/UI pass updates campaign readability, menu copy, and in-game help text.
 
 ## Phase 2 — Playable vertical slice
 Focus:

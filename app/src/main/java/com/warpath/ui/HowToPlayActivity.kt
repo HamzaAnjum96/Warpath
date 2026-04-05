@@ -51,7 +51,8 @@ class HowToPlayActivity : AppCompatActivity() {
         addSection(
             layout,
             "Movement Controls",
-            "LEFT THUMB - drag joystick to move the warband marker.\n" +
+            "TAP MAP - click-to-move the warband to any location (not only nodes).\n" +
+                "LEFT THUMB - drag joystick to move the warband marker.\n" +
                 "MAP DRAG - free-look without moving the player.\n" +
                 "RECENTER - snap camera focus back to your warband."
         )
@@ -60,7 +61,7 @@ class HowToPlayActivity : AppCompatActivity() {
             layout,
             "Interaction Menus",
             "When near a point of interest, tap Interact to open context actions.\n\n" +
-                "Enemy nodes: Fight or Flee.\n" +
+                "Enemy nodes: Fight, Run, or Bribe.\n" +
                 "Towns/Villages: Buy, Sell, Recruit, Rest.\n" +
                 "Outposts/Camps/Caches: situational utility actions."
         )

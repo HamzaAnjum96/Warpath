@@ -53,6 +53,11 @@ class CampaignManager {
         gameState.playerMapY = (gameState.playerMapY + deltaY).coerceIn(0.02f, 0.98f)
     }
 
+    fun setPlayerPosition(normX: Float, normY: Float) {
+        gameState.playerMapX = normX.coerceIn(0.02f, 0.98f)
+        gameState.playerMapY = normY.coerceIn(0.02f, 0.98f)
+    }
+
     fun findClosestRevealedNodeInDirection(dirX: Float, dirY: Float): CampaignNode? {
         val px = gameState.playerMapX
         val py = gameState.playerMapY

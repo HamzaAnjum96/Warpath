@@ -38,6 +38,7 @@ class CampaignMapView @JvmOverloads constructor(
 
     var onNodeTapped: ((CampaignNode) -> Unit)? = null
     var inputEnabled: Boolean = true
+    var showPaths: Boolean = false
 
     // Player position in normalized [0..1] space (matches mapX/mapY)
     private var playerNormX: Float = 0.1f
@@ -259,7 +260,9 @@ class CampaignMapView @JvmOverloads constructor(
         super.onDraw(canvas)
 
         drawBackground(canvas)
-        drawConnections(canvas)
+        if (showPaths) {
+            drawConnections(canvas)
+        }
         drawTrail(canvas)
         drawNodes(canvas)
         drawEnemyParties(canvas)
@@ -521,19 +524,6 @@ class CampaignMapView @JvmOverloads constructor(
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (!inputEnabled || isMoving) return false
-        if (event.action == MotionEvent.ACTION_DOWN) {
-            for (node in nodes) {
-                if (!node.isRevealed) continue
-                val cx = screenX(node.mapX)
-                val cy = screenY(node.mapY)
-                val dx = event.x - cx
-                val dy = event.y - cy
-                if (dx * dx + dy * dy <= (nodeRadius + 22f) * (nodeRadius + 22f)) {
-                    onNodeTapped?.invoke(node)
-                    return true
-                }
-            }
-        }
-        return super.onTouchEvent(event)
+        return false
     }
 }

@@ -74,6 +74,23 @@ class CampaignManager {
             }
     }
 
+    fun findNearbyRevealedNode(maxDistance: Float): CampaignNode? {
+        val px = gameState.playerMapX
+        val py = gameState.playerMapY
+        val maxDistance2 = maxDistance * maxDistance
+        return campaignMap
+            .asSequence()
+            .filter { it.isRevealed }
+            .map { node ->
+                val dx = node.mapX - px
+                val dy = node.mapY - py
+                node to (dx * dx + dy * dy)
+            }
+            .filter { (_, distance2) -> distance2 <= maxDistance2 }
+            .minByOrNull { it.second }
+            ?.first
+    }
+
     fun stepEnemyParties(): Boolean {
         var hitPlayer = false
         for (party in gameState.enemyParties) {

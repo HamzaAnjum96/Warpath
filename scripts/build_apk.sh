@@ -9,7 +9,7 @@ if [[ ! -x "$GRADLE_CMD" ]]; then
   GRADLE_CMD="gradle"
 fi
 
-VERSION="${1:-v0_5_0}"
+VERSION="${1:-v1_1_0}"
 
 $GRADLE_CMD assembleDebug
 mkdir -p APK

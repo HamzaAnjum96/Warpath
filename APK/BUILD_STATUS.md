@@ -1,13 +1,21 @@
 # APK build status
 
-## v1.0.1 - Phase 1 Minimal POC
+## v1.1.0 - POI Interaction Movement Update
 **Status: TARGETED IN THIS PASS**
 
-Scope for v1.0.1 is intentionally minimal:
+Scope for v1.1.0:
+- free joystick movement as direct character control
+- no path/edge rendering between map points
+- POIs are proximity interactions (no travel button)
+- POI popup uses direct interact action when in range
+
+## v1.0.1 - Phase 1 Minimal POC
+**Status: COMPLETE**
+
+Scope for v1.0.1 was intentionally minimal:
 - app launches to portrait main menu
 - `Start` routes directly to overworld
 - joystick movement + node travel + exploration reveal
-- no requirement for full encounter/settlement depth in this pass
 
 ## v1.0.0 - Foundation Menu Build
 **Status: COMPLETE**

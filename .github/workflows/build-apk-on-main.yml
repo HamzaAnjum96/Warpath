@@ -12,6 +12,8 @@ permissions:
 jobs:
   build-apk:
     runs-on: ubuntu-latest
+    env:
+      APK_VERSION: v${{ github.run_number }}
 
     steps:
       - name: Checkout
@@ -33,11 +35,11 @@ jobs:
       - name: Build debug APK
         run: |
           chmod +x scripts/build_apk.sh
-          ./scripts/build_apk.sh v${GITHUB_RUN_NUMBER}
+          ./scripts/build_apk.sh ${APK_VERSION}
 
-      - name: Upload APK artifacts
+      - name: Upload newest APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: warpath-debug-apk-${{ github.run_number }}
-          path: APK/*.apk
+          name: warpath-debug-apk-${{ env.APK_VERSION }}
+          path: APK/Warpath_${{ env.APK_VERSION }}.apk
           if-no-files-found: error

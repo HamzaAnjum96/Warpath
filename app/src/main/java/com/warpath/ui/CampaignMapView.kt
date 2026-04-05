@@ -48,6 +48,11 @@ class CampaignMapView @JvmOverloads constructor(
     var showPaths: Boolean = false
     var onFocusChanged: ((Boolean) -> Unit)? = null
     var onMapTapped: ((Float, Float) -> Unit)? = null
+    var selectedNodeId: String? = null
+        set(value) {
+            field = value
+            invalidate()
+        }
 
     private var playerNormX: Float = 0.1f
     private var playerNormY: Float = 0.5f
@@ -84,6 +89,11 @@ class CampaignMapView @JvmOverloads constructor(
         strokeWidth = 1f
     }
     private val terrainPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private val roadPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        color = Color.parseColor("#2a3551")
+        strokeWidth = 3f
+    }
     private val fogPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
         color = Color.parseColor("#d9111624")
@@ -418,11 +428,49 @@ class CampaignMapView @JvmOverloads constructor(
             wy += worldStep
         }
 
+        val terrainZones = listOf(
+            Triple(0.22f, 0.18f, Pair(0.22f, 0.16f) to "#17243D"), // hills
+            Triple(0.57f, 0.69f, Pair(0.30f, 0.20f) to "#132A2A"), // forests
+            Triple(0.80f, 0.22f, Pair(0.22f, 0.15f) to "#352C1D"), // drylands
+            Triple(0.24f, 0.74f, Pair(0.20f, 0.22f) to "#1D2538")  // plains
+        )
+        for ((bx, by, zone) in terrainZones) {
+            val (size, color) = zone
+            val (bw, bh) = size
+            terrainPaint.color = Color.parseColor(color)
+            val left = screenX(bx - bw / 2f)
+            val top = screenY(by - bh / 2f)
+            val right = screenX(bx + bw / 2f)
+            val bottom = screenY(by + bh / 2f)
+            canvas.drawOval(RectF(left, top, right, bottom), terrainPaint)
+        }
+
+        val rivers = listOf(
+            Pair(0.08f to 0.10f, 0.44f to 0.22f),
+            Pair(0.44f to 0.22f, 0.70f to 0.34f),
+            Pair(0.70f to 0.34f, 0.90f to 0.45f)
+        )
+        terrainPaint.color = Color.parseColor("#223B60")
+        terrainPaint.style = Paint.Style.STROKE
+        terrainPaint.strokeWidth = 8f
+        rivers.forEach { (from, to) ->
+            canvas.drawLine(screenX(from.first), screenY(from.second), screenX(to.first), screenY(to.second), terrainPaint)
+        }
+        terrainPaint.style = Paint.Style.FILL
+
+        for (node in nodes) {
+            if (!node.isRevealed) continue
+            for (connId in node.connections) {
+                val toNode = nodes.find { it.id == connId } ?: continue
+                if (!toNode.isRevealed) continue
+                roadPaint.alpha = if (showPaths) 140 else 90
+                canvas.drawLine(screenX(node.mapX), screenY(node.mapY), screenX(toNode.mapX), screenY(toNode.mapY), roadPaint)
+            }
+        }
+
         val blobs = listOf(
             Triple(0.32f, 0.12f, 0.18f to 0.2f),
-            Triple(0.62f, 0.72f, 0.22f to 0.22f),
-            Triple(0.18f, 0.72f, 0.16f to 0.24f),
-            Triple(0.78f, 0.2f, 0.14f to 0.18f)
+            Triple(0.62f, 0.72f, 0.22f to 0.22f)
         )
         for ((bx, by, size) in blobs) {
             val (bw, bh) = size
@@ -531,6 +579,12 @@ class CampaignMapView @JvmOverloads constructor(
                 canvas.drawCircle(cx, cy, glowR, glowPaint)
             }
 
+            if (selectedNodeId == node.id) {
+                glowPaint.color = Color.parseColor("#ccb78646")
+                glowPaint.strokeWidth = 3.5f
+                canvas.drawCircle(cx, cy, nodeRadius + 13f + pulseValue * 3f, glowPaint)
+            }
+
             if (isAccessibleFromCurrent(node) && !node.isCleared) {
                 val ringAlpha = (50 + (pulseValue * 80).toInt())
                 accessibleRingPaint.color = Color.argb(ringAlpha, 200, 200, 255)
@@ -553,7 +607,13 @@ class CampaignMapView @JvmOverloads constructor(
             textPaint.color = Color.WHITE
 
             val label = if (node.isCleared) "✓ ${node.name}" else node.name
-            drawLabel(canvas, label, cx, cy + nodeRadius + 24f)
+            val shouldShowLabel = selectedNodeId == node.id ||
+                node.id == currentNodeId ||
+                cameraZoom > 1.45f ||
+                hypot(playerNormX - node.mapX, playerNormY - node.mapY) < 0.12f
+            if (shouldShowLabel) {
+                drawLabel(canvas, label, cx, cy + nodeRadius + 24f)
+            }
         }
     }
 
@@ -614,6 +674,21 @@ class CampaignMapView @JvmOverloads constructor(
     private fun drawPlayerMarker(canvas: Canvas) {
         val px = screenX(playerNormX)
         val py = screenY(playerNormY)
+
+        selectedNodeId?.let { id ->
+            val node = nodes.find { it.id == id }
+            if (node != null) {
+                val tx = screenX(node.mapX)
+                val ty = screenY(node.mapY)
+                val routePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = Color.parseColor("#88e6c84c")
+                    strokeWidth = 4f
+                    style = Paint.Style.STROKE
+                    pathEffect = DashPathEffect(floatArrayOf(14f, 10f), pulseValue * 20f)
+                }
+                canvas.drawLine(px, py, tx, ty, routePaint)
+            }
+        }
 
         val glowRadius = 24f + pulseValue * 8f
         val glowAlpha = (100 + (pulseValue * 100).toInt())
@@ -678,9 +753,13 @@ class CampaignMapView @JvmOverloads constructor(
                 labelPaint.color = Color.parseColor("#ff9b9b")
             }
 
-            pulseRingPaint.strokeWidth = 2f
-            pulseRingPaint.alpha = 130
-            canvas.drawCircle(x, y, rangeRadius, pulseRingPaint)
+            if (selectedNodeId == node.id) {
+                pulseRingPaint.strokeWidth = 2f
+                pulseRingPaint.alpha = 110
+                pulseRingPaint.pathEffect = DashPathEffect(floatArrayOf(10f, 8f), pulseValue * 16f)
+                canvas.drawCircle(x, y, rangeRadius, pulseRingPaint)
+                pulseRingPaint.pathEffect = null
+            }
 
             pulseRingPaint.strokeWidth = 2.5f
             pulseRingPaint.alpha = 255

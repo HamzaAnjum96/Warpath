@@ -11,6 +11,7 @@ import android.util.TypedValue
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.warpath.engine.CampaignManager
 import com.warpath.model.CampaignNode
 import com.warpath.model.NodeType
@@ -33,11 +34,11 @@ class CampaignActivity : AppCompatActivity() {
     private lateinit var nodeTypeChip: TextView
     private lateinit var nodeDescText: TextView
     private lateinit var nodeStatsText: TextView
+    private lateinit var nodeRangeTagText: TextView
     private lateinit var actionButton: Button
     private lateinit var panelAccentBar: View
     private lateinit var statusText: TextView
     private lateinit var travelHintText: TextView
-    private lateinit var joystickView: JoystickView
     private lateinit var recenterButton: Button
 
     private val phaseOnePocMode = true
@@ -76,7 +77,7 @@ class CampaignActivity : AppCompatActivity() {
             showPaths = !phaseOnePocMode
             setPlayerPosition(campaignManager.gameState.playerMapX, campaignManager.gameState.playerMapY)
             onMapTapped = { normX, normY ->
-                moveWarbandTo(normX, normY)
+                handleMapTap(normX, normY)
             }
             onFocusChanged = { focused ->
                 recenterButton.visibility = if (focused) View.GONE else View.VISIBLE
@@ -174,7 +175,7 @@ class CampaignActivity : AppCompatActivity() {
             setBackgroundColor(Color.parseColor("#aa131d32"))
             typeface = Typeface.DEFAULT_BOLD
             setPadding(dp(12), dp(8), dp(12), dp(8))
-            text = "Fog-of-war scouting active — move to discover POIs."
+            text = "Tap to select. Tap terrain to travel. Pinch to zoom."
         }
         root.addView(
             travelHintText,
@@ -185,28 +186,6 @@ class CampaignActivity : AppCompatActivity() {
             ).apply {
                 leftMargin = dp(18)
                 bottomMargin = dp(if (compactUi) 360 else 390)
-            }
-        )
-
-        joystickView = JoystickView(this).apply {
-            onMove = { x, y ->
-                val dx = x * 0.015f
-                val dy = y * 0.015f
-                campaignManager.movePlayerBy(dx, dy)
-                mapView.movePlayerBy(dx, dy)
-                mapView.setPlayerLookDirection(x, y)
-                roamingDistanceAccumulator += hypot(dx, dy)
-                maybeStepRoamingParties()
-                checkFogDiscovery()
-                showNearbyPoiIfAny()
-            }
-            onRelease = { _, _ -> }
-        }
-        root.addView(
-            joystickView,
-            FrameLayout.LayoutParams(dp(if (compactUi) 180 else 210), dp(if (compactUi) 180 else 210), Gravity.BOTTOM or Gravity.START).apply {
-                leftMargin = dp(16)
-                bottomMargin = dp(if (compactUi) 170 else 186)
             }
         )
 
@@ -335,6 +314,20 @@ class CampaignActivity : AppCompatActivity() {
 
         content.addView(headerRow)
 
+        nodeRangeTagText = TextView(this).apply {
+            textSize = if (compactUi) 10f else 11f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.parseColor("#0E1220"))
+            setPadding(dp(10), dp(4), dp(10), dp(4))
+            visibility = View.GONE
+        }
+        content.addView(
+            nodeRangeTagText,
+            LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(8)
+            }
+        )
+
         content.addView(
             View(this).apply { setBackgroundColor(Color.parseColor("#222244")) },
             LinearLayout.LayoutParams(
@@ -348,7 +341,7 @@ class CampaignActivity : AppCompatActivity() {
 
         nodeDescText = TextView(this).apply {
             textSize = if (compactUi) 12f else 13f
-            setTextColor(Color.parseColor("#9999bb"))
+            setTextColor(Color.parseColor("#C3CAE2"))
             setLineSpacing(2f, 1f)
         }
         content.addView(
@@ -361,7 +354,7 @@ class CampaignActivity : AppCompatActivity() {
 
         nodeStatsText = TextView(this).apply {
             textSize = 12f
-            setTextColor(Color.parseColor("#6688aa"))
+            setTextColor(Color.parseColor("#8EA2C6"))
         }
         content.addView(
             nodeStatsText,
@@ -422,13 +415,14 @@ class CampaignActivity : AppCompatActivity() {
     private fun mapIconButton(symbol: String, onClick: () -> Unit): Button {
         return Button(this).apply {
             text = symbol
-            textSize = 18f
+            textSize = 14f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.parseColor("#F5EED1"))
+            setTextColor(Color.parseColor("#D7DCEF"))
             isAllCaps = false
-            setPadding(dp(14), dp(10), dp(14), dp(10))
+            setPadding(dp(10), dp(6), dp(10), dp(6))
             stateListAnimator = null
-            applyRoundedStyle(backgroundColor = "#3A325F")
+            alpha = 0.82f
+            applyRoundedStyle(backgroundColor = "#2B2F45")
             setOnClickListener { onClick() }
         }
     }
@@ -472,8 +466,36 @@ class CampaignActivity : AppCompatActivity() {
         warbandText.text = "⚔ $livingTroops"
     }
 
+    private fun handleMapTap(normX: Float, normY: Float) {
+        val tappedNode = findNodeNear(normX, normY)
+        if (tappedNode != null) {
+            onNodeSelected(tappedNode)
+            return
+        }
+        selectedNode = null
+        mapView.selectedNodeId = null
+        infoPanel.visibility = View.GONE
+        moveWarbandTo(normX, normY)
+    }
+
+    private fun findNodeNear(normX: Float, normY: Float): CampaignNode? {
+        return campaignManager.campaignMap
+            .filter { it.isRevealed }
+            .minByOrNull { node ->
+                val dx = node.mapX - normX
+                val dy = node.mapY - normY
+                dx * dx + dy * dy
+            }
+            ?.takeIf {
+                val dx = it.mapX - normX
+                val dy = it.mapY - normY
+                dx * dx + dy * dy <= 0.0028f
+            }
+    }
+
     private fun onNodeSelected(node: CampaignNode) {
         selectedNode = node
+        mapView.selectedNodeId = node.id
         infoPanel.visibility = View.VISIBLE
 
         panelAccentBar.setBackgroundColor(node.type.color.toInt())
@@ -493,6 +515,9 @@ class CampaignActivity : AppCompatActivity() {
 
         val isAccessible = node.isRevealed
         val isCurrent = node.id == campaignManager.gameState.currentNodeId
+        val isNearby = isNodeNearby(node)
+
+        updateRangeTag(node, isNearby)
 
         actionButton.alpha = 1f
         actionButton.isEnabled = true
@@ -593,10 +618,10 @@ class CampaignActivity : AppCompatActivity() {
         }
 
         if (isNearby) {
-            nodeStatsText.text = "Nearby POI — open interaction menu"
+            nodeStatsText.text = "Within interaction range."
             actionButton.text = "Open Actions"
             actionButton.visibility = View.VISIBLE
-            actionButton.applyRoundedStyle(backgroundColor = "#225588")
+            actionButton.applyRoundedStyle(backgroundColor = "#4A3F88")
             actionButton.setOnClickListener {
                 suppressAutoPoiSelection = true
                 openPoiContextMenu(node)
@@ -606,48 +631,109 @@ class CampaignActivity : AppCompatActivity() {
             return
         }
 
-        nodeStatsText.text = "Move closer to interact"
-        actionButton.visibility = View.GONE
+        nodeStatsText.text = "Out of range. Travel to this location."
+        actionButton.text = "Travel"
+        actionButton.visibility = View.VISIBLE
+        actionButton.applyRoundedStyle(backgroundColor = "#225588")
+        actionButton.setOnClickListener { moveWarbandTo(node.mapX, node.mapY) }
+    }
+
+    private fun updateRangeTag(node: CampaignNode, isNearby: Boolean) {
+        val (label, bg) = when {
+            node.type == NodeType.ENEMY_PATROL || node.type == NodeType.ELITE_CHALLENGE || node.type == NodeType.BOSS ->
+                if (isNearby) "HOSTILE · NEARBY" to "#D45353" else "HOSTILE · OUT OF RANGE" to "#803636"
+            node.type == NodeType.TOWN || node.type == NodeType.VILLAGE -> if (isNearby) "SAFE SETTLEMENT · NEARBY" to "#71AF8E" else "SAFE SETTLEMENT" to "#4D7D63"
+            node.type == NodeType.RESOURCE_CACHE -> if (isNearby) "OPPORTUNITY · NEARBY" to "#C7A252" else "OPPORTUNITY" to "#806B3B"
+            else -> if (isNearby) "NEUTRAL · NEARBY" to "#8892B8" else "NEUTRAL" to "#586186"
+        }
+        nodeRangeTagText.text = label
+        nodeRangeTagText.visibility = View.VISIBLE
+        nodeRangeTagText.setBackgroundColor(Color.parseColor(bg))
     }
 
     private fun openPoiContextMenu(node: CampaignNode) {
         val options = when (node.type) {
             NodeType.ENEMY_PATROL, NodeType.ELITE_CHALLENGE, NodeType.BOSS ->
-                arrayOf("Fight", "Run", "Bribe")
+                arrayOf("Attack", "Ambush", "Bribe", "Observe", "Flee")
 
             NodeType.TOWN, NodeType.VILLAGE ->
-                arrayOf("Buy Supplies (+25)", "Sell Supplies (-15 for renown)", "Recruit", "Rest")
+                arrayOf("Recruit", "Heal", "Trade Supplies", "Rest", "Gather Rumours")
 
             NodeType.FACTION_OUTPOST ->
-                arrayOf("Recruit", "Buy Supplies (+20)", "Sell Supplies (-10 for renown)")
+                arrayOf("Recruit", "Trade Supplies", "Take Contract")
 
             NodeType.RESOURCE_CACHE ->
-                arrayOf("Scavenge Cache", "Leave")
+                arrayOf("Investigate", "Spend Supplies", "Ignore")
 
             NodeType.RECOVERY_CAMP ->
-                arrayOf("Rest & Heal", "Leave")
+                arrayOf("Heal", "Rest", "Ignore")
 
             NodeType.START ->
                 arrayOf("Reorganize Warband", "Scout Routes")
         }
 
-        AlertDialog.Builder(this)
-            .setTitle("${node.name} — Actions")
-            .setItems(options) { _, which ->
-                handlePoiAction(node, options[which])
+        val dialog = BottomSheetDialog(this)
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(16), dp(20), dp(24))
+            setBackgroundColor(Color.parseColor("#141C31"))
+        }
+        val title = TextView(this).apply {
+            text = "${node.name} · Actions"
+            textSize = 18f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.parseColor("#F2F5FF"))
+        }
+        container.addView(title)
+        val subtitle = TextView(this).apply {
+            text = "Choose a contextual option"
+            textSize = 12f
+            setTextColor(Color.parseColor("#8EA2C6"))
+            setPadding(0, dp(4), 0, dp(12))
+        }
+        container.addView(subtitle)
+
+        options.forEach { label ->
+            val row = TextView(this).apply {
+                text = label
+                textSize = 15f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(Color.parseColor("#E0E8FF"))
+                setPadding(dp(14), dp(12), dp(14), dp(12))
+                background = GradientDrawable().apply {
+                    cornerRadius = dpF(10f)
+                    setColor(Color.parseColor("#1E2945"))
+                    setStroke(dp(1), Color.parseColor("#304266"))
+                }
+                setOnClickListener {
+                    dialog.dismiss()
+                    handlePoiAction(node, label)
+                }
             }
-            .setNegativeButton("Cancel", null)
-            .show()
+            container.addView(row, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(8)
+            })
+        }
+        dialog.setContentView(container)
+        dialog.show()
     }
 
     private fun handlePoiAction(node: CampaignNode, action: String) {
         when {
-            action.startsWith("Fight") -> {
+            action == "Attack" || action == "Ambush" -> {
                 scoutFromNode(node, revealHideoutIntel = node.type == NodeType.ELITE_CHALLENGE)
-                Toast.makeText(this, "Skirmish won at ${node.name}.", Toast.LENGTH_SHORT).show()
+                showOutcomeSheet(
+                    title = "Victory at ${node.name}",
+                    summary = "Your warband forced the enemy line to break.",
+                    details = listOf(
+                        "+${node.suppliesReward.coerceAtLeast(4)} supplies secured",
+                        "Renown +${node.renownReward.coerceAtLeast(1)}",
+                        "Nearby route pressure reduced"
+                    )
+                )
             }
 
-            action.startsWith("Run") -> {
+            action == "Flee" -> {
                 handleRunAttempt(node)
             }
 
@@ -655,44 +741,43 @@ class CampaignActivity : AppCompatActivity() {
                 handleBribe(node)
             }
 
-            action == "Leave" -> {
+            action == "Ignore" || action == "Observe" || action == "Gather Rumours" -> {
                 Toast.makeText(this, "You avoid trouble and keep moving.", Toast.LENGTH_SHORT).show()
             }
 
-            action.startsWith("Buy Supplies") -> {
-                campaignManager.gameState.supplies += if (node.type == NodeType.TOWN || node.type == NodeType.VILLAGE) 25 else 20
+            action == "Trade Supplies" -> {
+                campaignManager.gameState.supplies += if (node.type == NodeType.TOWN || node.type == NodeType.VILLAGE) 20 else 14
                 scoutFromNode(node)
                 updateHud()
                 Toast.makeText(this, "Supplies stocked.", Toast.LENGTH_SHORT).show()
             }
 
-            action.startsWith("Sell Supplies") -> {
-                val sellAmount = if (node.type == NodeType.TOWN || node.type == NodeType.VILLAGE) 15 else 10
-                if (campaignManager.gameState.supplies < sellAmount) {
-                    Toast.makeText(this, "Not enough supplies to sell.", Toast.LENGTH_SHORT).show()
+            action == "Spend Supplies" -> {
+                if (campaignManager.gameState.supplies < 8) {
+                    Toast.makeText(this, "Need 8 supplies for this option.", Toast.LENGTH_SHORT).show()
                     return
                 }
-                campaignManager.gameState.supplies -= sellAmount
-                campaignManager.gameState.renown += 5
+                campaignManager.gameState.supplies -= 8
+                campaignManager.gameState.renown += 3
                 scoutFromNode(node)
                 updateHud()
-                Toast.makeText(this, "Trade completed: +5 renown.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Expedition paid off: +3 renown.", Toast.LENGTH_SHORT).show()
             }
 
-            action == "Recruit" || action == "Reorganize Warband" -> {
+            action == "Recruit" || action == "Reorganize Warband" || action == "Take Contract" -> {
                 scoutFromNode(node)
                 startActivity(Intent(this, WarbandActivity::class.java).apply {
                     putExtra("can_recruit", true)
                 })
             }
 
-            action == "Rest" || action == "Rest & Heal" -> {
-                campaignManager.gameState.healWarband(if (node.type == NodeType.TOWN) 1.0f else 0.5f)
+            action == "Rest" || action == "Heal" -> {
+                campaignManager.gameState.healWarband(if (node.type == NodeType.TOWN) 1.0f else 0.55f)
                 scoutFromNode(node)
                 Toast.makeText(this, "Warband recovered.", Toast.LENGTH_SHORT).show()
             }
 
-            action == "Scavenge Cache" || action == "Scout Routes" -> {
+            action == "Investigate" || action == "Scout Routes" -> {
                 scoutFromNode(node)
             }
         }
@@ -702,17 +787,29 @@ class CampaignActivity : AppCompatActivity() {
         val roll = Random.nextFloat()
         when {
             roll < 0.55f -> {
-                Toast.makeText(this, "Clean escape. Your warband slips away.", Toast.LENGTH_SHORT).show()
+                showOutcomeSheet(
+                    title = "Narrow Escape",
+                    summary = "Your scouts found a gap and the warband disengaged.",
+                    details = listOf("No losses", "Enemy contact broken")
+                )
                 return
             }
             roll < 0.85f -> {
                 val loss = randomSupplyLoss(6, 15)
                 campaignManager.gameState.supplies = (campaignManager.gameState.supplies - loss).coerceAtLeast(0)
                 updateHud()
-                Toast.makeText(this, "Messy retreat. -$loss supplies.", Toast.LENGTH_SHORT).show()
+                showOutcomeSheet(
+                    title = "Retreat Under Pressure",
+                    summary = "You escaped but had to abandon part of the pack train.",
+                    details = listOf("-$loss supplies", "Enemy remains active")
+                )
             }
             else -> {
-                Toast.makeText(this, "Escape failed! Forced skirmish at ${node.name}.", Toast.LENGTH_SHORT).show()
+                showOutcomeSheet(
+                    title = "Escape Failed",
+                    summary = "The enemy cut you off and forced a close skirmish.",
+                    details = listOf("Forced engagement at ${node.name}")
+                )
                 scoutFromNode(node)
                 return
             }
@@ -729,7 +826,11 @@ class CampaignActivity : AppCompatActivity() {
         gs.supplies -= cost
         gs.renown = (gs.renown - 2).coerceAtLeast(0)
         updateHud()
-        Toast.makeText(this, "Paid off ${node.name}: -$cost supplies, -2 renown.", Toast.LENGTH_SHORT).show()
+        showOutcomeSheet(
+            title = "Negotiated Passage",
+            summary = "The opposing party accepted payment and stood down.",
+            details = listOf("-$cost supplies", "Renown -2")
+        )
     }
 
     private fun getBribeCost(node: CampaignNode): Int {
@@ -743,6 +844,47 @@ class CampaignActivity : AppCompatActivity() {
     private fun randomSupplyLoss(min: Int, max: Int): Int {
         if (max <= min) return min
         return min + Random.nextInt(max - min + 1)
+    }
+
+    private fun showOutcomeSheet(title: String, summary: String, details: List<String>) {
+        val dialog = BottomSheetDialog(this)
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(16), dp(20), dp(24))
+            setBackgroundColor(Color.parseColor("#131B2F"))
+        }
+        content.addView(TextView(this).apply {
+            text = title
+            textSize = 20f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.parseColor("#F4F7FF"))
+        })
+        content.addView(TextView(this).apply {
+            text = summary
+            textSize = 13f
+            setTextColor(Color.parseColor("#B9C5E2"))
+            setPadding(0, dp(6), 0, dp(12))
+        })
+        details.forEach { line ->
+            content.addView(TextView(this).apply {
+                text = "• $line"
+                textSize = 13f
+                setTextColor(Color.parseColor("#DCE5FF"))
+                setPadding(0, dp(2), 0, dp(2))
+            })
+        }
+        content.addView(Button(this).apply {
+            text = "Continue"
+            isAllCaps = false
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.WHITE)
+            applyRoundedStyle(backgroundColor = "#4A3F88")
+            setOnClickListener { dialog.dismiss() }
+        }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+            topMargin = dp(14)
+        })
+        dialog.setContentView(content)
+        dialog.show()
     }
 
     private fun moveWarbandTo(normX: Float, normY: Float) {
@@ -793,17 +935,18 @@ class CampaignActivity : AppCompatActivity() {
         if (!phaseOnePocMode || suppressAutoPoiSelection) return
         val nearbyNode = campaignManager.findNearbyRevealedNode(poiInteractionDistance)
         travelHintText.text = if (mapView.isCenteredOnPlayer()) {
-            "Locked on warband — joystick moves, discover POIs by scouting."
+            "Tap POIs to inspect. Tap terrain to travel. Pinch to zoom."
         } else {
-            "Scouting mode — drag to survey. Tap ⌖ to follow."
+            "Scouting mode — drag to survey. Tap ⌖ to follow warband."
         }
         val filteredNearbyNode = nearbyNode?.takeUnless { it.isCleared && isTemporaryNode(it) }
         if (filteredNearbyNode == null) {
             selectedNode = null
+            mapView.selectedNodeId = null
             infoPanel.visibility = View.GONE
             return
         }
-        travelHintText.text = "Nearby: ${filteredNearbyNode.name} · Open Actions for options."
+        travelHintText.text = "Nearby: ${filteredNearbyNode.name}"
         if (selectedNode?.id == filteredNearbyNode.id && infoPanel.visibility == View.VISIBLE) return
         onNodeSelected(filteredNearbyNode)
     }
@@ -859,6 +1002,7 @@ class CampaignActivity : AppCompatActivity() {
         mapView.currentNodeId = campaignManager.gameState.currentNodeId
         mapView.setPlayerPosition(campaignManager.gameState.playerMapX, campaignManager.gameState.playerMapY)
         infoPanel.visibility = View.GONE
+        mapView.selectedNodeId = null
         startActivity(Intent(this, BattleActivity::class.java).apply {
             putExtra("node_id", node.id)
         })
@@ -878,6 +1022,7 @@ class CampaignActivity : AppCompatActivity() {
         updateHud()
         Toast.makeText(this, "♥ Warband healed!", Toast.LENGTH_SHORT).show()
         infoPanel.visibility = View.GONE
+        mapView.selectedNodeId = null
     }
 
     private fun collectResources(node: CampaignNode) {
@@ -888,12 +1033,14 @@ class CampaignActivity : AppCompatActivity() {
         updateHud()
         Toast.makeText(this, "◈ +${node.suppliesReward} supplies collected!", Toast.LENGTH_SHORT).show()
         infoPanel.visibility = View.GONE
+        mapView.selectedNodeId = null
     }
 
     private fun visitOutpost(node: CampaignNode) {
         campaignManager.moveToNode(node.id)
         node.isCleared = true
         infoPanel.visibility = View.GONE
+        mapView.selectedNodeId = null
         startActivity(Intent(this, WarbandActivity::class.java).apply {
             putExtra("can_recruit", true)
         })
@@ -917,6 +1064,7 @@ class CampaignActivity : AppCompatActivity() {
         updateHud()
         Toast.makeText(this, if (town) "Warband fully restored!" else "Warband partially restored!", Toast.LENGTH_SHORT).show()
         infoPanel.visibility = View.GONE
+        mapView.selectedNodeId = null
     }
 
     private fun forceEnemyEngagement() {

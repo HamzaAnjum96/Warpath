@@ -33,7 +33,9 @@ class CampaignActivity : AppCompatActivity() {
     private lateinit var joystickView: JoystickView
 
     private val phaseOnePocMode = true
+    private val poiInteractionDistance = 0.07f
     private var selectedNode: CampaignNode? = null
+    private var suppressAutoPoiSelection = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -58,8 +60,8 @@ class CampaignActivity : AppCompatActivity() {
             nodes = campaignManager.campaignMap
             currentNodeId = campaignManager.gameState.currentNodeId
             enemyParties = campaignManager.gameState.enemyParties
+            showPaths = !phaseOnePocMode
             setPlayerPosition(campaignManager.gameState.playerMapX, campaignManager.gameState.playerMapY)
-            onNodeTapped = { node -> onNodeSelected(node) }
         }
         root.addView(mapView, FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.MATCH_PARENT,
@@ -101,12 +103,9 @@ class CampaignActivity : AppCompatActivity() {
             onMove = { x, y ->
                 campaignManager.movePlayerBy(x * 0.012f, y * 0.012f)
                 mapView.movePlayerBy(x * 0.012f, y * 0.012f)
+                showNearbyPoiIfAny()
             }
-            onRelease = { x, y ->
-                campaignManager.findClosestRevealedNodeInDirection(x, y)?.let { node ->
-                    onNodeSelected(node)
-                }
-            }
+            onRelease = { _, _ -> }
         }
         root.addView(joystickView, FrameLayout.LayoutParams(220, 220, Gravity.BOTTOM or Gravity.START).apply {
             leftMargin = 28
@@ -115,6 +114,7 @@ class CampaignActivity : AppCompatActivity() {
 
         setContentView(root)
         updateHud()
+        showNearbyPoiIfAny()
     }
 
     // ── HUD construction ──────────────────────────────────────────────────────
@@ -298,8 +298,10 @@ class CampaignActivity : AppCompatActivity() {
         mapView.enemyParties = campaignManager.gameState.enemyParties
         mapView.setPlayerPosition(campaignManager.gameState.playerMapX, campaignManager.gameState.playerMapY)
         mapView.inputEnabled = true
+        mapView.showPaths = !phaseOnePocMode
         mapView.invalidate()
         updateHud()
+        showNearbyPoiIfAny()
 
         if (campaignManager.isRunOver()) {
             showRunOverDialog()
@@ -421,7 +423,7 @@ class CampaignActivity : AppCompatActivity() {
 
     private fun showPocNodeState(node: CampaignNode) {
         val isAccessible = node.isRevealed
-        val isCurrent = node.id == campaignManager.gameState.currentNodeId
+        val isNearby = isNodeNearby(node)
         nodeDescText.text = node.description
         nodeStatsText.setTextColor(Color.parseColor("#6688aa"))
 
@@ -431,20 +433,22 @@ class CampaignActivity : AppCompatActivity() {
             return
         }
 
-        if (isCurrent) {
-            nodeStatsText.text = "You are here"
-            actionButton.text = "Scout Nearby Routes"
+        if (isNearby) {
+            nodeStatsText.text = "Nearby POI"
+            actionButton.text = "Interact"
             actionButton.visibility = View.VISIBLE
             actionButton.setBackgroundColor(Color.parseColor("#225588"))
-            actionButton.setOnClickListener { scoutFromNode(node) }
+            actionButton.setOnClickListener {
+                suppressAutoPoiSelection = true
+                scoutFromNode(node)
+                suppressAutoPoiSelection = false
+                showNearbyPoiIfAny()
+            }
             return
         }
 
-        nodeStatsText.text = "POC travel target"
-        actionButton.text = "Travel Here"
-        actionButton.visibility = View.VISIBLE
-        actionButton.setBackgroundColor(Color.parseColor("#2C4A9E"))
-        actionButton.setOnClickListener { animateAndThen(node) { scoutFromNode(node) } }
+        nodeStatsText.text = "Move closer to interact"
+        actionButton.visibility = View.GONE
     }
 
     private fun scoutFromNode(node: CampaignNode) {
@@ -462,6 +466,28 @@ class CampaignActivity : AppCompatActivity() {
         updateHud()
         Toast.makeText(this, "Explored ${node.name}. Nearby routes revealed.", Toast.LENGTH_SHORT).show()
         infoPanel.visibility = View.GONE
+    }
+
+    private fun isNodeNearby(node: CampaignNode): Boolean {
+        val px = campaignManager.gameState.playerMapX
+        val py = campaignManager.gameState.playerMapY
+        val dx = node.mapX - px
+        val dy = node.mapY - py
+        return dx * dx + dy * dy <= poiInteractionDistance * poiInteractionDistance
+    }
+
+    private fun showNearbyPoiIfAny() {
+        if (!phaseOnePocMode || suppressAutoPoiSelection) return
+        val nearbyNode = campaignManager.findNearbyRevealedNode(poiInteractionDistance)
+        if (nearbyNode == null) {
+            selectedNode = null
+            infoPanel.visibility = View.GONE
+            return
+        }
+        if (selectedNode?.id == nearbyNode.id && infoPanel.visibility == View.VISIBLE) {
+            return
+        }
+        onNodeSelected(nearbyNode)
     }
 
     // ── Animation wrapper ─────────────────────────────────────────────────────

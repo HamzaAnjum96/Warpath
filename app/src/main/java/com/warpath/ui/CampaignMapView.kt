@@ -14,6 +14,7 @@ import com.warpath.model.CampaignNode
 import com.warpath.model.EnemyParty
 import com.warpath.model.NodeType
 import com.warpath.model.PartyFaction
+import com.warpath.model.UnitType
 import kotlin.math.abs
 import kotlin.math.hypot
 
@@ -658,10 +659,12 @@ class CampaignMapView @JvmOverloads constructor(
             val node = nodes.find { it.id == party.nodeId } ?: continue
             if (!node.isRevealed || !inViewport(node.mapX, node.mapY, 0.2f)) continue
 
-            val x = screenX(node.mapX) + 26f
-            val y = screenY(node.mapY) - 26f
-            val ringRadius = 17f + pulseValue * 8f
+            val profile = partyVisualProfile(party)
+            val x = screenX((node.mapX + profile.offsetNormX).coerceIn(0.02f, 0.98f))
+            val y = screenY((node.mapY + profile.offsetNormY).coerceIn(0.02f, 0.98f))
+            val ringRadius = profile.iconRadiusPx + pulseValue * 6f
             val ringAlpha = (70 + pulseValue * 140f).toInt()
+            val rangeRadius = worldRadiusToPixels(profile.rangeRadiusNorm)
 
             if (party.faction == PartyFaction.FRIENDLY) {
                 markerPaint.color = Color.parseColor("#2d7fd6")
@@ -675,12 +678,56 @@ class CampaignMapView @JvmOverloads constructor(
                 labelPaint.color = Color.parseColor("#ff9b9b")
             }
 
+            pulseRingPaint.strokeWidth = 2f
+            pulseRingPaint.alpha = 130
+            canvas.drawCircle(x, y, rangeRadius, pulseRingPaint)
+
             pulseRingPaint.strokeWidth = 2.5f
+            pulseRingPaint.alpha = 255
             canvas.drawCircle(x, y, ringRadius, pulseRingPaint)
-            canvas.drawCircle(x, y, 18f, markerPaint)
+            canvas.drawCircle(x, y, profile.iconRadiusPx, markerPaint)
             canvas.drawText(if (party.faction == PartyFaction.FRIENDLY) "🛡" else "☠", x, y + 9f, symbolPaint)
-            canvas.drawText(if (party.faction == PartyFaction.FRIENDLY) "ALLY" else "ROAMING", x, y - 25f, labelPaint)
+            canvas.drawText(
+                if (party.faction == PartyFaction.FRIENDLY) "ALLY L${profile.level}" else "ROAMING L${profile.level}",
+                x,
+                y - (profile.iconRadiusPx + 9f),
+                labelPaint
+            )
         }
+    }
+
+    private data class PartyVisualProfile(
+        val level: Int,
+        val iconRadiusPx: Float,
+        val rangeRadiusNorm: Float,
+        val offsetNormX: Float,
+        val offsetNormY: Float
+    )
+
+    private fun partyVisualProfile(party: EnemyParty): PartyVisualProfile {
+        val strength = party.unitTemplates.fold(0f) { acc, template ->
+            val unit = UnitType.byId(template.unitTypeId)
+            val unitPower = unit.baseHp / 6f + unit.baseAttack + unit.baseDefense + unit.baseSpeed * 10f
+            acc + unitPower * template.count
+        }
+        val level = when {
+            strength >= 320f -> 4
+            strength >= 220f -> 3
+            strength >= 120f -> 2
+            else -> 1
+        }
+        val rangeBase = if (party.faction == PartyFaction.FRIENDLY) 0.050f else 0.060f
+        val rangeRadiusNorm = rangeBase + (level - 1) * 0.012f
+        val iconRadius = 14f + level * 1.8f
+        val xOffset = if (party.faction == PartyFaction.FRIENDLY) -0.02f else 0.02f
+        val yOffset = -0.02f
+        return PartyVisualProfile(level, iconRadius, rangeRadiusNorm, xOffset, yOffset)
+    }
+
+    private fun worldRadiusToPixels(radiusNorm: Float): Float {
+        val pxPerNormX = width / visibleSpanX()
+        val pxPerNormY = height / visibleSpanY()
+        return radiusNorm * minOf(pxPerNormX, pxPerNormY)
     }
 
     private fun isAccessibleFromCurrent(node: CampaignNode): Boolean {

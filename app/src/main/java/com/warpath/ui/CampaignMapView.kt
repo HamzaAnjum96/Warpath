@@ -54,9 +54,11 @@ class CampaignMapView @JvmOverloads constructor(
     private var playerLookDirY: Float = 0f
     private var isMoving: Boolean = false
 
-    private var cameraZoom = 1.7f
-    private val minZoom = 1.0f
+    private var cameraZoom = 1.6f
+    private val minZoom = 0.85f
     private val maxZoom = 3.2f
+    private val baseViewportSpanX = 0.34f
+    private val baseViewportSpanY = 0.46f
     private var cameraNormX: Float = playerNormX
     private var cameraNormY: Float = playerNormY
     private var followPlayerFocus: Boolean = true
@@ -319,12 +321,12 @@ class CampaignMapView @JvmOverloads constructor(
 
     fun isCenteredOnPlayer(): Boolean = followPlayerFocus
     fun zoomIn() {
-        cameraZoom = (cameraZoom + 0.22f).coerceIn(minZoom, maxZoom)
+        cameraZoom = (cameraZoom + 0.18f).coerceIn(minZoom, maxZoom)
         invalidate()
     }
 
     fun zoomOut() {
-        cameraZoom = (cameraZoom - 0.22f).coerceIn(minZoom, maxZoom)
+        cameraZoom = (cameraZoom - 0.18f).coerceIn(minZoom, maxZoom)
         invalidate()
     }
 
@@ -341,8 +343,8 @@ class CampaignMapView @JvmOverloads constructor(
         post { onComplete() }
     }
 
-    private fun visibleSpanX() = 1f / cameraZoom
-    private fun visibleSpanY() = 1f / cameraZoom
+    private fun visibleSpanX() = (baseViewportSpanX / cameraZoom).coerceIn(0.08f, 1f)
+    private fun visibleSpanY() = (baseViewportSpanY / cameraZoom).coerceIn(0.10f, 1f)
 
     private fun clampCameraX(value: Float): Float {
         val half = visibleSpanX() / 2f
@@ -638,26 +640,46 @@ class CampaignMapView @JvmOverloads constructor(
 
     private fun drawEnemyParties(canvas: Canvas) {
         val markerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+        val pulseRingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
         val symbolPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE
-            textSize = 24f
+            textSize = 26f
             textAlign = Paint.Align.CENTER
             typeface = Typeface.DEFAULT_BOLD
         }
+        val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 13f
+            textAlign = Paint.Align.CENTER
+            color = Color.parseColor("#dce6ff")
+            typeface = Typeface.DEFAULT_BOLD
+        }
+
         for (party in enemyParties) {
             val node = nodes.find { it.id == party.nodeId } ?: continue
-            if (!node.isRevealed || !inViewport(node.mapX, node.mapY)) continue
-            val x = screenX(node.mapX) + 20f
-            val y = screenY(node.mapY) - 20f
+            if (!node.isRevealed || !inViewport(node.mapX, node.mapY, 0.2f)) continue
+
+            val x = screenX(node.mapX) + 26f
+            val y = screenY(node.mapY) - 26f
+            val ringRadius = 17f + pulseValue * 8f
+            val ringAlpha = (70 + pulseValue * 140f).toInt()
+
             if (party.faction == PartyFaction.FRIENDLY) {
                 markerPaint.color = Color.parseColor("#2d7fd6")
+                pulseRingPaint.color = Color.argb(ringAlpha, 90, 170, 255)
                 symbolPaint.color = Color.parseColor("#eaf4ff")
+                labelPaint.color = Color.parseColor("#8ec9ff")
             } else {
-                markerPaint.color = Color.parseColor("#bb2222")
+                markerPaint.color = Color.parseColor("#c32626")
+                pulseRingPaint.color = Color.argb(ringAlpha, 255, 90, 90)
                 symbolPaint.color = Color.WHITE
+                labelPaint.color = Color.parseColor("#ff9b9b")
             }
-            canvas.drawCircle(x, y, 16f, markerPaint)
-            canvas.drawText(if (party.faction == PartyFaction.FRIENDLY) "🛡" else "☠", x, y + 8f, symbolPaint)
+
+            pulseRingPaint.strokeWidth = 2.5f
+            canvas.drawCircle(x, y, ringRadius, pulseRingPaint)
+            canvas.drawCircle(x, y, 18f, markerPaint)
+            canvas.drawText(if (party.faction == PartyFaction.FRIENDLY) "🛡" else "☠", x, y + 9f, symbolPaint)
+            canvas.drawText(if (party.faction == PartyFaction.FRIENDLY) "ALLY" else "ROAMING", x, y - 25f, labelPaint)
         }
     }
 

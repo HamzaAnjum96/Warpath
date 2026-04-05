@@ -150,6 +150,7 @@ class CampaignManager {
             gameState.renown += node.renownReward
             gameState.nodesCleared++
             gameState.battlesWon++
+            removePartiesAtNode(node.id, faction = PartyFaction.HOSTILE, maxCount = 1)
             syncPartiesWithClearedHomes()
         } else {
             gameState.battlesLost++
@@ -448,6 +449,19 @@ class CampaignManager {
         if (clearedHomeIds.isEmpty()) return
         gameState.enemyParties.removeAll { party ->
             party.faction == PartyFaction.HOSTILE && clearedHomeIds.contains(party.homeNodeId)
+        }
+    }
+
+    private fun removePartiesAtNode(nodeId: String, faction: PartyFaction? = null, maxCount: Int = Int.MAX_VALUE) {
+        var removed = 0
+        val iterator = gameState.enemyParties.iterator()
+        while (iterator.hasNext()) {
+            val party = iterator.next()
+            if (party.nodeId != nodeId) continue
+            if (faction != null && party.faction != faction) continue
+            iterator.remove()
+            removed++
+            if (removed >= maxCount) break
         }
     }
 

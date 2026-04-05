@@ -18,9 +18,9 @@ class HowToPlayActivity : AppCompatActivity() {
         supportActionBar?.hide()
         window.decorView.systemUiVisibility = (
             View.SYSTEM_UI_FLAG_FULLSCREEN or
-            View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-        )
+                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+            )
 
         val scroll = ScrollView(this).apply {
             setBackgroundColor(Color.parseColor("#1a1a2e"))
@@ -40,25 +40,30 @@ class HowToPlayActivity : AppCompatActivity() {
         }
         layout.addView(title, marginParams(bottom = 30))
 
-        addSection(layout, "Campaign Map",
-            "This v1.0.1 build is a minimal overworld proof-of-concept.\n\n" +
-            "Use the joystick to move freely around the map, tap revealed nodes, and travel " +
-            "between them to explore routes.")
+        addSection(
+            layout,
+            "Campaign Map",
+            "v1.2.0 expands overworld navigation with a larger map camera.\n\n" +
+                "Your warband stays centered by default while the world moves beneath you. " +
+                "Drag the map to look around, then tap Recenter to lock focus on your warband again."
+        )
 
-        addSection(layout, "Movement Controls",
+        addSection(
+            layout,
+            "Movement Controls",
             "LEFT THUMB - drag joystick to move the warband marker.\n" +
-            "RELEASE - auto-select a nearby revealed node in that direction.\n" +
-            "TAP NODE - open node panel and choose Travel Here.")
+                "MAP DRAG - free-look without moving the player.\n" +
+                "RECENTER - snap camera focus back to your warband."
+        )
 
-        addSection(layout, "POC Scope",
-            "Included:\n" +
-            "- portrait overworld map\n" +
-            "- joystick movement\n" +
-            "- node travel and exploration reveal\n\n" +
-            "Deferred for later phases:\n" +
-            "- battle/run/bribe encounter decisions\n" +
-            "- settlement actions\n" +
-            "- mission and economy depth")
+        addSection(
+            layout,
+            "Interaction Menus",
+            "When near a point of interest, tap Interact to open context actions.\n\n" +
+                "Enemy nodes: Fight or Flee.\n" +
+                "Towns/Villages: Buy, Sell, Recruit, Rest.\n" +
+                "Outposts/Camps/Caches: situational utility actions."
+        )
 
         val backBtn = Button(this).apply {
             text = "Back to Menu"
@@ -71,10 +76,13 @@ class HowToPlayActivity : AppCompatActivity() {
             stateListAnimator = null
             setOnClickListener { finish() }
         }
-        layout.addView(backBtn, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { topMargin = 30 })
+        layout.addView(
+            backBtn,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = 30 }
+        )
 
         scroll.addView(layout)
         setContentView(scroll)

@@ -1,7 +1,8 @@
 package com.warpath.ui
 
 import android.content.Intent
-import android.graphics.*
+import android.graphics.Color
+import android.graphics.Typeface
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -31,6 +32,7 @@ class CampaignActivity : AppCompatActivity() {
     private lateinit var panelAccentBar: View
     private lateinit var statusText: TextView
     private lateinit var joystickView: JoystickView
+    private lateinit var recenterButton: Button
 
     private val phaseOnePocMode = true
     private val poiInteractionDistance = 0.07f
@@ -43,9 +45,9 @@ class CampaignActivity : AppCompatActivity() {
         @Suppress("DEPRECATION")
         window.decorView.systemUiVisibility = (
             View.SYSTEM_UI_FLAG_FULLSCREEN or
-            View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-        )
+                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+            )
 
         if (intent.getBooleanExtra("new_game", false)) {
             campaignManager.startNewCampaign()
@@ -55,27 +57,36 @@ class CampaignActivity : AppCompatActivity() {
             setBackgroundColor(Color.parseColor("#0a0a18"))
         }
 
-        // ── Map view ──────────────────────────────────────────────────────────
         mapView = CampaignMapView(this).apply {
             nodes = campaignManager.campaignMap
             currentNodeId = campaignManager.gameState.currentNodeId
             enemyParties = campaignManager.gameState.enemyParties
             showPaths = !phaseOnePocMode
             setPlayerPosition(campaignManager.gameState.playerMapX, campaignManager.gameState.playerMapY)
+            onFocusChanged = { focused ->
+                recenterButton.visibility = if (focused) View.GONE else View.VISIBLE
+                if (!focused) {
+                    Toast.makeText(context, "Map unfocused. Drag to scout. Tap Recenter to lock on warband.", Toast.LENGTH_SHORT).show()
+                }
+            }
         }
-        root.addView(mapView, FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.MATCH_PARENT,
-            FrameLayout.LayoutParams.MATCH_PARENT
-        ))
+        root.addView(
+            mapView,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+        )
 
-        // ── Top HUD ───────────────────────────────────────────────────────────
-        root.addView(buildTopHud(), FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.MATCH_PARENT,
-            FrameLayout.LayoutParams.WRAP_CONTENT,
-            Gravity.TOP
-        ))
+        root.addView(
+            buildTopHud(),
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.TOP
+            )
+        )
 
-        // ── Status bar (shows "Traveling...", centered over map) ──────────────
         statusText = TextView(this).apply {
             textSize = 15f
             setTextColor(Color.parseColor("#e6c84c"))
@@ -85,39 +96,72 @@ class CampaignActivity : AppCompatActivity() {
             setBackgroundColor(Color.parseColor("#cc0a0a18"))
             visibility = View.GONE
         }
-        val statusParams = FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.WRAP_CONTENT,
-            FrameLayout.LayoutParams.WRAP_CONTENT,
-            Gravity.CENTER_HORIZONTAL or Gravity.CENTER_VERTICAL
+        root.addView(
+            statusText,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.CENTER_HORIZONTAL or Gravity.CENTER_VERTICAL
+            )
         )
-        root.addView(statusText, statusParams)
 
-        // ── Bottom info panel ─────────────────────────────────────────────────
-        root.addView(buildInfoPanel(), FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.MATCH_PARENT,
-            FrameLayout.LayoutParams.WRAP_CONTENT,
-            Gravity.BOTTOM
-        ))
+        recenterButton = Button(this).apply {
+            text = "◎ Recenter"
+            textSize = 12f
+            typeface = Typeface.DEFAULT_BOLD
+            isAllCaps = false
+            setTextColor(Color.parseColor("#F5EED1"))
+            setBackgroundColor(Color.parseColor("#4A3F88"))
+            setPadding(20, 14, 20, 14)
+            stateListAnimator = null
+            visibility = View.GONE
+            setOnClickListener {
+                mapView.recenterOnPlayer()
+                Toast.makeText(this@CampaignActivity, "Camera recentered on warband.", Toast.LENGTH_SHORT).show()
+            }
+        }
+        root.addView(
+            recenterButton,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.TOP or Gravity.END
+            ).apply {
+                topMargin = 110
+                rightMargin = 22
+            }
+        )
+
+        root.addView(
+            buildInfoPanel(),
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM
+            )
+        )
 
         joystickView = JoystickView(this).apply {
             onMove = { x, y ->
                 campaignManager.movePlayerBy(x * 0.012f, y * 0.012f)
                 mapView.movePlayerBy(x * 0.012f, y * 0.012f)
+                mapView.setPlayerLookDirection(x, y)
                 showNearbyPoiIfAny()
             }
             onRelease = { _, _ -> }
         }
-        root.addView(joystickView, FrameLayout.LayoutParams(220, 220, Gravity.BOTTOM or Gravity.START).apply {
-            leftMargin = 28
-            bottomMargin = 220
-        })
+        root.addView(
+            joystickView,
+            FrameLayout.LayoutParams(220, 220, Gravity.BOTTOM or Gravity.START).apply {
+                leftMargin = 28
+                bottomMargin = 220
+            }
+        )
 
         setContentView(root)
         updateHud()
         showNearbyPoiIfAny()
     }
-
-    // ── HUD construction ──────────────────────────────────────────────────────
 
     private fun buildTopHud(): View {
         val bar = LinearLayout(this).apply {
@@ -127,7 +171,6 @@ class CampaignActivity : AppCompatActivity() {
             gravity = Gravity.CENTER_VERTICAL
         }
 
-        // Left: title
         val title = TextView(this).apply {
             text = "SARHAD"
             textSize = 17f
@@ -137,10 +180,9 @@ class CampaignActivity : AppCompatActivity() {
         }
         bar.addView(title, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
 
-        // Resources row
         suppliesText = hudStatText()
-        renownText   = hudStatText()
-        warbandText  = hudStatText()
+        renownText = hudStatText()
+        warbandText = hudStatText()
 
         bar.addView(suppliesText)
         bar.addView(hudSpacer())
@@ -149,7 +191,6 @@ class CampaignActivity : AppCompatActivity() {
         bar.addView(warbandText)
         bar.addView(hudSpacer())
 
-        // Warband button
         val warbandBtn = Button(this).apply {
             text = "⚔ Warband"
             textSize = 12f
@@ -159,9 +200,7 @@ class CampaignActivity : AppCompatActivity() {
             typeface = Typeface.DEFAULT_BOLD
             setPadding(16, 8, 16, 8)
             stateListAnimator = null
-            setOnClickListener {
-                startActivity(Intent(this@CampaignActivity, WarbandActivity::class.java))
-            }
+            setOnClickListener { startActivity(Intent(this@CampaignActivity, WarbandActivity::class.java)) }
         }
         bar.addView(warbandBtn)
 
@@ -178,8 +217,6 @@ class CampaignActivity : AppCompatActivity() {
         it.layoutParams = LinearLayout.LayoutParams(20, 1)
     }
 
-    // ── Info panel construction ───────────────────────────────────────────────
-
     private fun buildInfoPanel(): View {
         val container = FrameLayout(this)
 
@@ -189,18 +226,20 @@ class CampaignActivity : AppCompatActivity() {
             visibility = View.GONE
         }
 
-        // Top accent bar (coloured by node type)
         panelAccentBar = View(this)
-        infoPanel.addView(panelAccentBar, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, 5
-        ))
+        infoPanel.addView(
+            panelAccentBar,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                5
+            )
+        )
 
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(36, 20, 36, 20)
         }
 
-        // Node type chip + name row
         val headerRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -212,21 +251,21 @@ class CampaignActivity : AppCompatActivity() {
             typeface = Typeface.DEFAULT_BOLD
             setPadding(12, 5, 12, 5)
         }
-        headerRow.addView(nodeTypeChip, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.WRAP_CONTENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { marginEnd = 14 })
+        headerRow.addView(
+            nodeTypeChip,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { marginEnd = 14 }
+        )
 
         nodeNameText = TextView(this).apply {
             textSize = 19f
             setTextColor(Color.WHITE)
             typeface = Typeface.DEFAULT_BOLD
         }
-        headerRow.addView(nodeNameText, LinearLayout.LayoutParams(
-            0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
-        ))
+        headerRow.addView(nodeNameText, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
 
-        // Dismiss X button
         val dismissX = TextView(this).apply {
             text = "✕"
             textSize = 18f
@@ -238,35 +277,42 @@ class CampaignActivity : AppCompatActivity() {
 
         content.addView(headerRow)
 
-        // Divider
-        content.addView(View(this).apply {
-            setBackgroundColor(Color.parseColor("#222244"))
-        }, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, 1
-        ).apply { topMargin = 10; bottomMargin = 10 })
+        content.addView(
+            View(this).apply { setBackgroundColor(Color.parseColor("#222244")) },
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                1
+            ).apply {
+                topMargin = 10
+                bottomMargin = 10
+            }
+        )
 
-        // Description
         nodeDescText = TextView(this).apply {
             textSize = 13f
             setTextColor(Color.parseColor("#9999bb"))
             setLineSpacing(2f, 1f)
         }
-        content.addView(nodeDescText, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { bottomMargin = 8 })
+        content.addView(
+            nodeDescText,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = 8 }
+        )
 
-        // Stats row (enemies / rewards)
         nodeStatsText = TextView(this).apply {
             textSize = 12f
             setTextColor(Color.parseColor("#6688aa"))
         }
-        content.addView(nodeStatsText, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { bottomMargin = 14 })
+        content.addView(
+            nodeStatsText,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = 14 }
+        )
 
-        // Action button
         actionButton = Button(this).apply {
             textSize = 16f
             setTextColor(Color.WHITE)
@@ -275,21 +321,25 @@ class CampaignActivity : AppCompatActivity() {
             setPadding(24, 18, 24, 18)
             stateListAnimator = null
         }
-        content.addView(actionButton, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        ))
+        content.addView(
+            actionButton,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
 
         infoPanel.addView(content)
-        container.addView(infoPanel, FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.MATCH_PARENT,
-            FrameLayout.LayoutParams.WRAP_CONTENT
-        ))
+        container.addView(
+            infoPanel,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
 
         return container
     }
-
-    // ── Resume & HUD update ───────────────────────────────────────────────────
 
     override fun onResume() {
         super.onResume()
@@ -300,6 +350,7 @@ class CampaignActivity : AppCompatActivity() {
         mapView.inputEnabled = true
         mapView.showPaths = !phaseOnePocMode
         mapView.invalidate()
+        recenterButton.visibility = if (mapView.isCenteredOnPlayer()) View.GONE else View.VISIBLE
         updateHud()
         showNearbyPoiIfAny()
 
@@ -311,36 +362,34 @@ class CampaignActivity : AppCompatActivity() {
     private fun updateHud() {
         val gs = campaignManager.gameState
         suppliesText.text = "⚔ ${gs.supplies}"
-        renownText.text   = "★ ${gs.renown}"
+        renownText.text = "★ ${gs.renown}"
         val wSize = gs.warband.size
-        val wMax  = gs.maxWarbandSlots
-        warbandText.text  = "⚔ $wSize/$wMax"
+        val wMax = gs.maxWarbandSlots
+        warbandText.text = "⚔ $wSize/$wMax"
     }
-
-    // ── Node selection ────────────────────────────────────────────────────────
 
     private fun onNodeSelected(node: CampaignNode) {
         selectedNode = node
         infoPanel.visibility = View.VISIBLE
 
-        // Accent bar color
         panelAccentBar.setBackgroundColor(node.type.color.toInt())
 
-        // Type chip
         nodeTypeChip.text = node.type.displayName.uppercase()
         nodeTypeChip.setBackgroundColor(
-            Color.argb(180, Color.red(node.type.color.toInt()),
+            Color.argb(
+                180,
+                Color.red(node.type.color.toInt()),
                 Color.green(node.type.color.toInt()),
-                Color.blue(node.type.color.toInt()))
+                Color.blue(node.type.color.toInt())
+            )
         )
 
         nodeNameText.text = node.name
         nodeNameText.setTextColor(node.type.color.toInt())
 
         val isAccessible = node.isRevealed
-        val isCurrent    = node.id == campaignManager.gameState.currentNodeId
+        val isCurrent = node.id == campaignManager.gameState.currentNodeId
 
-        // Reset
         actionButton.alpha = 1f
         actionButton.isEnabled = true
 
@@ -360,37 +409,41 @@ class CampaignActivity : AppCompatActivity() {
             when (node.type) {
                 NodeType.ENEMY_PATROL, NodeType.ELITE_CHALLENGE, NodeType.BOSS -> {
                     val enemyCount = node.enemySquads.sumOf { it.count }
-                    nodeDescText.text  = node.description
+                    nodeDescText.text = node.description
                     nodeStatsText.text = "Enemies: $enemyCount  |  ⚔ +${node.suppliesReward}  ★ +${node.renownReward}"
-                    actionButton.text  = if (node.type == NodeType.BOSS) "⚔ Storm the Stronghold!" else "⚔ Attack!"
+                    actionButton.text = if (node.type == NodeType.BOSS) "⚔ Storm the Stronghold!" else "⚔ Attack!"
                     actionButton.setBackgroundColor(Color.parseColor("#aa2222"))
                     actionButton.visibility = View.VISIBLE
                     actionButton.setOnClickListener { animateAndThen(node) { engageBattle(node) } }
                 }
+
                 NodeType.RECOVERY_CAMP -> {
-                    nodeDescText.text  = node.description
+                    nodeDescText.text = node.description
                     nodeStatsText.text = "Cost: 20 supplies  |  Heal 40% HP"
-                    actionButton.text  = "♥ Rest & Heal"
+                    actionButton.text = "♥ Rest & Heal"
                     actionButton.setBackgroundColor(Color.parseColor("#225588"))
                     actionButton.visibility = View.VISIBLE
                     actionButton.setOnClickListener { animateAndThen(node) { restAtCamp(node) } }
                 }
+
                 NodeType.RESOURCE_CACHE -> {
-                    nodeDescText.text  = node.description
+                    nodeDescText.text = node.description
                     nodeStatsText.text = "Reward: ⚔ +${node.suppliesReward}  ★ +${node.renownReward}"
-                    actionButton.text  = "◈ Collect Supplies"
+                    actionButton.text = "◈ Collect Supplies"
                     actionButton.setBackgroundColor(Color.parseColor("#226633"))
                     actionButton.visibility = View.VISIBLE
                     actionButton.setOnClickListener { animateAndThen(node) { collectResources(node) } }
                 }
+
                 NodeType.FACTION_OUTPOST -> {
-                    nodeDescText.text  = node.description
+                    nodeDescText.text = node.description
                     nodeStatsText.text = "Recruit troops and resupply"
-                    actionButton.text  = "⚑ Visit Outpost"
+                    actionButton.text = "⚑ Visit Outpost"
                     actionButton.setBackgroundColor(Color.parseColor("#885522"))
                     actionButton.visibility = View.VISIBLE
                     actionButton.setOnClickListener { animateAndThen(node) { visitOutpost(node) } }
                 }
+
                 NodeType.TOWN -> {
                     nodeDescText.text = node.description
                     nodeStatsText.text = "Cost: 35 supplies  |  Full heal + recruit support"
@@ -399,6 +452,7 @@ class CampaignActivity : AppCompatActivity() {
                     actionButton.visibility = View.VISIBLE
                     actionButton.setOnClickListener { animateAndThen(node) { restAtSettlement(node, true) } }
                 }
+
                 NodeType.VILLAGE -> {
                     nodeDescText.text = node.description
                     nodeStatsText.text = "Cost: 15 supplies  |  Heal 50%"
@@ -407,14 +461,15 @@ class CampaignActivity : AppCompatActivity() {
                     actionButton.visibility = View.VISIBLE
                     actionButton.setOnClickListener { animateAndThen(node) { restAtSettlement(node, false) } }
                 }
+
                 NodeType.START -> {
-                    nodeDescText.text  = node.description
+                    nodeDescText.text = node.description
                     nodeStatsText.text = "Your staging ground"
                     actionButton.visibility = View.GONE
                 }
             }
         } else {
-            nodeDescText.text  = node.description
+            nodeDescText.text = node.description
             nodeStatsText.text = "⚠ Not accessible — clear a connected node first"
             nodeStatsText.setTextColor(Color.parseColor("#996633"))
             actionButton.visibility = View.GONE
@@ -434,13 +489,13 @@ class CampaignActivity : AppCompatActivity() {
         }
 
         if (isNearby) {
-            nodeStatsText.text = "Nearby POI"
+            nodeStatsText.text = "Nearby POI — open interaction menu"
             actionButton.text = "Interact"
             actionButton.visibility = View.VISIBLE
             actionButton.setBackgroundColor(Color.parseColor("#225588"))
             actionButton.setOnClickListener {
                 suppressAutoPoiSelection = true
-                scoutFromNode(node)
+                openPoiContextMenu(node)
                 suppressAutoPoiSelection = false
                 showNearbyPoiIfAny()
             }
@@ -449,6 +504,86 @@ class CampaignActivity : AppCompatActivity() {
 
         nodeStatsText.text = "Move closer to interact"
         actionButton.visibility = View.GONE
+    }
+
+    private fun openPoiContextMenu(node: CampaignNode) {
+        val options = when (node.type) {
+            NodeType.ENEMY_PATROL, NodeType.ELITE_CHALLENGE, NodeType.BOSS ->
+                arrayOf("Fight", "Flee")
+
+            NodeType.TOWN, NodeType.VILLAGE ->
+                arrayOf("Buy Supplies (+25)", "Sell Supplies (-15 for renown)", "Recruit", "Rest")
+
+            NodeType.FACTION_OUTPOST ->
+                arrayOf("Recruit", "Buy Supplies (+20)", "Sell Supplies (-10 for renown)")
+
+            NodeType.RESOURCE_CACHE ->
+                arrayOf("Scavenge Cache", "Leave")
+
+            NodeType.RECOVERY_CAMP ->
+                arrayOf("Rest & Heal", "Leave")
+
+            NodeType.START ->
+                arrayOf("Reorganize Warband", "Scout Routes")
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("${node.name} — Actions")
+            .setItems(options) { _, which ->
+                handlePoiAction(node, options[which])
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun handlePoiAction(node: CampaignNode, action: String) {
+        when {
+            action.startsWith("Fight") -> {
+                scoutFromNode(node)
+                Toast.makeText(this, "Skirmish won at ${node.name}.", Toast.LENGTH_SHORT).show()
+            }
+
+            action.startsWith("Flee") || action == "Leave" -> {
+                Toast.makeText(this, "You avoid trouble and keep moving.", Toast.LENGTH_SHORT).show()
+            }
+
+            action.startsWith("Buy Supplies") -> {
+                campaignManager.gameState.supplies += if (node.type == NodeType.TOWN || node.type == NodeType.VILLAGE) 25 else 20
+                scoutFromNode(node)
+                updateHud()
+                Toast.makeText(this, "Supplies stocked.", Toast.LENGTH_SHORT).show()
+            }
+
+            action.startsWith("Sell Supplies") -> {
+                val sellAmount = if (node.type == NodeType.TOWN || node.type == NodeType.VILLAGE) 15 else 10
+                if (campaignManager.gameState.supplies < sellAmount) {
+                    Toast.makeText(this, "Not enough supplies to sell.", Toast.LENGTH_SHORT).show()
+                    return
+                }
+                campaignManager.gameState.supplies -= sellAmount
+                campaignManager.gameState.renown += 5
+                scoutFromNode(node)
+                updateHud()
+                Toast.makeText(this, "Trade completed: +5 renown.", Toast.LENGTH_SHORT).show()
+            }
+
+            action == "Recruit" || action == "Reorganize Warband" -> {
+                scoutFromNode(node)
+                startActivity(Intent(this, WarbandActivity::class.java).apply {
+                    putExtra("can_recruit", true)
+                })
+            }
+
+            action == "Rest" || action == "Rest & Heal" -> {
+                campaignManager.gameState.healWarband(if (node.type == NodeType.TOWN) 1.0f else 0.5f)
+                scoutFromNode(node)
+                Toast.makeText(this, "Warband recovered.", Toast.LENGTH_SHORT).show()
+            }
+
+            action == "Scavenge Cache" || action == "Scout Routes" -> {
+                scoutFromNode(node)
+            }
+        }
     }
 
     private fun scoutFromNode(node: CampaignNode) {
@@ -462,6 +597,7 @@ class CampaignActivity : AppCompatActivity() {
             campaignManager.gameState.playerMapX,
             campaignManager.gameState.playerMapY
         )
+        mapView.recenterOnPlayer()
         mapView.invalidate()
         updateHud()
         Toast.makeText(this, "Explored ${node.name}. Nearby routes revealed.", Toast.LENGTH_SHORT).show()
@@ -484,18 +620,10 @@ class CampaignActivity : AppCompatActivity() {
             infoPanel.visibility = View.GONE
             return
         }
-        if (selectedNode?.id == nearbyNode.id && infoPanel.visibility == View.VISIBLE) {
-            return
-        }
+        if (selectedNode?.id == nearbyNode.id && infoPanel.visibility == View.VISIBLE) return
         onNodeSelected(nearbyNode)
     }
 
-    // ── Animation wrapper ─────────────────────────────────────────────────────
-
-    /**
-     * Animates the player marker to [targetNode], then runs [action].
-     * If the player is already at that node the animation is skipped.
-     */
     private fun animateAndThen(targetNode: CampaignNode, action: () -> Unit) {
         val current = campaignManager.getCurrentNode()
         if (current == null || current.id == targetNode.id) {
@@ -503,19 +631,18 @@ class CampaignActivity : AppCompatActivity() {
             return
         }
 
-        // Disable input and show traveling state
         mapView.inputEnabled = false
-        actionButton.text    = "  Traveling…"
+        actionButton.text = "  Traveling…"
         actionButton.isEnabled = false
-        actionButton.alpha   = 0.5f
-        statusText.text      = "▶ Marching to ${targetNode.name}…"
+        actionButton.alpha = 0.5f
+        statusText.text = "▶ Marching to ${targetNode.name}…"
         statusText.visibility = View.VISIBLE
 
         mapView.animatePlayerTo(targetNode) {
             statusText.visibility = View.GONE
-            mapView.inputEnabled  = true
+            mapView.inputEnabled = true
             actionButton.isEnabled = true
-            actionButton.alpha     = 1f
+            actionButton.alpha = 1f
             if (campaignManager.stepEnemyParties()) {
                 mapView.enemyParties = campaignManager.gameState.enemyParties
                 forceEnemyEngagement()
@@ -526,16 +653,14 @@ class CampaignActivity : AppCompatActivity() {
         }
     }
 
-    // ── Actions ───────────────────────────────────────────────────────────────
-
     private fun engageBattle(node: CampaignNode) {
         campaignManager.moveToNode(node.id)
         mapView.currentNodeId = campaignManager.gameState.currentNodeId
         mapView.setPlayerPosition(campaignManager.gameState.playerMapX, campaignManager.gameState.playerMapY)
         infoPanel.visibility = View.GONE
-        val intent = Intent(this, BattleActivity::class.java)
-        intent.putExtra("node_id", node.id)
-        startActivity(intent)
+        startActivity(Intent(this, BattleActivity::class.java).apply {
+            putExtra("node_id", node.id)
+        })
     }
 
     private fun restAtCamp(node: CampaignNode) {
@@ -571,9 +696,9 @@ class CampaignActivity : AppCompatActivity() {
             campaignManager.campaignMap.find { it.id == connId }?.isRevealed = true
         }
         infoPanel.visibility = View.GONE
-        val intent = Intent(this, WarbandActivity::class.java)
-        intent.putExtra("can_recruit", true)
-        startActivity(intent)
+        startActivity(Intent(this, WarbandActivity::class.java).apply {
+            putExtra("can_recruit", true)
+        })
     }
 
     private fun restAtSettlement(node: CampaignNode, town: Boolean) {
@@ -608,18 +733,17 @@ class CampaignActivity : AppCompatActivity() {
         }
     }
 
-    // ── End-of-run dialog ─────────────────────────────────────────────────────
-
     private fun showRunOverDialog() {
         AlertDialog.Builder(this)
             .setTitle("Campaign Over")
             .setMessage(campaignManager.getRunSummary())
             .setPositiveButton("New Campaign") { _, _ ->
                 campaignManager.startNewCampaign()
-                mapView.nodes         = campaignManager.campaignMap
+                mapView.nodes = campaignManager.campaignMap
                 mapView.currentNodeId = campaignManager.gameState.currentNodeId
+                mapView.recenterOnPlayer()
                 mapView.invalidate()
-                infoPanel.visibility  = View.GONE
+                infoPanel.visibility = View.GONE
                 updateHud()
             }
             .setNegativeButton("Main Menu") { _, _ -> finish() }

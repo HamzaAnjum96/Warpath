@@ -41,7 +41,7 @@ class MainMenuActivity : AppCompatActivity() {
         root.addView(title, lp(bottom = 8))
 
         val subtitle = TextView(this).apply {
-            text = "v1.0.1 · Phase 1 POC"
+            text = "v1.2.0 · Minor Release"
             textSize = 15f
             setTextColor(Color.parseColor("#9AA4C2"))
             gravity = Gravity.CENTER
@@ -69,7 +69,7 @@ class MainMenuActivity : AppCompatActivity() {
         root.addView(quitBtn, lp(bottom = 0, hMargin = 20))
 
         val note = TextView(this).apply {
-            text = "Minimal Phase 1 scope: joystick movement + overworld exploration POC."
+            text = "Minor release focus: camera-follow map, free look, recenter, and contextual interactions."
             textSize = 12f
             setTextColor(Color.parseColor("#6D789B"))
             gravity = Gravity.CENTER

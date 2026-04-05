@@ -16,6 +16,7 @@ import com.warpath.model.CampaignNode
 import com.warpath.model.NodeType
 import com.warpath.model.PartyFaction
 import kotlin.random.Random
+import kotlin.math.hypot
 
 class CampaignActivity : AppCompatActivity() {
 
@@ -41,6 +42,8 @@ class CampaignActivity : AppCompatActivity() {
 
     private val phaseOnePocMode = true
     private val poiInteractionDistance = 0.07f
+    private val roamingStepDistance = 0.06f
+    private var roamingDistanceAccumulator = 0f
     private var selectedNode: CampaignNode? = null
     private var suppressAutoPoiSelection = false
 
@@ -187,9 +190,13 @@ class CampaignActivity : AppCompatActivity() {
 
         joystickView = JoystickView(this).apply {
             onMove = { x, y ->
-                campaignManager.movePlayerBy(x * 0.015f, y * 0.015f)
-                mapView.movePlayerBy(x * 0.015f, y * 0.015f)
+                val dx = x * 0.015f
+                val dy = y * 0.015f
+                campaignManager.movePlayerBy(dx, dy)
+                mapView.movePlayerBy(dx, dy)
                 mapView.setPlayerLookDirection(x, y)
+                roamingDistanceAccumulator += hypot(dx, dy)
+                maybeStepRoamingParties()
                 checkFogDiscovery()
                 showNearbyPoiIfAny()
             }
@@ -739,11 +746,15 @@ class CampaignActivity : AppCompatActivity() {
     }
 
     private fun moveWarbandTo(normX: Float, normY: Float) {
+        val startX = campaignManager.gameState.playerMapX
+        val startY = campaignManager.gameState.playerMapY
         mapView.inputEnabled = false
         statusText.text = "▶ Marching…"
         statusText.visibility = View.VISIBLE
         mapView.animatePlayerTo(normX, normY) {
             campaignManager.setPlayerPosition(normX, normY)
+            roamingDistanceAccumulator += hypot(normX - startX, normY - startY)
+            maybeStepRoamingParties(force = true)
             checkFogDiscovery()
             mapView.inputEnabled = true
             statusText.visibility = View.GONE
@@ -918,6 +929,17 @@ class CampaignActivity : AppCompatActivity() {
             Toast.makeText(this, "☠ Enemy party intercepted your warband!", Toast.LENGTH_LONG).show()
             engageBattle(current)
         }
+    }
+
+    private fun maybeStepRoamingParties(force: Boolean = false) {
+        if (!force && roamingDistanceAccumulator < roamingStepDistance) return
+        roamingDistanceAccumulator = 0f
+        if (campaignManager.stepEnemyParties()) {
+            mapView.enemyParties = campaignManager.gameState.enemyParties
+            forceEnemyEngagement()
+            return
+        }
+        mapView.enemyParties = campaignManager.gameState.enemyParties
     }
 
     private fun showRunOverDialog() {

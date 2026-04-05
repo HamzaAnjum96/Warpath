@@ -6,6 +6,7 @@ plugins {
 android {
     namespace = "com.warpath"
     compileSdk = 35
+    buildToolsVersion = "35.0.1"
 
     defaultConfig {
         applicationId = "com.warpath"

@@ -41,7 +41,7 @@ class MainMenuActivity : AppCompatActivity() {
         root.addView(title, lp(bottom = 8))
 
         val subtitle = TextView(this).apply {
-            text = "v1.0.0 · Foundation Build"
+            text = "v1.0.1 · Phase 1 POC"
             textSize = 15f
             setTextColor(Color.parseColor("#9AA4C2"))
             gravity = Gravity.CENTER
@@ -50,17 +50,26 @@ class MainMenuActivity : AppCompatActivity() {
 
         val playBtn = buildMenuBtn("Start", "#2C4A9E", accent = true)
         playBtn.setOnClickListener {
-            // Foundation fallback: route to instructions screen.
-            startActivity(Intent(this, HowToPlayActivity::class.java))
+            startActivity(
+                Intent(this, CampaignActivity::class.java).apply {
+                    putExtra("new_game", true)
+                }
+            )
         }
         root.addView(playBtn, lp(bottom = 14, hMargin = 20))
+
+        val howToPlayBtn = buildMenuBtn("How to Play", "#243053")
+        howToPlayBtn.setOnClickListener {
+            startActivity(Intent(this, HowToPlayActivity::class.java))
+        }
+        root.addView(howToPlayBtn, lp(bottom = 14, hMargin = 20))
 
         val quitBtn = buildMenuBtn("Exit", "#1D2438")
         quitBtn.setOnClickListener { finish() }
         root.addView(quitBtn, lp(bottom = 0, hMargin = 20))
 
         val note = TextView(this).apply {
-            text = "This release keeps a stable menu-first shell while systems are being reworked."
+            text = "Minimal Phase 1 scope: joystick movement + overworld exploration POC."
             textSize = 12f
             setTextColor(Color.parseColor("#6D789B"))
             gravity = Gravity.CENTER

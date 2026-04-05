@@ -1,44 +1,26 @@
-# Warpath
+# Sarhad (formerly Warpath)
 
-Warpath is a mobile-first strategy/action game concept inspired by the high-level fantasy of Bannerlord, re-scoped into a tight loop built for short Android play sessions.
+Sarhad is a **portrait-mode, Android-first strategy RPG** where you command a roaming warband across a living frontier.
 
-## Vision
-**"Polytopia to Civ, but for Bannerlord."**
+## One-line summary
+**Lead your warband in real time, recruit and recover in settlements, and choose when to battle, run, or bribe to survive and grow.**
 
-Design priorities:
-- Mobile readability over realism
-- Fast tactical clarity over large simulation depth
-- Performance and battery life over feature sprawl
+## Current direction (pivot)
+This repository is now aligned to the **Sarhad** concept pivot:
+- Live overworld traversal (portrait, thumb-first controls)
+- Fast encounter decisions (Battle / Run / Bribe)
+- Short real-time tactical fights
+- Settlement-driven recovery, recruitment, supplies, and missions
+- Survival pressure through troops, supplies, gold, and time
 
-## Planning Documents
+## Planning documents
 - [Game Design](planning/GAME_DESIGN.md)
 - [Tech Stack](planning/TECH_STACK.md)
 - [Architecture](planning/ARCHITECTURE.md)
 - [Roadmap](planning/ROADMAP.md)
 
-## Core Constraints (v1)
-- Android first
-- Unity + C#
-- Top-down isometric camera
-- Low-poly art style only
-- No multiplayer
-- No deep political/economy simulation
-- No town-walking or first-person scenes
-- No Bannerlord-scale battles in early phases
+## Prototype status
+The Android prototype under `app/` remains in active iteration and may still contain naming from the previous "Warpath" label while docs are being migrated.
 
-
-## Scope Lock
-These constraints are repeated across planning docs and are treated as non-negotiable for v1 unless explicitly re-approved.
-
-## Android Prototype (Hello World)
-A minimal native Android app scaffold has been added under `app/`.
-
-### Build target
-- Output path: `APK/Warpath_v0_0_1.apk`
-
-### Build command
-```bash
-./scripts/build_apk.sh
-```
-
-> Note: this environment currently cannot download Android SDK/Gradle dependencies due network proxy restrictions, so `APK/Warpath_v0_0_1.apk` must be generated on a machine with Android network access.
+## Build
+See [BUILD_INSTRUCTIONS.md](BUILD_INSTRUCTIONS.md).

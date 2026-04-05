@@ -69,7 +69,7 @@ class MainMenuActivity : AppCompatActivity() {
         root.addView(quitBtn, lp(bottom = 0, hMargin = 20))
 
         val note = TextView(this).apply {
-            text = "Minor release focus: camera-follow map, free look, recenter, and contextual interactions."
+            text = "Phase 1 focus: click-to-move travel, free look scouting, recenter, and Fight/Run/Bribe POI decisions."
             textSize = 12f
             setTextColor(Color.parseColor("#6D789B"))
             gravity = Gravity.CENTER

@@ -44,6 +44,7 @@ class CampaignMapView @JvmOverloads constructor(
     var inputEnabled: Boolean = true
     var showPaths: Boolean = false
     var onFocusChanged: ((Boolean) -> Unit)? = null
+    var onMapTapped: ((Float, Float) -> Unit)? = null
 
     private var playerNormX: Float = 0.1f
     private var playerNormY: Float = 0.5f
@@ -203,6 +204,57 @@ class CampaignMapView @JvmOverloads constructor(
         }
     }
 
+    fun animatePlayerTo(normX: Float, normY: Float, onComplete: () -> Unit = {}) {
+        val endX = normX.coerceIn(0.02f, 0.98f)
+        val endY = normY.coerceIn(0.02f, 0.98f)
+        val startX = playerNormX
+        val startY = playerNormY
+        val dx = endX - startX
+        val dy = endY - startY
+        if (dx * dx + dy * dy < 0.00002f) {
+            onComplete()
+            return
+        }
+
+        isMoving = true
+        trail.clear()
+        lastTrailNX = startX
+        lastTrailNY = startY
+
+        moveAnimator?.cancel()
+        moveAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 500
+            interpolator = AccelerateDecelerateInterpolator()
+            addUpdateListener { anim ->
+                val t = anim.animatedValue as Float
+                playerNormX = startX + (endX - startX) * t
+                playerNormY = startY + (endY - startY) * t
+                if (followPlayerFocus) {
+                    cameraNormX = playerNormX
+                    cameraNormY = playerNormY
+                }
+                val tdx = playerNormX - lastTrailNX
+                val tdy = playerNormY - lastTrailNY
+                if (tdx * tdx + tdy * tdy > 0.0006f) {
+                    trail.add(Pair(playerNormX, playerNormY))
+                    if (trail.size > 10) trail.removeAt(0)
+                    lastTrailNX = playerNormX
+                    lastTrailNY = playerNormY
+                }
+            }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    finishMove(endX, endY, onComplete)
+                }
+
+                override fun onAnimationCancel(animation: Animator) {
+                    finishMove(endX, endY, onComplete)
+                }
+            })
+            start()
+        }
+    }
+
     fun setPlayerPosition(normX: Float, normY: Float) {
         playerNormX = normX
         playerNormY = normY
@@ -281,6 +333,18 @@ class CampaignMapView @JvmOverloads constructor(
         val span = visibleSpanY()
         val top = clampCameraY(cameraNormY) - span / 2f
         return ((normY - top) / span) * height
+    }
+
+    private fun normXFromScreen(screenX: Float): Float {
+        val span = visibleSpanX()
+        val left = clampCameraX(cameraNormX) - span / 2f
+        return (left + (screenX / width) * span).coerceIn(0f, 1f)
+    }
+
+    private fun normYFromScreen(screenY: Float): Float {
+        val span = visibleSpanY()
+        val top = clampCameraY(cameraNormY) - span / 2f
+        return (top + (screenY / height) * span).coerceIn(0f, 1f)
     }
 
     private fun inViewport(normX: Float, normY: Float, margin: Float = 0.1f): Boolean {
@@ -577,6 +641,9 @@ class CampaignMapView @JvmOverloads constructor(
             }
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                if (event.actionMasked == MotionEvent.ACTION_UP && !isPanning) {
+                    onMapTapped?.invoke(normXFromScreen(event.x), normYFromScreen(event.y))
+                }
                 isPanning = false
                 return true
             }

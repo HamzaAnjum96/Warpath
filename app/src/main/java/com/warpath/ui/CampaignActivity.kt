@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.warpath.engine.CampaignManager
 import com.warpath.model.CampaignNode
 import com.warpath.model.NodeType
+import kotlin.random.Random
 
 class CampaignActivity : AppCompatActivity() {
 
@@ -31,6 +32,7 @@ class CampaignActivity : AppCompatActivity() {
     private lateinit var actionButton: Button
     private lateinit var panelAccentBar: View
     private lateinit var statusText: TextView
+    private lateinit var travelHintText: TextView
     private lateinit var joystickView: JoystickView
     private lateinit var recenterButton: Button
 
@@ -63,6 +65,9 @@ class CampaignActivity : AppCompatActivity() {
             enemyParties = campaignManager.gameState.enemyParties
             showPaths = !phaseOnePocMode
             setPlayerPosition(campaignManager.gameState.playerMapX, campaignManager.gameState.playerMapY)
+            onMapTapped = { normX, normY ->
+                moveWarbandTo(normX, normY)
+            }
             onFocusChanged = { focused ->
                 recenterButton.visibility = if (focused) View.GONE else View.VISIBLE
                 if (!focused) {
@@ -139,6 +144,26 @@ class CampaignActivity : AppCompatActivity() {
                 FrameLayout.LayoutParams.WRAP_CONTENT,
                 Gravity.BOTTOM
             )
+        )
+
+        travelHintText = TextView(this).apply {
+            textSize = 12f
+            setTextColor(Color.parseColor("#d7def7"))
+            setBackgroundColor(Color.parseColor("#aa131d32"))
+            typeface = Typeface.DEFAULT_BOLD
+            setPadding(16, 10, 16, 10)
+            text = "Roaming — move with joystick. Get near a POI to interact."
+        }
+        root.addView(
+            travelHintText,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM or Gravity.START
+            ).apply {
+                leftMargin = 28
+                bottomMargin = 440
+            }
         )
 
         joystickView = JoystickView(this).apply {
@@ -361,11 +386,10 @@ class CampaignActivity : AppCompatActivity() {
 
     private fun updateHud() {
         val gs = campaignManager.gameState
-        suppliesText.text = "⚔ ${gs.supplies}"
+        suppliesText.text = "◈ ${gs.supplies}"
         renownText.text = "★ ${gs.renown}"
-        val wSize = gs.warband.size
-        val wMax = gs.maxWarbandSlots
-        warbandText.text = "⚔ $wSize/$wMax"
+        val livingTroops = gs.warband.sumOf { it.count.coerceAtLeast(0) }
+        warbandText.text = "⚔ $livingTroops"
     }
 
     private fun onNodeSelected(node: CampaignNode) {
@@ -509,7 +533,7 @@ class CampaignActivity : AppCompatActivity() {
     private fun openPoiContextMenu(node: CampaignNode) {
         val options = when (node.type) {
             NodeType.ENEMY_PATROL, NodeType.ELITE_CHALLENGE, NodeType.BOSS ->
-                arrayOf("Fight", "Flee")
+                arrayOf("Fight", "Run", "Bribe")
 
             NodeType.TOWN, NodeType.VILLAGE ->
                 arrayOf("Buy Supplies (+25)", "Sell Supplies (-15 for renown)", "Recruit", "Rest")
@@ -543,7 +567,15 @@ class CampaignActivity : AppCompatActivity() {
                 Toast.makeText(this, "Skirmish won at ${node.name}.", Toast.LENGTH_SHORT).show()
             }
 
-            action.startsWith("Flee") || action == "Leave" -> {
+            action.startsWith("Run") -> {
+                handleRunAttempt(node)
+            }
+
+            action.startsWith("Bribe") -> {
+                handleBribe(node)
+            }
+
+            action == "Leave" -> {
                 Toast.makeText(this, "You avoid trouble and keep moving.", Toast.LENGTH_SHORT).show()
             }
 
@@ -586,6 +618,65 @@ class CampaignActivity : AppCompatActivity() {
         }
     }
 
+    private fun handleRunAttempt(node: CampaignNode) {
+        val roll = Random.nextFloat()
+        when {
+            roll < 0.55f -> {
+                Toast.makeText(this, "Clean escape. Your warband slips away.", Toast.LENGTH_SHORT).show()
+                return
+            }
+            roll < 0.85f -> {
+                val loss = randomSupplyLoss(6, 15)
+                campaignManager.gameState.supplies = (campaignManager.gameState.supplies - loss).coerceAtLeast(0)
+                updateHud()
+                Toast.makeText(this, "Messy retreat. -$loss supplies.", Toast.LENGTH_SHORT).show()
+            }
+            else -> {
+                Toast.makeText(this, "Escape failed! Forced skirmish at ${node.name}.", Toast.LENGTH_SHORT).show()
+                scoutFromNode(node)
+                return
+            }
+        }
+    }
+
+    private fun handleBribe(node: CampaignNode) {
+        val cost = getBribeCost(node)
+        val gs = campaignManager.gameState
+        if (gs.supplies < cost) {
+            Toast.makeText(this, "Not enough supplies to bribe (need $cost).", Toast.LENGTH_SHORT).show()
+            return
+        }
+        gs.supplies -= cost
+        gs.renown = (gs.renown - 2).coerceAtLeast(0)
+        updateHud()
+        Toast.makeText(this, "Paid off ${node.name}: -$cost supplies, -2 renown.", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun getBribeCost(node: CampaignNode): Int {
+        return when (node.type) {
+            NodeType.BOSS -> 40
+            NodeType.ELITE_CHALLENGE -> 26
+            else -> 16
+        }
+    }
+
+    private fun randomSupplyLoss(min: Int, max: Int): Int {
+        if (max <= min) return min
+        return min + Random.nextInt(max - min + 1)
+    }
+
+    private fun moveWarbandTo(normX: Float, normY: Float) {
+        mapView.inputEnabled = false
+        statusText.text = "▶ Marching…"
+        statusText.visibility = View.VISIBLE
+        mapView.animatePlayerTo(normX, normY) {
+            campaignManager.setPlayerPosition(normX, normY)
+            mapView.inputEnabled = true
+            statusText.visibility = View.GONE
+            showNearbyPoiIfAny()
+        }
+    }
+
     private fun scoutFromNode(node: CampaignNode) {
         campaignManager.moveToNode(node.id)
         node.isCleared = true
@@ -615,11 +706,17 @@ class CampaignActivity : AppCompatActivity() {
     private fun showNearbyPoiIfAny() {
         if (!phaseOnePocMode || suppressAutoPoiSelection) return
         val nearbyNode = campaignManager.findNearbyRevealedNode(poiInteractionDistance)
+        travelHintText.text = if (mapView.isCenteredOnPlayer()) {
+            "Locked on warband — drag map to scout, joystick to move."
+        } else {
+            "Scouting mode — tap Recenter to lock camera on warband."
+        }
         if (nearbyNode == null) {
             selectedNode = null
             infoPanel.visibility = View.GONE
             return
         }
+        travelHintText.text = "Nearby: ${nearbyNode.name} · Open Interact for options."
         if (selectedNode?.id == nearbyNode.id && infoPanel.visibility == View.VISIBLE) return
         onNodeSelected(nearbyNode)
     }

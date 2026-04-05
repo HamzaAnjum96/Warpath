@@ -152,7 +152,7 @@ class CampaignActivity : AppCompatActivity() {
             setBackgroundColor(Color.parseColor("#aa131d32"))
             typeface = Typeface.DEFAULT_BOLD
             setPadding(16, 10, 16, 10)
-            text = "Roaming — move with joystick. Get near a POI to interact."
+            text = "Fog-of-war scouting active — move to discover POIs."
         }
         root.addView(
             travelHintText,
@@ -171,6 +171,7 @@ class CampaignActivity : AppCompatActivity() {
                 campaignManager.movePlayerBy(x * 0.012f, y * 0.012f)
                 mapView.movePlayerBy(x * 0.012f, y * 0.012f)
                 mapView.setPlayerLookDirection(x, y)
+                checkFogDiscovery()
                 showNearbyPoiIfAny()
             }
             onRelease = { _, _ -> }
@@ -185,6 +186,7 @@ class CampaignActivity : AppCompatActivity() {
 
         setContentView(root)
         updateHud()
+        checkFogDiscovery(showToast = false)
         showNearbyPoiIfAny()
     }
 
@@ -377,6 +379,7 @@ class CampaignActivity : AppCompatActivity() {
         mapView.invalidate()
         recenterButton.visibility = if (mapView.isCenteredOnPlayer()) View.GONE else View.VISIBLE
         updateHud()
+        checkFogDiscovery(showToast = false)
         showNearbyPoiIfAny()
 
         if (campaignManager.isRunOver()) {
@@ -494,7 +497,7 @@ class CampaignActivity : AppCompatActivity() {
             }
         } else {
             nodeDescText.text = node.description
-            nodeStatsText.text = "⚠ Not accessible — clear a connected node first"
+            nodeStatsText.text = "⚠ Not accessible — scout closer to discover this POI"
             nodeStatsText.setTextColor(Color.parseColor("#996633"))
             actionButton.visibility = View.GONE
         }
@@ -507,14 +510,14 @@ class CampaignActivity : AppCompatActivity() {
         nodeStatsText.setTextColor(Color.parseColor("#6688aa"))
 
         if (!isAccessible) {
-            nodeStatsText.text = "⚠ Not accessible yet"
+            nodeStatsText.text = "⚠ Not discovered yet"
             actionButton.visibility = View.GONE
             return
         }
 
         if (isNearby) {
             nodeStatsText.text = "Nearby POI — open interaction menu"
-            actionButton.text = "Interact"
+            actionButton.text = "Open Actions"
             actionButton.visibility = View.VISIBLE
             actionButton.setBackgroundColor(Color.parseColor("#225588"))
             actionButton.setOnClickListener {
@@ -563,7 +566,7 @@ class CampaignActivity : AppCompatActivity() {
     private fun handlePoiAction(node: CampaignNode, action: String) {
         when {
             action.startsWith("Fight") -> {
-                scoutFromNode(node)
+                scoutFromNode(node, revealHideoutIntel = node.type == NodeType.ELITE_CHALLENGE)
                 Toast.makeText(this, "Skirmish won at ${node.name}.", Toast.LENGTH_SHORT).show()
             }
 
@@ -671,17 +674,19 @@ class CampaignActivity : AppCompatActivity() {
         statusText.visibility = View.VISIBLE
         mapView.animatePlayerTo(normX, normY) {
             campaignManager.setPlayerPosition(normX, normY)
+            checkFogDiscovery()
             mapView.inputEnabled = true
             statusText.visibility = View.GONE
             showNearbyPoiIfAny()
         }
     }
 
-    private fun scoutFromNode(node: CampaignNode) {
+    private fun scoutFromNode(node: CampaignNode, revealHideoutIntel: Boolean = false) {
         campaignManager.moveToNode(node.id)
         node.isCleared = true
-        node.connections.forEach { connId ->
-            campaignManager.campaignMap.find { it.id == connId }?.isRevealed = true
+        if (revealHideoutIntel) {
+            campaignManager.revealNode("boss_1")
+            Toast.makeText(this, "Intel gained: hideout location marked on your map.", Toast.LENGTH_LONG).show()
         }
         mapView.currentNodeId = campaignManager.gameState.currentNodeId
         mapView.setPlayerPosition(
@@ -691,7 +696,7 @@ class CampaignActivity : AppCompatActivity() {
         mapView.recenterOnPlayer()
         mapView.invalidate()
         updateHud()
-        Toast.makeText(this, "Explored ${node.name}. Nearby routes revealed.", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Explored ${node.name}.", Toast.LENGTH_SHORT).show()
         infoPanel.visibility = View.GONE
     }
 
@@ -707,18 +712,30 @@ class CampaignActivity : AppCompatActivity() {
         if (!phaseOnePocMode || suppressAutoPoiSelection) return
         val nearbyNode = campaignManager.findNearbyRevealedNode(poiInteractionDistance)
         travelHintText.text = if (mapView.isCenteredOnPlayer()) {
-            "Locked on warband — drag map to scout, joystick to move."
+            "Locked on warband — joystick moves, discover POIs by scouting."
         } else {
-            "Scouting mode — tap Recenter to lock camera on warband."
+            "Scouting mode — drag to survey. Tap Recenter to follow."
         }
         if (nearbyNode == null) {
             selectedNode = null
             infoPanel.visibility = View.GONE
             return
         }
-        travelHintText.text = "Nearby: ${nearbyNode.name} · Open Interact for options."
+        travelHintText.text = "Nearby: ${nearbyNode.name} · Open Actions for options."
         if (selectedNode?.id == nearbyNode.id && infoPanel.visibility == View.VISIBLE) return
         onNodeSelected(nearbyNode)
+    }
+
+    private fun checkFogDiscovery(showToast: Boolean = true) {
+        val newlyRevealed = campaignManager.revealPoisNearPlayer()
+        if (newlyRevealed.isNotEmpty()) {
+            mapView.nodes = campaignManager.campaignMap
+            if (showToast) {
+                val names = newlyRevealed.take(2).joinToString { it.name }
+                val more = if (newlyRevealed.size > 2) " +${newlyRevealed.size - 2} more" else ""
+                Toast.makeText(this, "New POI discovered: $names$more", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun animateAndThen(targetNode: CampaignNode, action: () -> Unit) {
@@ -789,9 +806,6 @@ class CampaignActivity : AppCompatActivity() {
     private fun visitOutpost(node: CampaignNode) {
         campaignManager.moveToNode(node.id)
         node.isCleared = true
-        node.connections.forEach { connId ->
-            campaignManager.campaignMap.find { it.id == connId }?.isRevealed = true
-        }
         infoPanel.visibility = View.GONE
         startActivity(Intent(this, WarbandActivity::class.java).apply {
             putExtra("can_recruit", true)
@@ -811,9 +825,6 @@ class CampaignActivity : AppCompatActivity() {
         gs.supplies -= cost
         gs.healWarband(heal)
         node.isCleared = true
-        node.connections.forEach { connId ->
-            campaignManager.campaignMap.find { it.id == connId }?.isRevealed = true
-        }
         mapView.currentNodeId = campaignManager.gameState.currentNodeId
         mapView.setPlayerPosition(campaignManager.gameState.playerMapX, campaignManager.gameState.playerMapY)
         updateHud()

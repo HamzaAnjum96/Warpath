@@ -27,6 +27,7 @@ class CampaignManager {
                 unitTemplates = listOf(EnemyTemplate("militia_guard", 4))
             )
         )
+        revealPoisNearPlayer()
         return gameState
     }
 
@@ -34,10 +35,7 @@ class CampaignManager {
         campaignMap.find { it.id == gameState.currentNodeId }
 
     fun getAccessibleNodes(): List<CampaignNode> {
-        val current = getCurrentNode() ?: return emptyList()
-        return current.connections.mapNotNull { connId ->
-            campaignMap.find { it.id == connId && it.isRevealed }
-        }
+        return campaignMap.filter { it.isRevealed && !it.isCleared }
     }
 
     fun moveToNode(nodeId: String): CampaignNode? {
@@ -96,6 +94,29 @@ class CampaignManager {
             ?.first
     }
 
+    fun revealPoisNearPlayer(radius: Float = 0.13f): List<CampaignNode> {
+        val px = gameState.playerMapX
+        val py = gameState.playerMapY
+        val radius2 = radius * radius
+        val newlyRevealed = mutableListOf<CampaignNode>()
+        campaignMap.forEach { node ->
+            if (node.isRevealed) return@forEach
+            val dx = node.mapX - px
+            val dy = node.mapY - py
+            if (dx * dx + dy * dy <= radius2) {
+                node.isRevealed = true
+                newlyRevealed.add(node)
+            }
+        }
+        return newlyRevealed
+    }
+
+    fun revealNode(nodeId: String): CampaignNode? {
+        val node = campaignMap.find { it.id == nodeId } ?: return null
+        node.isRevealed = true
+        return node
+    }
+
     fun stepEnemyParties(): Boolean {
         var hitPlayer = false
         for (party in gameState.enemyParties) {
@@ -127,10 +148,6 @@ class CampaignManager {
             gameState.renown += node.renownReward
             gameState.nodesCleared++
             gameState.battlesWon++
-            // Reveal connected nodes
-            node.connections.forEach { connId ->
-                campaignMap.find { it.id == connId }?.isRevealed = true
-            }
         } else {
             gameState.battlesLost++
             // Lose some supplies on defeat
@@ -144,10 +161,6 @@ class CampaignManager {
         if (gameState.supplies >= healCost) {
             gameState.supplies -= healCost
             gameState.healWarband(0.4f)
-            // Reveal connected nodes
-            node.connections.forEach { connId ->
-                campaignMap.find { it.id == connId }?.isRevealed = true
-            }
         }
     }
 
@@ -156,9 +169,6 @@ class CampaignManager {
         gameState.supplies += node.suppliesReward
         gameState.renown += node.renownReward
         gameState.nodesCleared++
-        node.connections.forEach { connId ->
-            campaignMap.find { it.id == connId }?.isRevealed = true
-        }
     }
 
     fun recruitUnit(unitType: UnitType, count: Int, cost: Int): Boolean {
@@ -208,20 +218,20 @@ class CampaignManager {
         nodes.add(CampaignNode(
             id = "patrol_1", type = NodeType.ENEMY_PATROL, name = "Bandit Roadblock",
             description = "A small group of bandits blocking the road.",
-            mapX = 0.25f, mapY = 0.2f, isRevealed = true,
+            mapX = 0.25f, mapY = 0.2f,
             enemySquads = listOf(EnemyTemplate("bandit_thug", 6), EnemyTemplate("bandit_archer", 3)),
             suppliesReward = 30, renownReward = 10
         ))
         nodes.add(CampaignNode(
             id = "resource_1", type = NodeType.RESOURCE_CACHE, name = "Abandoned Supply Wagon",
             description = "An unguarded supply wagon on the road.",
-            mapX = 0.25f, mapY = 0.5f, isRevealed = true,
+            mapX = 0.25f, mapY = 0.5f,
             suppliesReward = 50, renownReward = 5
         ))
         nodes.add(CampaignNode(
             id = "patrol_2", type = NodeType.ENEMY_PATROL, name = "Wolf Den",
             description = "Wild wolves have made a den near the path.",
-            mapX = 0.25f, mapY = 0.8f, isRevealed = true,
+            mapX = 0.25f, mapY = 0.8f,
             enemySquads = listOf(EnemyTemplate("wolf_pack", 5)),
             suppliesReward = 15, renownReward = 15
         ))

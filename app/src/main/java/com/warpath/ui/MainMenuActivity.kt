@@ -41,7 +41,7 @@ class MainMenuActivity : AppCompatActivity() {
         root.addView(title, lp(bottom = 8))
 
         val subtitle = TextView(this).apply {
-            text = "v1.2.0 · Minor Release"
+            text = "v1.3.0 · Minor Release"
             textSize = 15f
             setTextColor(Color.parseColor("#9AA4C2"))
             gravity = Gravity.CENTER
@@ -69,7 +69,7 @@ class MainMenuActivity : AppCompatActivity() {
         root.addView(quitBtn, lp(bottom = 0, hMargin = 20))
 
         val note = TextView(this).apply {
-            text = "Phase 1 focus: click-to-move travel, free look scouting, recenter, and Fight/Run/Bribe POI decisions."
+            text = "Phase 1 focus: fog-of-war POI discovery, free roam scouting, UI polish, and direct Fight/Run/Bribe interactions."
             textSize = 12f
             setTextColor(Color.parseColor("#6D789B"))
             gravity = Gravity.CENTER

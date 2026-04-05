@@ -69,13 +69,18 @@ class CampaignMapView @JvmOverloads constructor(
     private var pulseAnimator: ValueAnimator? = null
     private var pulseValue: Float = 0f
 
-    private val bgPaint = Paint().apply { color = Color.parseColor("#0a0a18") }
+    private val bgPaint = Paint().apply { color = Color.parseColor("#070b16") }
     private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#14142a")
+        color = Color.parseColor("#1b2140")
         style = Paint.Style.STROKE
         strokeWidth = 1f
     }
     private val terrainPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private val fogPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = Color.parseColor("#d9111624")
+    }
+    private val fogHolePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#252550")
         strokeWidth = 3f
@@ -359,6 +364,7 @@ class CampaignMapView @JvmOverloads constructor(
         cameraNormY = clampCameraY(cameraNormY)
 
         drawBackground(canvas)
+        drawFogOfWar(canvas)
         if (showPaths) drawConnections(canvas)
         drawTrail(canvas)
         drawNodes(canvas)
@@ -395,9 +401,29 @@ class CampaignMapView @JvmOverloads constructor(
             val top = screenY(by - bh / 2f)
             val right = screenX(bx + bw / 2f)
             val bottom = screenY(by + bh / 2f)
-            terrainPaint.color = Color.parseColor("#0f0f22")
+            terrainPaint.color = Color.parseColor("#111733")
             canvas.drawOval(RectF(left, top, right, bottom), terrainPaint)
         }
+    }
+
+    private fun drawFogOfWar(canvas: Canvas) {
+        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), fogPaint)
+        val revealPoints = nodes.filter { it.isRevealed }.map { Pair(it.mapX, it.mapY) } + Pair(playerNormX, playerNormY)
+        revealPoints.forEach { (nx, ny) ->
+            val sx = screenX(nx)
+            val sy = screenY(ny)
+            val radius = width.coerceAtLeast(height) * 0.12f
+            fogHolePaint.shader = RadialGradient(
+                sx,
+                sy,
+                radius,
+                intArrayOf(Color.argb(20, 30, 44, 72), Color.argb(160, 16, 20, 36), Color.argb(220, 12, 14, 26)),
+                floatArrayOf(0f, 0.58f, 1f),
+                Shader.TileMode.CLAMP
+            )
+            canvas.drawCircle(sx, sy, radius, fogHolePaint)
+        }
+        fogHolePaint.shader = null
     }
 
     private fun drawConnections(canvas: Canvas) {

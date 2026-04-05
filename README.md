@@ -22,7 +22,7 @@ This repository is now aligned to the **Sarhad** concept pivot:
 ## Prototype status
 The Android prototype under `app/` remains in active iteration and may still contain naming from the previous "Warpath" label while docs are being migrated.
 
-Current implementation slice: **v1.2.0 minor release** (larger map camera with centered-player follow, free-look panning + recenter, and context-driven POI interactions).
+Current implementation slice: **v1.3.0 minor release** (fog-of-war POI discovery, proximity-first POI interactions without route-chain gating, elite intel reveal hook, and campaign UI visual polish).
 
 ## Build
 See [BUILD_INSTRUCTIONS.md](BUILD_INSTRUCTIONS.md).

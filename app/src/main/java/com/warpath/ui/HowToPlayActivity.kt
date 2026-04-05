@@ -43,9 +43,9 @@ class HowToPlayActivity : AppCompatActivity() {
         addSection(
             layout,
             "Campaign Map",
-            "v1.2.0 expands overworld navigation with a larger map camera.\n\n" +
-                "Your warband stays centered by default while the world moves beneath you. " +
-                "Drag the map to look around, then tap Recenter to lock focus on your warband again."
+            "v1.3.0 introduces fog-of-war discovery for points of interest.\n\n" +
+                "POIs are revealed as your warband passes nearby. You can scout by dragging the map, " +
+                "then tap Recenter to lock camera focus back on your warband."
         )
 
         addSection(
@@ -60,10 +60,11 @@ class HowToPlayActivity : AppCompatActivity() {
         addSection(
             layout,
             "Interaction Menus",
-            "When near a point of interest, tap Interact to open context actions.\n\n" +
+            "When near a discovered point of interest, tap Open Actions to open context actions.\n\n" +
                 "Enemy nodes: Fight, Run, or Bribe.\n" +
                 "Towns/Villages: Buy, Sell, Recruit, Rest.\n" +
-                "Outposts/Camps/Caches: situational utility actions."
+                "Outposts/Camps/Caches: situational utility actions.\n\n" +
+                "Most POIs no longer require route-chain unlocks. Exception: elite fights can reveal hidden hideout intel."
         )
 
         val backBtn = Button(this).apply {

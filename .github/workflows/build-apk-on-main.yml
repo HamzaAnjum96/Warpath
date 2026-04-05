@@ -39,7 +39,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: warpath-debug-apk-${{ github.run_number }}
-          path: |
-            APK/*.apk
-            app/build/outputs/apk/debug/*.apk
+          path: APK/*.apk
           if-no-files-found: error

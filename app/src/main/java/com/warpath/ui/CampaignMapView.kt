@@ -7,11 +7,13 @@ import android.content.Context
 import android.graphics.*
 import android.util.AttributeSet
 import android.view.MotionEvent
+import android.view.ScaleGestureDetector
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
 import com.warpath.model.CampaignNode
 import com.warpath.model.EnemyParty
 import com.warpath.model.NodeType
+import com.warpath.model.PartyFaction
 import kotlin.math.abs
 import kotlin.math.hypot
 
@@ -52,7 +54,9 @@ class CampaignMapView @JvmOverloads constructor(
     private var playerLookDirY: Float = 0f
     private var isMoving: Boolean = false
 
-    private val cameraZoom = 1.7f
+    private var cameraZoom = 1.7f
+    private val minZoom = 1.0f
+    private val maxZoom = 3.2f
     private var cameraNormX: Float = playerNormX
     private var cameraNormY: Float = playerNormY
     private var followPlayerFocus: Boolean = true
@@ -60,6 +64,7 @@ class CampaignMapView @JvmOverloads constructor(
     private var lastTouchX = 0f
     private var lastTouchY = 0f
     private var isPanning = false
+    private lateinit var scaleDetector: ScaleGestureDetector
 
     private val trail = mutableListOf<Pair<Float, Float>>()
     private var lastTrailNX = playerNormX
@@ -135,6 +140,18 @@ class CampaignMapView @JvmOverloads constructor(
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
+        if (!::scaleDetector.isInitialized) {
+            scaleDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                override fun onScale(detector: ScaleGestureDetector): Boolean {
+                    val newZoom = (cameraZoom * detector.scaleFactor).coerceIn(minZoom, maxZoom)
+                    if (newZoom != cameraZoom) {
+                        cameraZoom = newZoom
+                        invalidate()
+                    }
+                    return true
+                }
+            })
+        }
         pulseAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
             duration = 1800
             repeatCount = ValueAnimator.INFINITE
@@ -301,6 +318,15 @@ class CampaignMapView @JvmOverloads constructor(
     }
 
     fun isCenteredOnPlayer(): Boolean = followPlayerFocus
+    fun zoomIn() {
+        cameraZoom = (cameraZoom + 0.22f).coerceIn(minZoom, maxZoom)
+        invalidate()
+    }
+
+    fun zoomOut() {
+        cameraZoom = (cameraZoom - 0.22f).coerceIn(minZoom, maxZoom)
+        invalidate()
+    }
 
     private fun finishMove(endX: Float, endY: Float, onComplete: () -> Unit) {
         isMoving = false
@@ -489,6 +515,10 @@ class CampaignMapView @JvmOverloads constructor(
             if (!node.isRevealed || !inViewport(node.mapX, node.mapY)) continue
             val cx = screenX(node.mapX)
             val cy = screenY(node.mapY)
+            if (node.isCleared && isTemporaryNode(node)) {
+                drawClearedTaskMarker(canvas, cx, cy)
+                continue
+            }
 
             if (node.id == currentNodeId) {
                 val glowR = nodeRadius + 5f + pulseValue * 10f
@@ -522,6 +552,26 @@ class CampaignMapView @JvmOverloads constructor(
             val label = if (node.isCleared) "✓ ${node.name}" else node.name
             drawLabel(canvas, label, cx, cy + nodeRadius + 24f)
         }
+    }
+
+    private fun drawClearedTaskMarker(canvas: Canvas, cx: Float, cy: Float) {
+        val markerRadius = 10f
+        nodePaint.color = Color.parseColor("#556070")
+        nodePaint.style = Paint.Style.FILL
+        canvas.drawCircle(cx, cy, markerRadius, nodePaint)
+        nodeStrokePaint.color = Color.parseColor("#88a0b2")
+        nodeStrokePaint.alpha = 170
+        canvas.drawCircle(cx, cy, markerRadius, nodeStrokePaint)
+
+        textPaint.textSize = 14f
+        textPaint.color = Color.parseColor("#dbe5f3")
+        canvas.drawText("⚔", cx, cy + 5f, textPaint)
+        textPaint.textSize = 26f
+    }
+
+    private fun isTemporaryNode(node: CampaignNode): Boolean = when (node.type) {
+        NodeType.ENEMY_PATROL, NodeType.RESOURCE_CACHE, NodeType.ELITE_CHALLENGE, NodeType.RECOVERY_CAMP -> true
+        else -> false
     }
 
     private fun drawNodeShape(canvas: Canvas, node: CampaignNode, cx: Float, cy: Float) {
@@ -587,11 +637,8 @@ class CampaignMapView @JvmOverloads constructor(
     }
 
     private fun drawEnemyParties(canvas: Canvas) {
-        val markerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.parseColor("#bb2222")
-            style = Paint.Style.FILL
-        }
-        val skullPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        val markerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+        val symbolPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE
             textSize = 24f
             textAlign = Paint.Align.CENTER
@@ -602,8 +649,15 @@ class CampaignMapView @JvmOverloads constructor(
             if (!node.isRevealed || !inViewport(node.mapX, node.mapY)) continue
             val x = screenX(node.mapX) + 20f
             val y = screenY(node.mapY) - 20f
+            if (party.faction == PartyFaction.FRIENDLY) {
+                markerPaint.color = Color.parseColor("#2d7fd6")
+                symbolPaint.color = Color.parseColor("#eaf4ff")
+            } else {
+                markerPaint.color = Color.parseColor("#bb2222")
+                symbolPaint.color = Color.WHITE
+            }
             canvas.drawCircle(x, y, 16f, markerPaint)
-            canvas.drawText("☠", x, y + 8f, skullPaint)
+            canvas.drawText(if (party.faction == PartyFaction.FRIENDLY) "🛡" else "☠", x, y + 8f, symbolPaint)
         }
     }
 
@@ -633,6 +687,7 @@ class CampaignMapView @JvmOverloads constructor(
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (!inputEnabled || isMoving) return false
+        scaleDetector.onTouchEvent(event)
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 lastTouchX = event.x
@@ -642,6 +697,7 @@ class CampaignMapView @JvmOverloads constructor(
             }
 
             MotionEvent.ACTION_MOVE -> {
+                if (scaleDetector.isInProgress) return true
                 val dxPx = event.x - lastTouchX
                 val dyPx = event.y - lastTouchY
 

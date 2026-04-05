@@ -8,6 +8,14 @@ class CampaignManager {
         private set
     var campaignMap: List<CampaignNode> = emptyList()
         private set
+    private var partyCounter: Int = 0
+
+    private data class PartySpawnHome(
+        val homeNodeId: String,
+        val faction: PartyFaction,
+        val maxLinked: Int,
+        val templateOptions: List<List<EnemyTemplate>>
+    )
 
     fun startNewCampaign(): GameState {
         gameState = GameState.newGame()
@@ -15,18 +23,9 @@ class CampaignManager {
         gameState.currentNodeId = "start"
         gameState.playerMapX = 0.1f
         gameState.playerMapY = 0.5f
-        gameState.enemyParties = mutableListOf(
-            EnemyParty(
-                id = "enemy_patrol_a",
-                nodeId = "patrol_1",
-                unitTemplates = listOf(EnemyTemplate("bandit_thug", 4), EnemyTemplate("bandit_archer", 2))
-            ),
-            EnemyParty(
-                id = "enemy_patrol_b",
-                nodeId = "patrol_3",
-                unitTemplates = listOf(EnemyTemplate("militia_guard", 4))
-            )
-        )
+        partyCounter = 0
+        gameState.enemyParties = mutableListOf()
+        refillRoamingParties(forceFill = true)
         revealPoisNearPlayer()
         return gameState
     }
@@ -118,6 +117,8 @@ class CampaignManager {
     }
 
     fun stepEnemyParties(): Boolean {
+        syncPartiesWithClearedHomes()
+        refillRoamingParties()
         var hitPlayer = false
         for (party in gameState.enemyParties) {
             val node = campaignMap.find { it.id == party.nodeId } ?: continue
@@ -134,10 +135,11 @@ class CampaignManager {
                 }
             }
             party.nodeId = nextId
-            if (nextId == gameState.currentNodeId) {
+            if (party.faction == PartyFaction.HOSTILE && nextId == gameState.currentNodeId) {
                 hitPlayer = true
             }
         }
+        resolveFriendlyHostileCollisions()
         return hitPlayer
     }
 
@@ -148,6 +150,7 @@ class CampaignManager {
             gameState.renown += node.renownReward
             gameState.nodesCleared++
             gameState.battlesWon++
+            syncPartiesWithClearedHomes()
         } else {
             gameState.battlesLost++
             // Lose some supplies on defeat
@@ -162,6 +165,7 @@ class CampaignManager {
             gameState.supplies -= healCost
             gameState.healWarband(0.4f)
         }
+        syncPartiesWithClearedHomes()
     }
 
     fun resolveResourceCache(node: CampaignNode) {
@@ -169,6 +173,7 @@ class CampaignManager {
         gameState.supplies += node.suppliesReward
         gameState.renown += node.renownReward
         gameState.nodesCleared++
+        syncPartiesWithClearedHomes()
     }
 
     fun recruitUnit(unitType: UnitType, count: Int, cost: Int): Boolean {
@@ -181,7 +186,11 @@ class CampaignManager {
             count = count,
             isPlayerOwned = true
         )
-        return gameState.addSquad(squad)
+        val recruited = gameState.addSquad(squad)
+        if (recruited) {
+            refillRoamingParties()
+        }
+        return recruited
     }
 
     fun isRunOver(): Boolean {
@@ -334,5 +343,116 @@ class CampaignManager {
 
     private fun connect(nodes: List<CampaignNode>, fromId: String, toId: String) {
         nodes.find { it.id == fromId }?.connections?.add(toId)
+    }
+
+    private fun refillRoamingParties(forceFill: Boolean = false) {
+        val homes = buildSpawnHomes()
+        if (homes.isEmpty()) return
+        for (home in homes) {
+            val activeForHome = gameState.enemyParties.count { it.homeNodeId == home.homeNodeId && it.faction == home.faction }
+            if (activeForHome >= home.maxLinked) continue
+            val chance = if (forceFill) 1f else 0.35f
+            if (kotlin.random.Random.nextFloat() > chance) continue
+            val template = home.templateOptions.randomOrNull() ?: continue
+            gameState.enemyParties.add(
+                EnemyParty(
+                    id = "${home.faction.name.lowercase()}_${home.homeNodeId}_${partyCounter++}",
+                    nodeId = home.homeNodeId,
+                    homeNodeId = home.homeNodeId,
+                    unitTemplates = template,
+                    faction = home.faction,
+                    maxLinkedFromHome = home.maxLinked
+                )
+            )
+        }
+    }
+
+    private fun buildSpawnHomes(): List<PartySpawnHome> {
+        val homes = mutableListOf<PartySpawnHome>()
+        for (node in campaignMap) {
+            if (!node.isRevealed) continue
+            if (node.isCleared && isTemporarySpawnHome(node)) continue
+            when (node.type) {
+                NodeType.ENEMY_PATROL -> {
+                    val max = if (node.enemySquads.any { it.unitTypeId == "wolf_pack" }) 3 else 2
+                    val templates = listOf(node.enemySquads.ifEmpty { listOf(EnemyTemplate("bandit_thug", 3)) })
+                    homes.add(PartySpawnHome(node.id, PartyFaction.HOSTILE, max, templates))
+                }
+                NodeType.ELITE_CHALLENGE -> {
+                    val templates = listOf(node.enemySquads.ifEmpty { listOf(EnemyTemplate("elite_retainer", 2)) })
+                    homes.add(PartySpawnHome(node.id, PartyFaction.HOSTILE, 1, templates))
+                }
+                NodeType.BOSS -> {
+                    val templates = listOf(
+                        listOf(EnemyTemplate("elite_retainer", 3), EnemyTemplate("militia_guard", 2)),
+                        listOf(EnemyTemplate("bandit_archer", 3), EnemyTemplate("militia_guard", 2))
+                    )
+                    homes.add(PartySpawnHome(node.id, PartyFaction.HOSTILE, 2, templates))
+                }
+                NodeType.START, NodeType.FACTION_OUTPOST, NodeType.TOWN, NodeType.VILLAGE -> {
+                    val friendlyTemplates = friendlyTemplatePool()
+                    if (friendlyTemplates.isNotEmpty()) {
+                        val max = when (node.type) {
+                            NodeType.START -> 2
+                            NodeType.FACTION_OUTPOST -> 2
+                            else -> 1
+                        }
+                        homes.add(PartySpawnHome(node.id, PartyFaction.FRIENDLY, max, friendlyTemplates))
+                    }
+                }
+                else -> Unit
+            }
+        }
+        return homes
+    }
+
+    private fun friendlyTemplatePool(): List<List<EnemyTemplate>> {
+        val mapped = gameState.warband
+            .filter { it.count > 0 }
+            .map { squad ->
+                val roamingCount = (squad.count / 2).coerceIn(2, 6)
+                listOf(EnemyTemplate(squad.unitType.id, roamingCount))
+            }
+        return if (mapped.isNotEmpty()) mapped else listOf(listOf(EnemyTemplate("militia_spear", 3)))
+    }
+
+    private fun resolveFriendlyHostileCollisions() {
+        val hostileByNode = gameState.enemyParties
+            .filter { it.faction == PartyFaction.HOSTILE }
+            .groupBy { it.nodeId }
+        val friendlyByNode = gameState.enemyParties
+            .filter { it.faction == PartyFaction.FRIENDLY }
+            .groupBy { it.nodeId }
+
+        if (hostileByNode.isEmpty() || friendlyByNode.isEmpty()) return
+
+        val toRemove = mutableSetOf<String>()
+        for (nodeId in hostileByNode.keys.intersect(friendlyByNode.keys)) {
+            val hostile = hostileByNode[nodeId].orEmpty()
+            val friendly = friendlyByNode[nodeId].orEmpty()
+            if (hostile.isNotEmpty() && friendly.isNotEmpty()) {
+                toRemove.add(hostile.first().id)
+                toRemove.add(friendly.first().id)
+            }
+        }
+        if (toRemove.isNotEmpty()) {
+            gameState.enemyParties.removeAll { toRemove.contains(it.id) }
+        }
+    }
+
+    private fun syncPartiesWithClearedHomes() {
+        val clearedHomeIds = campaignMap
+            .filter { it.isCleared && isTemporarySpawnHome(it) }
+            .map { it.id }
+            .toSet()
+        if (clearedHomeIds.isEmpty()) return
+        gameState.enemyParties.removeAll { party ->
+            party.faction == PartyFaction.HOSTILE && clearedHomeIds.contains(party.homeNodeId)
+        }
+    }
+
+    private fun isTemporarySpawnHome(node: CampaignNode): Boolean = when (node.type) {
+        NodeType.ENEMY_PATROL, NodeType.RESOURCE_CACHE, NodeType.ELITE_CHALLENGE, NodeType.RECOVERY_CAMP -> true
+        else -> false
     }
 }

@@ -1,0 +1,45 @@
+name: Build APK on main merge
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: |
+          sdkmanager --install "platform-tools" "platforms;android-35" "build-tools;35.0.1"
+
+      - name: Build debug APK
+        run: |
+          chmod +x scripts/build_apk.sh
+          ./scripts/build_apk.sh v${GITHUB_RUN_NUMBER}
+
+      - name: Upload APK artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: warpath-debug-apk-${{ github.run_number }}
+          path: |
+            APK/*.apk
+            app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error

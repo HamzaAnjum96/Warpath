@@ -1,12 +1,20 @@
 # APK build status
 
-## v1.0.0 - Foundation Menu Build
+## v1.0.1 - Phase 1 Minimal POC
 **Status: TARGETED IN THIS PASS**
 
-Scope for v1.0.0 is intentionally minimal and stable:
+Scope for v1.0.1 is intentionally minimal:
+- app launches to portrait main menu
+- `Start` routes directly to overworld
+- joystick movement + node travel + exploration reveal
+- no requirement for full encounter/settlement depth in this pass
+
+## v1.0.0 - Foundation Menu Build
+**Status: COMPLETE**
+
+Scope for v1.0.0:
 - app launches to a simplified portrait main menu
 - `Start` routes to How To Play
-- feature-heavy flows can be reintroduced in later iterations
 
 ## Available committed artifacts
 - `Warpath_v0_0_1.apk` — initial Android scaffold

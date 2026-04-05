@@ -41,42 +41,24 @@ class HowToPlayActivity : AppCompatActivity() {
         layout.addView(title, marginParams(bottom = 30))
 
         addSection(layout, "Campaign Map",
-            "Navigate connected nodes on the campaign map. Each node is an encounter - " +
-            "battles, resource caches, recovery camps, or outposts. Choose your path wisely " +
-            "to balance risk and reward. Your goal: reach and defeat the Regional Boss.")
+            "This v1.0.1 build is a minimal overworld proof-of-concept.\n\n" +
+            "Use the joystick to move freely around the map, tap revealed nodes, and travel " +
+            "between them to explore routes.")
 
-        addSection(layout, "Battles",
-            "Battles are auto-resolved with your warband fighting automatically. " +
-            "Use intervention commands to turn the tide:\n\n" +
-            "  FOCUS - All squads target one enemy\n" +
-            "  PUSH - Advance aggressively\n" +
-            "  HOLD - Defend current positions\n" +
-            "  RALLY - Restore morale\n" +
-            "  RETREAT - Pull back to safety\n\n" +
-            "Tap enemy squads on the battlefield to select focus targets.")
+        addSection(layout, "Movement Controls",
+            "LEFT THUMB - drag joystick to move the warband marker.\n" +
+            "RELEASE - auto-select a nearby revealed node in that direction.\n" +
+            "TAP NODE - open node panel and choose Travel Here.")
 
-        addSection(layout, "Unit Types",
-            "FRONTLINE (Square) - Tough melee fighters\n" +
-            "RANGED (Triangle) - Long-range attackers\n" +
-            "SKIRMISH (Triangle) - Fast mobile ranged\n" +
-            "CAVALRY (Diamond) - Quick flankers\n" +
-            "SUPPORT (Circle) - Healers and buffers")
-
-        addSection(layout, "Warband Management",
-            "Recruit troops at Faction Outposts. Expand your warband slots to field " +
-            "more squads. Balance your composition between frontline tanks, ranged damage, " +
-            "and support units.")
-
-        addSection(layout, "Resources",
-            "SUPPLIES - Spend on recruitment, healing, and upgrades.\n" +
-            "RENOWN - Tracks your growing reputation as a warband commander.")
-
-        addSection(layout, "Tips",
-            "- Rest at Recovery Camps to heal wounded squads\n" +
-            "- Don't rush the boss - build up your warband first\n" +
-            "- Morale matters! Routed squads become useless\n" +
-            "- Focus fire eliminates threats faster\n" +
-            "- Balance risk: elite challenges give great rewards")
+        addSection(layout, "POC Scope",
+            "Included:\n" +
+            "- portrait overworld map\n" +
+            "- joystick movement\n" +
+            "- node travel and exploration reveal\n\n" +
+            "Deferred for later phases:\n" +
+            "- battle/run/bribe encounter decisions\n" +
+            "- settlement actions\n" +
+            "- mission and economy depth")
 
         val backBtn = Button(this).apply {
             text = "Back to Menu"

@@ -32,6 +32,7 @@ class CampaignActivity : AppCompatActivity() {
     private lateinit var statusText: TextView
     private lateinit var joystickView: JoystickView
 
+    private val phaseOnePocMode = true
     private var selectedNode: CampaignNode? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -128,7 +129,7 @@ class CampaignActivity : AppCompatActivity() {
 
         // Left: title
         val title = TextView(this).apply {
-            text = "WARPATH"
+            text = "SARHAD"
             textSize = 17f
             setTextColor(Color.parseColor("#e6c84c"))
             typeface = Typeface.DEFAULT_BOLD
@@ -341,6 +342,11 @@ class CampaignActivity : AppCompatActivity() {
         actionButton.alpha = 1f
         actionButton.isEnabled = true
 
+        if (phaseOnePocMode) {
+            showPocNodeState(node)
+            return
+        }
+
         if (node.isCleared) {
             nodeDescText.text = node.description
             nodeStatsText.text = "✓ Location cleared"
@@ -411,6 +417,51 @@ class CampaignActivity : AppCompatActivity() {
             nodeStatsText.setTextColor(Color.parseColor("#996633"))
             actionButton.visibility = View.GONE
         }
+    }
+
+    private fun showPocNodeState(node: CampaignNode) {
+        val isAccessible = node.isRevealed
+        val isCurrent = node.id == campaignManager.gameState.currentNodeId
+        nodeDescText.text = node.description
+        nodeStatsText.setTextColor(Color.parseColor("#6688aa"))
+
+        if (!isAccessible) {
+            nodeStatsText.text = "⚠ Not accessible yet"
+            actionButton.visibility = View.GONE
+            return
+        }
+
+        if (isCurrent) {
+            nodeStatsText.text = "You are here"
+            actionButton.text = "Scout Nearby Routes"
+            actionButton.visibility = View.VISIBLE
+            actionButton.setBackgroundColor(Color.parseColor("#225588"))
+            actionButton.setOnClickListener { scoutFromNode(node) }
+            return
+        }
+
+        nodeStatsText.text = "POC travel target"
+        actionButton.text = "Travel Here"
+        actionButton.visibility = View.VISIBLE
+        actionButton.setBackgroundColor(Color.parseColor("#2C4A9E"))
+        actionButton.setOnClickListener { animateAndThen(node) { scoutFromNode(node) } }
+    }
+
+    private fun scoutFromNode(node: CampaignNode) {
+        campaignManager.moveToNode(node.id)
+        node.isCleared = true
+        node.connections.forEach { connId ->
+            campaignManager.campaignMap.find { it.id == connId }?.isRevealed = true
+        }
+        mapView.currentNodeId = campaignManager.gameState.currentNodeId
+        mapView.setPlayerPosition(
+            campaignManager.gameState.playerMapX,
+            campaignManager.gameState.playerMapY
+        )
+        mapView.invalidate()
+        updateHud()
+        Toast.makeText(this, "Explored ${node.name}. Nearby routes revealed.", Toast.LENGTH_SHORT).show()
+        infoPanel.visibility = View.GONE
     }
 
     // ── Animation wrapper ─────────────────────────────────────────────────────

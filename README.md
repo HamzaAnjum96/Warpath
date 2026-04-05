@@ -22,5 +22,7 @@ This repository is now aligned to the **Sarhad** concept pivot:
 ## Prototype status
 The Android prototype under `app/` remains in active iteration and may still contain naming from the previous "Warpath" label while docs are being migrated.
 
+Current implementation slice: **v1.0.1 Phase 1 minimal POC** (portrait overworld movement + node travel/exploration).
+
 ## Build
 See [BUILD_INSTRUCTIONS.md](BUILD_INSTRUCTIONS.md).

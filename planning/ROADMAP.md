@@ -19,6 +19,12 @@ Exit criteria:
 - Planning docs are internally consistent with Sarhad concept.
 - No conflicting old concept language in core planning pages.
 
+### v1.0.1 implementation slice (minimal POC)
+- Main menu starts directly into overworld flow.
+- Joystick movement works in portrait mode.
+- Player can travel between revealed nodes and reveal adjacent routes.
+- Encounter and settlement depth can remain stubbed/deferred.
+
 ## Phase 2 — Playable vertical slice
 Focus:
 - Portrait overworld with joystick travel and moving parties.

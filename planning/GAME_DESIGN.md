@@ -1,128 +1,134 @@
-# GAME_DESIGN
+# GAME_DESIGN — Sarhad
 
-## Game pillars
-1. **Readable mobile tactics**: Every decision should be understandable at a glance on a phone screen.
-2. **Short, replayable sessions**: Runs should feel meaningful in 5–12 minutes.
-3. **Strategic progression with simple inputs**: Depth comes from choices, not control complexity.
-4. **Performance-first combat fantasy**: Capture warband command fantasy without large-scale simulation.
+## One-line summary
+**Sarhad is a portrait-mode Android strategy RPG where you lead a roaming warband across a living world, recruit troops, manage supplies, take missions, and decide when to fight, flee, or bribe your way through danger.**
 
-## Player fantasy
-You are a rising warband commander expanding influence across a compact region. You recruit, upgrade, and direct small troop groups, winning quick encounters and shaping faction control.
+## Design goals
+1. **Clear decisions on mobile**: every major choice is understandable in seconds.
+2. **Strong momentum**: "one more stop, one more mission" pacing.
+3. **Tension through survival pressure**: troops, gold, supplies, and time always matter.
+4. **Readable tactical action**: real-time battles that stay short and legible.
 
-## Core gameplay loop
-1. Choose next node on campaign map.
-2. Resolve event (battle, ambush, caravan raid, reinforcement opportunity, etc.).
-3. Enter small battle encounter (mostly auto-battle + light commands).
-4. Earn rewards (troops, upgrades, standing, control).
-5. Spend and optimize warband.
-6. Push toward regional control objective.
+## Core fantasy
+Start vulnerable and gradually become a feared, mobile warband leader.
+Power comes from:
+- smart movement,
+- calculated risks,
+- repeated survival,
+- and disciplined resource management.
 
-## Session structure
-- **Session length target**: 5–12 minutes.
-- **Run length target**: 20–40 minutes split across sessions.
-- **Micro-flow**:
-  - 30–60s campaign decision
-  - 60–180s battle
-  - 15–45s reward/upgrades
+Tone: **rugged, grounded, dangerous frontier**.
 
-## Campaign layer overview
-- Compact region map made of connected nodes.
-- Node types:
-  - Enemy patrol
-  - Resource cache
-  - Elite challenge
-  - Recovery camp
-  - Faction outpost
-- Player selects routes to balance risk/reward and faction influence.
-- Control of key nodes contributes to regional dominance progress.
+## Core loop
+1. Travel in real time across overworld.
+2. Discover danger/opportunity/destination.
+3. Trigger party encounter or enter settlement.
+4. Choose response (battle/run/bribe or hub actions).
+5. Resolve consequences.
+6. Gain/lose troops, gold, supplies, and time.
+7. Recover/recruit/restock/take missions.
+8. Repeat.
 
-## Battle layer overview
-- Small-scale encounters (roughly 8–30 active units total in early phases).
-- Core model: **auto-engagement with intervention windows**.
-- Player can issue lightweight commands:
-  - Focus target
-  - Push/hold stance
-  - Timed ability trigger
-  - Retreat/reposition ping
-- Encounters must resolve quickly and read clearly.
+## Overworld travel
+- Primary play space.
+- Real-time movement and interception.
+- Tension between safe routing vs fast routing.
 
-## Touch controls overview
-- Tap to select squad/hero.
-- Tap enemy to set focus target.
-- Drag path arrow for reposition command.
-- Large contextual action buttons for abilities.
-- Long-press for unit info card.
-- Input budget: no gesture-heavy complexity, no precision micro required.
+### Portrait controls
+- **Left thumb:** virtual movement joystick.
+- **Right thumb:** compact actions (party, supplies, missions, time speed).
 
-## Unit/troop categories
-- **Frontline**: shield infantry, spears.
-- **Skirmish**: javelin/light ranged.
-- **Ranged**: bow/crossbow archetypes.
-- **Cavalry-lite**: fast flanking units (kept limited for readability).
-- **Support**: banner/medic/buffer style specialists.
+### Travel decisions
+- Where to go next.
+- What to avoid.
+- Whether to risk another encounter.
+- When to return to settlement safety.
 
-## Enemy categories
-- Bandit raiders (aggressive, low armor).
-- Militia blocks (defensive, high numbers).
-- Elite retainers (small but high threat).
-- Beast/rogue encounter variants (unpredictable tempo events).
+## Encounters
+Collision/intercept opens a fast decision panel.
 
-## Power-ups / temporary battle advantages
-- Pre-battle consumables and encounter buffs:
-  - Rally Horn (temporary attack speed boost)
-  - Field Rations (small heal over time)
-  - Smoke Pots (enemy accuracy reduction)
-  - Reinforcement Call (spawn 1 temporary allied squad)
-- Designed as run-based tactical spikes, not permanent progression replacement.
+### Player options
+- **Battle** — high risk/high reward.
+- **Run** — chance-based escape outcome (full/partial/fail).
+- **Bribe** — spend resources to avoid conflict.
 
-## Progression systems
-- **Warband growth**: unlock squad slots and composition flexibility.
-- **Troop upgrades**: branch-based upgrades with simple tradeoffs.
-- **Faction standing**: unlock faction-specific recruits/perks.
-- **Map control**: persistent region control bonuses and win progression.
+## Battle model
+- **Real-time** tactical combat.
+- Target duration: **30 seconds to 3 minutes**.
+- Must remain readable on phone screens.
 
-## Rewards / economy-lite
-- Soft currencies only in v1:
-  - Supplies (healing/recovery/recruitment)
-  - Renown (meta progression unlocks)
-- Rewards granted after nodes and milestone captures.
-- No deep market simulation, no dynamic commodity pricing.
+### Command set (core)
+- Move commander
+- Charge
+- Hold
+- Retreat
+- Focus target
 
-## Loss / failure rules
-- If core commander unit is defeated or warband morale collapses, encounter is lost.
-- On run failure:
-  - Keep partial renown/meta progress.
-  - Lose temporary run-only buffs/resources.
-- Failure should sting but encourage immediate replay.
+## Settlements (menu-based hubs)
+No interior walking scenes.
 
-## Win state / end goal
-- Capture/secure required strategic nodes and defeat regional rival commander.
-- Full release can add multiple regions; early versions focus on one polished region loop.
+### Towns
+- stronger recruits
+- broader supplies
+- better recovery
+- richer missions
 
-## UX rules for mobile readability
-- Strong silhouettes and bold faction colors for instant differentiation.
-- Minimal UI clutter; hide secondary stats behind long-press panels.
-- Large tap zones; avoid tiny icons and precision drag requirements.
-- Combat readability > visual effects density.
-- Preserve frame consistency on mid-tier Android devices.
+### Villages
+- basic recruits
+- cheaper limited supplies
+- local missions
+- basic recovery
 
-## Explicit scope cuts / non-goals
-- No multiplayer in v1.
-- No open world exploration.
-- No town walking/first-person interaction scenes.
-- No marriage/dynasty/political simulation depth.
-- No deep economy sim.
-- No large siege systems in early phases.
-- No Bannerlord-sized battles.
+### Settlement actions
+- Heal/Rest (advances time)
+- Get Units
+- Get Supplies
+- Get Missions
 
-## Assumption lock (must remain true in v1)
-- Android-first development and UX validation.
-- Low-poly art only; no realistic asset direction.
-- Fixed top-down isometric combat camera only.
-- No multiplayer in v1.
-- No deep economy/politics simulation layers.
-- No town walking/first-person scenes.
-- No marriage/dynasty complexity.
-- No large siege systems in early phases.
-- No Bannerlord-scale battle counts.
-- Prioritize readability, battery life, and performance over realism.
+## Progression model
+Primary growth axes:
+- Party Size
+- Troop Quality
+- Economy (gold flow)
+- Mobility
+- Warband Stability (healing/supplies/readiness)
+
+## Resource model
+- **Gold**: recruits, supplies, bribes, recovery
+- **Supplies**: sustain movement/combat readiness
+- **Troops**: force strength and survival proxy
+- **Time**: hidden strategic cost across all actions
+
+## Risk and consequence
+Setbacks include:
+- casualties/wounds,
+- supply losses,
+- gold drain,
+- mission failure,
+- weak map position,
+- forced retreat.
+
+## UX direction
+- Minimal, modern, high-contrast UI
+- Thumb-first interactions
+- Icon-led fast actions
+- Low clutter + low text density
+
+## Visual direction
+- Low poly
+- Clean silhouettes
+- Stylized but readable
+- Android performance-conscious
+
+## Session targets
+- **Short (3–8 min):** quick travel + recruit/restock + mission pickup
+- **Medium (10–20 min):** mission run with encounters and recovery
+- **Long (30+ min):** chained missions with clear warband growth
+
+## Scope boundaries (initial)
+- Android-first
+- Portrait orientation
+- Single-player
+- No deep political/dynasty simulation
+- No settlement interior walking
+- No large-scale siege-style battles in initial versions

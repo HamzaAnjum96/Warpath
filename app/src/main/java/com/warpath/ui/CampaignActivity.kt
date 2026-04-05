@@ -3,6 +3,7 @@ package com.warpath.ui
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -12,6 +13,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.warpath.engine.CampaignManager
 import com.warpath.model.CampaignNode
 import com.warpath.model.NodeType
+import com.warpath.model.PartyFaction
 import kotlin.random.Random
 
 class CampaignActivity : AppCompatActivity() {
@@ -71,7 +73,7 @@ class CampaignActivity : AppCompatActivity() {
             onFocusChanged = { focused ->
                 recenterButton.visibility = if (focused) View.GONE else View.VISIBLE
                 if (!focused) {
-                    Toast.makeText(context, "Map unfocused. Drag to scout. Tap Recenter to lock on warband.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Map unfocused. Drag to scout. Tap ⌖ to lock on warband.", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -111,15 +113,15 @@ class CampaignActivity : AppCompatActivity() {
         )
 
         recenterButton = Button(this).apply {
-            text = "◎ Recenter"
+            text = "⌖"
             textSize = 12f
             typeface = Typeface.DEFAULT_BOLD
             isAllCaps = false
             setTextColor(Color.parseColor("#F5EED1"))
-            setBackgroundColor(Color.parseColor("#4A3F88"))
             setPadding(20, 14, 20, 14)
             stateListAnimator = null
             visibility = View.GONE
+            applyRoundedStyle(backgroundColor = "#4A3F88")
             setOnClickListener {
                 mapView.recenterOnPlayer()
                 Toast.makeText(this@CampaignActivity, "Camera recentered on warband.", Toast.LENGTH_SHORT).show()
@@ -134,6 +136,18 @@ class CampaignActivity : AppCompatActivity() {
             ).apply {
                 topMargin = 110
                 rightMargin = 22
+            }
+        )
+
+        root.addView(
+            buildMapControls(),
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.END or Gravity.BOTTOM
+            ).apply {
+                rightMargin = 24
+                bottomMargin = 210
             }
         )
 
@@ -219,14 +233,14 @@ class CampaignActivity : AppCompatActivity() {
         bar.addView(hudSpacer())
 
         val warbandBtn = Button(this).apply {
-            text = "⚔ Warband"
+            text = "⚑"
             textSize = 12f
             setTextColor(Color.parseColor("#aaaacc"))
-            setBackgroundColor(Color.parseColor("#33334a"))
             isAllCaps = false
             typeface = Typeface.DEFAULT_BOLD
             setPadding(16, 8, 16, 8)
             stateListAnimator = null
+            applyRoundedStyle(backgroundColor = "#33334a")
             setOnClickListener { startActivity(Intent(this@CampaignActivity, WarbandActivity::class.java)) }
         }
         bar.addView(warbandBtn)
@@ -347,6 +361,7 @@ class CampaignActivity : AppCompatActivity() {
             typeface = Typeface.DEFAULT_BOLD
             setPadding(24, 18, 24, 18)
             stateListAnimator = null
+            applyRoundedStyle(backgroundColor = "#225588")
         }
         content.addView(
             actionButton,
@@ -366,6 +381,47 @@ class CampaignActivity : AppCompatActivity() {
         )
 
         return container
+    }
+
+    private fun buildMapControls(): View {
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.END
+        }
+
+        val zoomIn = mapIconButton("＋") { mapView.zoomIn() }
+        val zoomOut = mapIconButton("－") { mapView.zoomOut() }
+        container.addView(zoomIn)
+        container.addView(
+            zoomOut,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = 10 }
+        )
+        return container
+    }
+
+    private fun mapIconButton(symbol: String, onClick: () -> Unit): Button {
+        return Button(this).apply {
+            text = symbol
+            textSize = 18f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.parseColor("#F5EED1"))
+            isAllCaps = false
+            setPadding(20, 14, 20, 14)
+            stateListAnimator = null
+            applyRoundedStyle(backgroundColor = "#3A325F")
+            setOnClickListener { onClick() }
+        }
+    }
+
+    private fun Button.applyRoundedStyle(backgroundColor: String, cornerRadius: Float = 28f) {
+        background = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            setColor(Color.parseColor(backgroundColor))
+            this.cornerRadius = cornerRadius
+        }
     }
 
     override fun onResume() {
@@ -439,7 +495,7 @@ class CampaignActivity : AppCompatActivity() {
                     nodeDescText.text = node.description
                     nodeStatsText.text = "Enemies: $enemyCount  |  ⚔ +${node.suppliesReward}  ★ +${node.renownReward}"
                     actionButton.text = if (node.type == NodeType.BOSS) "⚔ Storm the Stronghold!" else "⚔ Attack!"
-                    actionButton.setBackgroundColor(Color.parseColor("#aa2222"))
+                    actionButton.applyRoundedStyle(backgroundColor = "#aa2222")
                     actionButton.visibility = View.VISIBLE
                     actionButton.setOnClickListener { animateAndThen(node) { engageBattle(node) } }
                 }
@@ -448,7 +504,7 @@ class CampaignActivity : AppCompatActivity() {
                     nodeDescText.text = node.description
                     nodeStatsText.text = "Cost: 20 supplies  |  Heal 40% HP"
                     actionButton.text = "♥ Rest & Heal"
-                    actionButton.setBackgroundColor(Color.parseColor("#225588"))
+                    actionButton.applyRoundedStyle(backgroundColor = "#225588")
                     actionButton.visibility = View.VISIBLE
                     actionButton.setOnClickListener { animateAndThen(node) { restAtCamp(node) } }
                 }
@@ -457,7 +513,7 @@ class CampaignActivity : AppCompatActivity() {
                     nodeDescText.text = node.description
                     nodeStatsText.text = "Reward: ⚔ +${node.suppliesReward}  ★ +${node.renownReward}"
                     actionButton.text = "◈ Collect Supplies"
-                    actionButton.setBackgroundColor(Color.parseColor("#226633"))
+                    actionButton.applyRoundedStyle(backgroundColor = "#226633")
                     actionButton.visibility = View.VISIBLE
                     actionButton.setOnClickListener { animateAndThen(node) { collectResources(node) } }
                 }
@@ -466,7 +522,7 @@ class CampaignActivity : AppCompatActivity() {
                     nodeDescText.text = node.description
                     nodeStatsText.text = "Recruit troops and resupply"
                     actionButton.text = "⚑ Visit Outpost"
-                    actionButton.setBackgroundColor(Color.parseColor("#885522"))
+                    actionButton.applyRoundedStyle(backgroundColor = "#885522")
                     actionButton.visibility = View.VISIBLE
                     actionButton.setOnClickListener { animateAndThen(node) { visitOutpost(node) } }
                 }
@@ -475,7 +531,7 @@ class CampaignActivity : AppCompatActivity() {
                     nodeDescText.text = node.description
                     nodeStatsText.text = "Cost: 35 supplies  |  Full heal + recruit support"
                     actionButton.text = "♜ Rest in Town"
-                    actionButton.setBackgroundColor(Color.parseColor("#6b3ca8"))
+                    actionButton.applyRoundedStyle(backgroundColor = "#6b3ca8")
                     actionButton.visibility = View.VISIBLE
                     actionButton.setOnClickListener { animateAndThen(node) { restAtSettlement(node, true) } }
                 }
@@ -484,7 +540,7 @@ class CampaignActivity : AppCompatActivity() {
                     nodeDescText.text = node.description
                     nodeStatsText.text = "Cost: 15 supplies  |  Heal 50%"
                     actionButton.text = "⌂ Rest in Village"
-                    actionButton.setBackgroundColor(Color.parseColor("#667733"))
+                    actionButton.applyRoundedStyle(backgroundColor = "#667733")
                     actionButton.visibility = View.VISIBLE
                     actionButton.setOnClickListener { animateAndThen(node) { restAtSettlement(node, false) } }
                 }
@@ -519,7 +575,7 @@ class CampaignActivity : AppCompatActivity() {
             nodeStatsText.text = "Nearby POI — open interaction menu"
             actionButton.text = "Open Actions"
             actionButton.visibility = View.VISIBLE
-            actionButton.setBackgroundColor(Color.parseColor("#225588"))
+            actionButton.applyRoundedStyle(backgroundColor = "#225588")
             actionButton.setOnClickListener {
                 suppressAutoPoiSelection = true
                 openPoiContextMenu(node)
@@ -714,16 +770,22 @@ class CampaignActivity : AppCompatActivity() {
         travelHintText.text = if (mapView.isCenteredOnPlayer()) {
             "Locked on warband — joystick moves, discover POIs by scouting."
         } else {
-            "Scouting mode — drag to survey. Tap Recenter to follow."
+            "Scouting mode — drag to survey. Tap ⌖ to follow."
         }
-        if (nearbyNode == null) {
+        val filteredNearbyNode = nearbyNode?.takeUnless { it.isCleared && isTemporaryNode(it) }
+        if (filteredNearbyNode == null) {
             selectedNode = null
             infoPanel.visibility = View.GONE
             return
         }
-        travelHintText.text = "Nearby: ${nearbyNode.name} · Open Actions for options."
-        if (selectedNode?.id == nearbyNode.id && infoPanel.visibility == View.VISIBLE) return
-        onNodeSelected(nearbyNode)
+        travelHintText.text = "Nearby: ${filteredNearbyNode.name} · Open Actions for options."
+        if (selectedNode?.id == filteredNearbyNode.id && infoPanel.visibility == View.VISIBLE) return
+        onNodeSelected(filteredNearbyNode)
+    }
+
+    private fun isTemporaryNode(node: CampaignNode): Boolean = when (node.type) {
+        NodeType.ENEMY_PATROL, NodeType.RESOURCE_CACHE, NodeType.ELITE_CHALLENGE, NodeType.RECOVERY_CAMP -> true
+        else -> false
     }
 
     private fun checkFogDiscovery(showToast: Boolean = true) {
@@ -833,7 +895,10 @@ class CampaignActivity : AppCompatActivity() {
     }
 
     private fun forceEnemyEngagement() {
-        val enemyNodeIds = campaignManager.gameState.enemyParties.map { it.nodeId }.toSet()
+        val enemyNodeIds = campaignManager.gameState.enemyParties
+            .filter { it.faction == PartyFaction.HOSTILE }
+            .map { it.nodeId }
+            .toSet()
         val current = campaignManager.getCurrentNode()
         if (current != null && enemyNodeIds.contains(current.id)) {
             Toast.makeText(this, "☠ Enemy party intercepted your warband!", Toast.LENGTH_LONG).show()

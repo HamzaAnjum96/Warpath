@@ -115,7 +115,7 @@ class CampaignActivity : AppCompatActivity() {
             campaignManager.startNewCampaign()
         }
 
-        val root = FrameLayout(this).apply { setBackgroundColor(Color.parseColor("#140F10")) }
+        val root = FrameLayout(this).apply { setBackgroundColor(Color.parseColor("#0E1829")) }
 
         mapView = CampaignMapView(this).apply {
             nodes = campaignManager.campaignMap
@@ -206,7 +206,7 @@ class CampaignActivity : AppCompatActivity() {
             setPadding(dp(14), dp(10), dp(14), dp(10))
             stateListAnimator = null
             visibility = View.GONE
-            applyRoundedStyle(backgroundColor = "#4A2C2F", borderColor = "#7D4D53", topEdgeColor = "#9A666C")
+            applyHudButtonStyle()
             setOnClickListener {
                 mapView.recenterOnPlayer()
                 enqueueWorldAlert("Warband Focus Restored", AlertCategory.TRAVEL, AlertPriority.MINOR, "camera_recentered")
@@ -231,7 +231,7 @@ class CampaignActivity : AppCompatActivity() {
             setPadding(dp(10), dp(5), dp(10), dp(5))
             letterSpacing = 0.08f
         }
-        styleChip(mapStateText, "#5B3B3F")
+        styleChip(mapStateText, "#233755")
         root.addView(
             mapStateText,
             FrameLayout.LayoutParams(
@@ -262,7 +262,7 @@ class CampaignActivity : AppCompatActivity() {
             setTextColor(Color.parseColor("#F1E6D8"))
             minHeight = dp(34)
             minimumHeight = dp(34)
-            applyRoundedStyle(backgroundColor = "#4A2C2F", borderColor = "#7A4C4E", topEdgeColor = "#8F6466", cornerRadius = 10f)
+            applyHudButtonStyle(cornerRadius = 10f)
             visibility = View.GONE
             setOnClickListener { mapView.cancelMovement() }
         }
@@ -281,10 +281,14 @@ class CampaignActivity : AppCompatActivity() {
         travelHintText = TextView(this).apply {
             textSize = if (compactUi) 11f else 12f
             setTextColor(Color.parseColor("#D3C4B5"))
-            setBackgroundColor(Color.parseColor("#A0281D20"))
-            typeface = Typeface.create("sans-serif", Typeface.NORMAL)
-            setPadding(dp(14), dp(10), dp(14), dp(10))
-            text = "Tap to select. Tap terrain to travel. Pinch or double-tap to zoom."
+            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+            setPadding(dp(10), dp(6), dp(12), dp(6))
+            text = "◉ SCOUTING MODE · Tap to select, tap terrain to travel"
+            background = GradientDrawable().apply {
+                cornerRadius = dpF(9f)
+                setColor(Color.parseColor("#DF17243A"))
+                setStroke(dp(1), Color.parseColor("#3B5275"))
+            }
         }
         root.addView(
             travelHintText,
@@ -311,17 +315,17 @@ class CampaignActivity : AppCompatActivity() {
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
                 cornerRadius = dpF(0f)
-                setColor(Color.parseColor("#D82A1A1E"))
-                setStroke(dp(1), Color.parseColor("#5A3B3F"))
+                setColor(Color.parseColor("#E0132138"))
+                setStroke(dp(1), Color.parseColor("#2F4566"))
             }
-            setPadding(dp(18), dp(13), dp(18), dp(13))
+            setPadding(dp(14), dp(10), dp(14), dp(10))
             gravity = Gravity.CENTER_VERTICAL
         }
 
         val title = TextView(this).apply {
             text = "WARPATH"
             textSize = if (compactUi) 15f else 17f
-            setTextColor(Color.parseColor("#D8B66F"))
+            setTextColor(Color.parseColor("#D4AE52"))
             typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
             letterSpacing = 0.08f
         }
@@ -341,12 +345,12 @@ class CampaignActivity : AppCompatActivity() {
         val warbandBtn = Button(this).apply {
             text = "⚑"
             textSize = if (compactUi) 11f else 12f
-            setTextColor(Color.parseColor("#D8C7B8"))
+            setTextColor(Color.parseColor("#DFE8F8"))
             isAllCaps = false
             typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
-            setPadding(16, 8, 16, 8)
+            setPadding(dp(12), dp(6), dp(12), dp(6))
             stateListAnimator = null
-            applyRoundedStyle(backgroundColor = "#4A2B2E", borderColor = "#7A4D53", topEdgeColor = "#9C676E")
+            applyHudButtonStyle(cornerRadius = 9f)
             setOnClickListener { startActivity(Intent(this@CampaignActivity, WarbandActivity::class.java)) }
         }
         bar.addView(warbandBtn)
@@ -356,7 +360,7 @@ class CampaignActivity : AppCompatActivity() {
 
     private fun hudStatText() = TextView(this).apply {
         textSize = if (compactUi) 12f else 13f
-        setTextColor(Color.parseColor("#C8B6A6"))
+        setTextColor(Color.parseColor("#D5E0F0"))
         typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
     }
 
@@ -374,12 +378,11 @@ class CampaignActivity : AppCompatActivity() {
             visibility = View.GONE
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
-                cornerRadius = dpF(10f)
-                orientation = GradientDrawable.Orientation.TOP_BOTTOM
-                colors = intArrayOf(Color.parseColor("#EE2A1C20"), Color.parseColor("#E023181B"))
-                setStroke(dp(1), Color.parseColor("#6D4A4D"))
+                cornerRadius = dpF(8f)
+                setColor(Color.parseColor("#ED15233A"))
+                setStroke(dp(1), Color.parseColor("#355074"))
             }
-            elevation = dpF(6f)
+            elevation = dpF(3f)
         }
 
         alertAccent = View(this).apply {
@@ -524,8 +527,8 @@ class CampaignActivity : AppCompatActivity() {
                 shape = GradientDrawable.RECTANGLE
                 cornerRadius = dpF(12f)
                 orientation = GradientDrawable.Orientation.TOP_BOTTOM
-                colors = intArrayOf(Color.parseColor("#F0101A2F"), Color.parseColor("#F00D1526"))
-                setStroke(dp(1), Color.parseColor("#5E4441"))
+                colors = intArrayOf(Color.parseColor("#F0132339"), Color.parseColor("#F0101C30"))
+                setStroke(dp(1), Color.parseColor("#344E72"))
             }
             visibility = View.GONE
         }
@@ -612,7 +615,7 @@ class CampaignActivity : AppCompatActivity() {
         content.addView(distanceText)
 
         content.addView(
-            View(this).apply { setBackgroundColor(Color.parseColor("#4A302C")) },
+            View(this).apply { setBackgroundColor(Color.parseColor("#2B415F")) },
             LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 1
@@ -670,7 +673,7 @@ class CampaignActivity : AppCompatActivity() {
             typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
             setPadding(dp(16), dp(10), dp(16), dp(10))
             stateListAnimator = null
-            applyRoundedStyle(backgroundColor = "#5A2E33", borderColor = "#8B5A5F", topEdgeColor = "#A6767A", cornerRadius = 14f)
+            applyPrimaryButtonStyle()
         }
         content.addView(
             actionButton,
@@ -716,6 +719,24 @@ class CampaignActivity : AppCompatActivity() {
         }
     }
 
+    private fun Button.applyHudButtonStyle(cornerRadius: Float = 11f) {
+        applyRoundedStyle(
+            backgroundColor = "#263B59",
+            borderColor = "#3E5B82",
+            topEdgeColor = "#2F4A70",
+            cornerRadius = cornerRadius
+        )
+    }
+
+    private fun Button.applyPrimaryButtonStyle() {
+        applyRoundedStyle(
+            backgroundColor = "#4B4CB0",
+            borderColor = "#6A71D1",
+            topEdgeColor = "#5A62C8",
+            cornerRadius = 12f
+        )
+    }
+
     private fun styleChip(chip: TextView, fillHex: String) {
         chip.background = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
@@ -738,11 +759,11 @@ class CampaignActivity : AppCompatActivity() {
         val hasPreview = pendingTravelTarget != null
         val centered = mapView.isCenteredOnPlayer()
         val (label, color) = when {
-            moving -> "TRAVELLING" to "#6A4A43"
-            hasPreview -> mapView.currentPreviewRouteTypeLabel() to "#6E5647"
-            hasTarget -> "TARGET LOCKED" to "#6F494C"
-            !centered -> "SCOUTING" to "#675244"
-            else -> "FOLLOW WARBAND" to "#5A3F3D"
+            moving -> "TRAVELLING" to "#2D4871"
+            hasPreview -> mapView.currentPreviewRouteTypeLabel() to "#37517C"
+            hasTarget -> "TARGET LOCKED" to "#4E3F78"
+            !centered -> "SCOUTING" to "#2E4C73"
+            else -> "FOLLOW WARBAND" to "#284267"
         }
         mapStateText.text = label
         styleChip(mapStateText, color)
@@ -845,7 +866,7 @@ class CampaignActivity : AppCompatActivity() {
         panelAccentBar.setBackgroundColor(node.type.color.toInt())
 
         nodeTypeChip.text = node.type.displayName.uppercase()
-        styleChip(nodeTypeChip, "#634648")
+        styleChip(nodeTypeChip, "#2A4569")
         nodeNameText.text = node.name
         nodeNameText.setTextColor(Color.parseColor("#F4E8D8"))
 
@@ -881,7 +902,7 @@ class CampaignActivity : AppCompatActivity() {
                     nodeDescText.text = node.description
                     nodeStatsText.text = "Enemies: $enemyCount  |  ⚔ +${node.suppliesReward}  ★ +${node.renownReward}"
                     actionButton.text = if (node.type == NodeType.BOSS) "⚔ Storm the Stronghold!" else "⚔ Attack!"
-                    actionButton.applyRoundedStyle(backgroundColor = "#5A2E33", borderColor = "#8B5A5F", topEdgeColor = "#A6767A", cornerRadius = 14f)
+                    actionButton.applyPrimaryButtonStyle()
                     actionButton.visibility = View.VISIBLE
                     actionButton.setOnClickListener { animateAndThen(node) { engageBattle(node) } }
                 }
@@ -890,7 +911,7 @@ class CampaignActivity : AppCompatActivity() {
                     nodeDescText.text = node.description
                     nodeStatsText.text = "Cost: 20 supplies  |  Heal 40% HP"
                     actionButton.text = "♥ Rest & Heal"
-                    actionButton.applyRoundedStyle(backgroundColor = "#5A2E33", borderColor = "#8B5A5F", topEdgeColor = "#A6767A", cornerRadius = 14f)
+                    actionButton.applyPrimaryButtonStyle()
                     actionButton.visibility = View.VISIBLE
                     actionButton.setOnClickListener { animateAndThen(node) { restAtCamp(node) } }
                 }
@@ -899,7 +920,7 @@ class CampaignActivity : AppCompatActivity() {
                     nodeDescText.text = node.description
                     nodeStatsText.text = "Reward: ⚔ +${node.suppliesReward}  ★ +${node.renownReward}"
                     actionButton.text = "◈ Collect Supplies"
-                    actionButton.applyRoundedStyle(backgroundColor = "#5A2E33", borderColor = "#8B5A5F", topEdgeColor = "#A6767A", cornerRadius = 14f)
+                    actionButton.applyPrimaryButtonStyle()
                     actionButton.visibility = View.VISIBLE
                     actionButton.setOnClickListener { animateAndThen(node) { collectResources(node) } }
                 }
@@ -908,7 +929,7 @@ class CampaignActivity : AppCompatActivity() {
                     nodeDescText.text = node.description
                     nodeStatsText.text = "Recruit troops and resupply"
                     actionButton.text = "⚑ Visit Outpost"
-                    actionButton.applyRoundedStyle(backgroundColor = "#5A2E33", borderColor = "#8B5A5F", topEdgeColor = "#A6767A", cornerRadius = 14f)
+                    actionButton.applyPrimaryButtonStyle()
                     actionButton.visibility = View.VISIBLE
                     actionButton.setOnClickListener { animateAndThen(node) { visitOutpost(node) } }
                 }
@@ -917,7 +938,7 @@ class CampaignActivity : AppCompatActivity() {
                     nodeDescText.text = node.description
                     nodeStatsText.text = "Cost: 35 supplies  |  Full heal + recruit support"
                     actionButton.text = "♜ Rest in Town"
-                    actionButton.applyRoundedStyle(backgroundColor = "#5A2E33", borderColor = "#8B5A5F", topEdgeColor = "#A6767A", cornerRadius = 14f)
+                    actionButton.applyPrimaryButtonStyle()
                     actionButton.visibility = View.VISIBLE
                     actionButton.setOnClickListener { animateAndThen(node) { restAtSettlement(node, true) } }
                 }
@@ -926,7 +947,7 @@ class CampaignActivity : AppCompatActivity() {
                     nodeDescText.text = node.description
                     nodeStatsText.text = "Cost: 15 supplies  |  Heal 50%"
                     actionButton.text = "⌂ Rest in Village"
-                    actionButton.applyRoundedStyle(backgroundColor = "#5A2E33", borderColor = "#8B5A5F", topEdgeColor = "#A6767A", cornerRadius = 14f)
+                    actionButton.applyPrimaryButtonStyle()
                     actionButton.visibility = View.VISIBLE
                     actionButton.setOnClickListener { animateAndThen(node) { restAtSettlement(node, false) } }
                 }
@@ -961,7 +982,7 @@ class CampaignActivity : AppCompatActivity() {
             nodeStatsText.text = "Within interaction range."
             actionButton.text = "Open Actions"
             actionButton.visibility = View.VISIBLE
-            actionButton.applyRoundedStyle(backgroundColor = "#5A2E33", borderColor = "#8B5A5F", topEdgeColor = "#A6767A", cornerRadius = 14f)
+            actionButton.applyPrimaryButtonStyle()
             actionSecondaryText.text = "More details"
             actionSecondaryText.visibility = View.VISIBLE
             actionButton.setOnClickListener {
@@ -976,17 +997,17 @@ class CampaignActivity : AppCompatActivity() {
         nodeStatsText.text = "Out of range. Travel to this location."
         actionButton.text = "Travel"
         actionButton.visibility = View.VISIBLE
-        actionButton.applyRoundedStyle(backgroundColor = "#5A2E33", borderColor = "#8B5A5F", topEdgeColor = "#A6767A", cornerRadius = 14f)
+        actionButton.applyPrimaryButtonStyle()
         actionButton.setOnClickListener { moveWarbandTo(node.mapX, node.mapY) }
     }
 
     private fun updateRangeTag(node: CampaignNode, isNearby: Boolean) {
         val (label, bg) = when {
             node.type == NodeType.ENEMY_PATROL || node.type == NodeType.ELITE_CHALLENGE || node.type == NodeType.BOSS ->
-                if (isNearby) "HOSTILE · NEARBY" to "#8B434F" else "HOSTILE" to "#6A3741"
-            node.type == NodeType.TOWN || node.type == NodeType.VILLAGE -> if (isNearby) "ALLY · NEARBY" to "#7D634B" else "ALLY" to "#6D5643"
-            node.type == NodeType.RESOURCE_CACHE -> if (isNearby) "NEARBY" to "#968358" else "NEARBY" to "#6E5E3E"
-            else -> if (isNearby) "NEUTRAL · NEARBY" to "#7A5E57" else "NEUTRAL" to "#644C45"
+                if (isNearby) "HOSTILE · NEARBY" to "#6E3C4C" else "HOSTILE" to "#5B3240"
+            node.type == NodeType.TOWN || node.type == NodeType.VILLAGE -> if (isNearby) "ALLY · NEARBY" to "#2D517B" else "ALLY" to "#28476B"
+            node.type == NodeType.RESOURCE_CACHE -> if (isNearby) "NEARBY" to "#7C6A45" else "NEARBY" to "#6E5D3D"
+            else -> if (isNearby) "NEUTRAL · NEARBY" to "#4B607B" else "NEUTRAL" to "#3D5370"
         }
         nodeRangeTagText.text = label
         nodeRangeTagText.visibility = View.VISIBLE
@@ -1008,10 +1029,10 @@ class CampaignActivity : AppCompatActivity() {
 
     private fun applyPanelType(type: PanelType) {
         val accent = when (type) {
-            PanelType.SETTLEMENT -> "#7C5D4F"
-            PanelType.ROAMING -> "#6E4D4B"
-            PanelType.EVENT -> "#8B6A43"
-            PanelType.RESULT -> "#647350"
+            PanelType.SETTLEMENT -> "#2D517B"
+            PanelType.ROAMING -> "#4E3E73"
+            PanelType.EVENT -> "#77613F"
+            PanelType.RESULT -> "#386350"
         }
         panelAccentBar.setBackgroundColor(Color.parseColor(accent))
         infoPanel.alpha = 0f
@@ -1280,7 +1301,7 @@ class CampaignActivity : AppCompatActivity() {
             minHeight = dp(38)
             typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
             setTextColor(Color.parseColor("#F3EBDD"))
-            applyRoundedStyle(backgroundColor = "#6A3B40", borderColor = "#8D5D5F", topEdgeColor = "#A77878", cornerRadius = 10f)
+            applyPrimaryButtonStyle()
             setOnClickListener { dialog.dismiss() }
         }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
             topMargin = dp(12)

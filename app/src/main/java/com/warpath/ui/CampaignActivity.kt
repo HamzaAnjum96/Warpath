@@ -457,7 +457,7 @@ class CampaignActivity : AppCompatActivity() {
     }
 
     private fun updateControlClusterVisibility() {
-        if (!::controlCluster.isInitialized || !::mapView.isInitialized || !::recenterButton.isInitialized) return
+        if (!::controlCluster.isInitialized) return
         recenterButton.visibility = if (mapView.isCenteredOnPlayer()) View.GONE else View.VISIBLE
     }
 

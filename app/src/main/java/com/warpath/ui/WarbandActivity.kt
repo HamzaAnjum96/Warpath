@@ -29,20 +29,20 @@ class WarbandActivity : AppCompatActivity() {
         val canRecruit = intent.getBooleanExtra("can_recruit", false)
 
         val scroll = ScrollView(this).apply {
-            setBackgroundColor(Color.parseColor("#1a1a2e"))
+            setBackgroundColor(Color.parseColor(UiTheme.BASE_BG))
         }
 
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(40, 40, 40, 40)
+            setPadding(dp(24), dp(24), dp(24), dp(24))
         }
 
         // Title
         val title = TextView(this).apply {
             text = "Your Warband"
             textSize = 28f
-            setTextColor(Color.parseColor("#e6c84c"))
-            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.parseColor(UiTheme.GOLD))
+            typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
             gravity = Gravity.CENTER
         }
         layout.addView(title, marginParams(bottom = 8))
@@ -50,7 +50,7 @@ class WarbandActivity : AppCompatActivity() {
         // Supplies
         suppliesText = TextView(this).apply {
             textSize = 14f
-            setTextColor(Color.parseColor("#33aa33"))
+            setTextColor(Color.parseColor(UiTheme.SUCCESS))
             gravity = Gravity.CENTER
         }
         layout.addView(suppliesText, marginParams(bottom = 24))
@@ -59,7 +59,7 @@ class WarbandActivity : AppCompatActivity() {
         val slotsText = TextView(this).apply {
             text = "Squads (${gameState.warband.size}/${gameState.maxWarbandSlots})"
             textSize = 16f
-            setTextColor(Color.parseColor("#8888aa"))
+            setTextColor(Color.parseColor(UiTheme.TEXT_MUTED))
         }
         layout.addView(slotsText, marginParams(bottom = 12))
 
@@ -81,7 +81,7 @@ class WarbandActivity : AppCompatActivity() {
             val recruitTitle = TextView(this).apply {
                 text = "Recruit New Troops"
                 textSize = 18f
-                setTextColor(Color.parseColor("#cc8833"))
+                setTextColor(Color.parseColor(UiTheme.GOLD))
                 typeface = Typeface.DEFAULT_BOLD
             }
             recruitSection.addView(recruitTitle, marginParams(bottom = 12))
@@ -100,11 +100,8 @@ class WarbandActivity : AppCompatActivity() {
                 val btn = Button(this).apply {
                     text = "${unitType.name} x$count - $cost supplies"
                     textSize = 13f
-                    setTextColor(Color.WHITE)
-                    setBackgroundColor(Color.parseColor("#2a2a4e"))
-                    isAllCaps = false
-                    setPadding(20, 12, 20, 12)
-                    stateListAnimator = null
+                    setPadding(dp(16), dp(10), dp(16), dp(10))
+                    applyUiButtonStyle(UiTheme.SURFACE_ALT, 16f)
                     setOnClickListener {
                         if (CampaignActivity.campaignManager.recruitUnit(unitType, count, cost)) {
                             Toast.makeText(this@WarbandActivity, "Recruited ${unitType.name}!", Toast.LENGTH_SHORT).show()
@@ -135,12 +132,8 @@ class WarbandActivity : AppCompatActivity() {
             val upgradeBtn = Button(this).apply {
                 text = "Expand Warband (+1 slot) - $slotCost supplies"
                 textSize = 14f
-                setTextColor(Color.WHITE)
-                setBackgroundColor(Color.parseColor("#6633aa"))
-                isAllCaps = false
-                typeface = Typeface.DEFAULT_BOLD
-                setPadding(20, 16, 20, 16)
-                stateListAnimator = null
+                setPadding(dp(16), dp(12), dp(16), dp(12))
+                applyUiButtonStyle(UiTheme.PRIMARY, 16f)
                 setOnClickListener {
                     if (gameState.supplies >= slotCost) {
                         gameState.supplies -= slotCost
@@ -160,9 +153,7 @@ class WarbandActivity : AppCompatActivity() {
         val backBtn = Button(this).apply {
             text = "Back"
             textSize = 16f
-            setTextColor(Color.parseColor("#aaaacc"))
-            setBackgroundColor(Color.TRANSPARENT)
-            isAllCaps = false
+            applyUiButtonStyle(UiTheme.SURFACE, 16f)
             setOnClickListener { finish() }
         }
         layout.addView(backBtn, LinearLayout.LayoutParams(
@@ -182,8 +173,12 @@ class WarbandActivity : AppCompatActivity() {
         for (squad in gameState.warband) {
             val card = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                setBackgroundColor(Color.parseColor("#222244"))
-                setPadding(24, 16, 24, 16)
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    cornerRadius = 16f
+                    setColor(Color.parseColor(UiTheme.SURFACE))
+                    setStroke(1, Color.parseColor(UiTheme.BORDER))
+                }
+                setPadding(dp(16), dp(12), dp(16), dp(12))
             }
 
             val header = LinearLayout(this).apply {
@@ -200,7 +195,7 @@ class WarbandActivity : AppCompatActivity() {
             val nameTv = TextView(this).apply {
                 text = "${squad.unitType.name} x${squad.count}"
                 textSize = 16f
-                setTextColor(Color.WHITE)
+                setTextColor(Color.parseColor(UiTheme.TEXT_PRIMARY))
                 typeface = Typeface.DEFAULT_BOLD
             }
             header.addView(nameTv, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
@@ -208,7 +203,7 @@ class WarbandActivity : AppCompatActivity() {
             val catTv = TextView(this).apply {
                 text = squad.unitType.category.name
                 textSize = 12f
-                setTextColor(Color.parseColor("#888899"))
+                setTextColor(Color.parseColor(UiTheme.TEXT_MUTED))
             }
             header.addView(catTv)
 
@@ -219,7 +214,7 @@ class WarbandActivity : AppCompatActivity() {
                 text = "ATK:${squad.unitType.baseAttack} DEF:${squad.unitType.baseDefense} " +
                     "SPD:${"%.1f".format(squad.unitType.baseSpeed)} RNG:${"%.1f".format(squad.unitType.range)}"
                 textSize = 12f
-                setTextColor(Color.parseColor("#8888aa"))
+                setTextColor(Color.parseColor(UiTheme.TEXT_MUTED))
             }
             card.addView(stats, marginParams(top = 4))
 
@@ -228,9 +223,9 @@ class WarbandActivity : AppCompatActivity() {
                 text = "HP: ${"%.0f".format(squad.currentHpPercent * 100)}% | Morale: ${"%.0f".format(squad.morale)}%"
                 textSize = 12f
                 setTextColor(when {
-                    squad.currentHpPercent > 0.6f -> Color.parseColor("#33cc33")
-                    squad.currentHpPercent > 0.3f -> Color.parseColor("#cccc33")
-                    else -> Color.parseColor("#cc3333")
+                    squad.currentHpPercent > 0.6f -> Color.parseColor(UiTheme.SUCCESS)
+                    squad.currentHpPercent > 0.3f -> Color.parseColor(UiTheme.GOLD)
+                    else -> Color.parseColor(UiTheme.DANGER)
                 })
             }
             card.addView(hpMorale, marginParams(top = 2))
@@ -239,7 +234,7 @@ class WarbandActivity : AppCompatActivity() {
             val desc = TextView(this).apply {
                 text = squad.unitType.description
                 textSize = 11f
-                setTextColor(Color.parseColor("#666688"))
+                setTextColor(Color.parseColor(UiTheme.TEXT_MUTED))
             }
             card.addView(desc, marginParams(top = 4))
 
@@ -247,7 +242,7 @@ class WarbandActivity : AppCompatActivity() {
             val dismissBtn = TextView(this).apply {
                 text = "Dismiss"
                 textSize = 12f
-                setTextColor(Color.parseColor("#cc5555"))
+                setTextColor(Color.parseColor(UiTheme.DANGER))
                 gravity = Gravity.END
                 setPadding(0, 8, 0, 0)
                 setOnClickListener {
@@ -276,10 +271,14 @@ class WarbandActivity : AppCompatActivity() {
             val emptyCard = TextView(this).apply {
                 text = "[ Empty Slot ]"
                 textSize = 14f
-                setTextColor(Color.parseColor("#444466"))
+                setTextColor(Color.parseColor(UiTheme.TEXT_MUTED))
                 gravity = Gravity.CENTER
-                setBackgroundColor(Color.parseColor("#181833"))
-                setPadding(24, 20, 24, 20)
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    cornerRadius = 16f
+                    setColor(Color.parseColor(UiTheme.SURFACE_ALT))
+                    setStroke(1, Color.parseColor(UiTheme.BORDER))
+                }
+                setPadding(dp(16), dp(16), dp(16), dp(16))
             }
             squadList.addView(emptyCard, LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -290,11 +289,11 @@ class WarbandActivity : AppCompatActivity() {
 
     private fun getCategoryColor(category: UnitCategory): Int {
         return when (category) {
-            UnitCategory.FRONTLINE -> Color.parseColor("#3366aa")
-            UnitCategory.SKIRMISH -> Color.parseColor("#6699cc")
-            UnitCategory.RANGED -> Color.parseColor("#339966")
-            UnitCategory.CAVALRY -> Color.parseColor("#6633aa")
-            UnitCategory.SUPPORT -> Color.parseColor("#3399aa")
+            UnitCategory.FRONTLINE -> Color.parseColor("#5A79B8")
+            UnitCategory.SKIRMISH -> Color.parseColor("#7D92C2")
+            UnitCategory.RANGED -> Color.parseColor("#5B9B78")
+            UnitCategory.CAVALRY -> Color.parseColor(UiTheme.PRIMARY)
+            UnitCategory.SUPPORT -> Color.parseColor("#5A94A8")
         }
     }
 

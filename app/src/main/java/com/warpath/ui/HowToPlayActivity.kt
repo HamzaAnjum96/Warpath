@@ -23,19 +23,19 @@ class HowToPlayActivity : AppCompatActivity() {
             )
 
         val scroll = ScrollView(this).apply {
-            setBackgroundColor(Color.parseColor("#1a1a2e"))
+            setBackgroundColor(Color.parseColor(UiTheme.BASE_BG))
         }
 
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(50, 50, 50, 50)
+            setPadding(dp(24), dp(24), dp(24), dp(24))
         }
 
         val title = TextView(this).apply {
             text = "How to Play"
-            textSize = 28f
-            setTextColor(Color.parseColor("#e6c84c"))
-            typeface = Typeface.DEFAULT_BOLD
+            textSize = 30f
+            setTextColor(Color.parseColor(UiTheme.GOLD))
+            typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
             gravity = Gravity.CENTER
         }
         layout.addView(title, marginParams(bottom = 30))
@@ -70,12 +70,8 @@ class HowToPlayActivity : AppCompatActivity() {
         val backBtn = Button(this).apply {
             text = "Back to Menu"
             textSize = 16f
-            setTextColor(Color.WHITE)
-            setBackgroundColor(Color.parseColor("#2a2a4e"))
-            isAllCaps = false
-            typeface = Typeface.DEFAULT_BOLD
-            setPadding(30, 20, 30, 20)
-            stateListAnimator = null
+            setPadding(dp(24), dp(16), dp(24), dp(16))
+            applyUiButtonStyle(UiTheme.SURFACE_ALT, 16f)
             setOnClickListener { finish() }
         }
         layout.addView(
@@ -94,7 +90,7 @@ class HowToPlayActivity : AppCompatActivity() {
         val titleTv = TextView(this).apply {
             text = title
             textSize = 18f
-            setTextColor(Color.parseColor("#aabb99"))
+            setTextColor(Color.parseColor(UiTheme.TEXT_PRIMARY))
             typeface = Typeface.DEFAULT_BOLD
         }
         parent.addView(titleTv, marginParams(bottom = 6))
@@ -102,7 +98,7 @@ class HowToPlayActivity : AppCompatActivity() {
         val bodyTv = TextView(this).apply {
             text = body
             textSize = 14f
-            setTextColor(Color.parseColor("#8888aa"))
+            setTextColor(Color.parseColor(UiTheme.TEXT_MUTED))
             setLineSpacing(4f, 1f)
         }
         parent.addView(bodyTv, marginParams(bottom = 24))

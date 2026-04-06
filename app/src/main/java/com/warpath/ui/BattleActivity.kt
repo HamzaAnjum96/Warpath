@@ -57,7 +57,7 @@ class BattleActivity : AppCompatActivity() {
         startingEnemyCount = battleState.enemySquads.sumOf { it.count }
 
         val root = FrameLayout(this).apply {
-            setBackgroundColor(Color.parseColor("#0a0a0a"))
+            setBackgroundColor(Color.parseColor(UiTheme.BASE_BG))
         }
 
         // Battle view (takes most of the screen)
@@ -83,14 +83,14 @@ class BattleActivity : AppCompatActivity() {
         // Title bar
         val titleBar = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            setBackgroundColor(Color.parseColor("#cc1a1a2e"))
-            setPadding(20, 12, 20, 12)
+            setBackgroundColor(Color.parseColor(UiTheme.SURFACE))
+            setPadding(dp(16), dp(12), dp(16), dp(12))
             gravity = Gravity.CENTER_VERTICAL
         }
         val titleText = TextView(this).apply {
             text = "Battle: ${currentNode.name}"
             textSize = 16f
-            setTextColor(Color.parseColor("#e6c84c"))
+            setTextColor(Color.parseColor(UiTheme.GOLD))
             typeface = Typeface.DEFAULT_BOLD
         }
         titleBar.addView(titleText)
@@ -111,12 +111,12 @@ class BattleActivity : AppCompatActivity() {
 
         // Battle log
         val logScroll = HorizontalScrollView(this).apply {
-            setBackgroundColor(Color.parseColor("#111122"))
-            setPadding(16, 8, 16, 8)
+            setBackgroundColor(Color.parseColor(UiTheme.SURFACE_ALT))
+            setPadding(dp(12), dp(8), dp(12), dp(8))
         }
         logText = TextView(this).apply {
             textSize = 12f
-            setTextColor(Color.parseColor("#88cc88"))
+            setTextColor(Color.parseColor(UiTheme.TEXT_MUTED))
             maxLines = 2
             text = "Battle begins!"
         }
@@ -129,8 +129,8 @@ class BattleActivity : AppCompatActivity() {
         // Command bar
         commandBar = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            setBackgroundColor(Color.parseColor("#1a1a2e"))
-            setPadding(8, 12, 8, 12)
+            setBackgroundColor(Color.parseColor(UiTheme.SURFACE))
+            setPadding(dp(8), dp(12), dp(8), dp(12))
             gravity = Gravity.CENTER
         }
 
@@ -138,11 +138,8 @@ class BattleActivity : AppCompatActivity() {
             val btn = Button(this).apply {
                 text = cmd.displayName
                 textSize = 12f
-                setTextColor(Color.WHITE)
-                setBackgroundColor(getCommandColor(cmd))
-                isAllCaps = false
-                setPadding(16, 8, 16, 8)
-                typeface = Typeface.DEFAULT_BOLD
+                setPadding(dp(12), dp(8), dp(12), dp(8))
+                applyUiButtonStyle(getCommandColor(cmd), 10f)
                 setOnClickListener { onCommand(cmd) }
             }
             commandButtons[cmd] = btn
@@ -167,13 +164,13 @@ class BattleActivity : AppCompatActivity() {
         handler.post(battleTick)
     }
 
-    private fun getCommandColor(cmd: BattleCommand): Int {
+    private fun getCommandColor(cmd: BattleCommand): String {
         return when (cmd) {
-            BattleCommand.FOCUS_TARGET -> Color.parseColor("#cc8833")
-            BattleCommand.PUSH -> Color.parseColor("#cc3333")
-            BattleCommand.HOLD -> Color.parseColor("#3366aa")
-            BattleCommand.RALLY -> Color.parseColor("#33aa66")
-            BattleCommand.RETREAT -> Color.parseColor("#666666")
+            BattleCommand.FOCUS_TARGET -> UiTheme.GOLD
+            BattleCommand.PUSH -> UiTheme.DANGER
+            BattleCommand.HOLD -> UiTheme.PRIMARY
+            BattleCommand.RALLY -> UiTheme.SUCCESS
+            BattleCommand.RETREAT -> UiTheme.SURFACE_ALT
         }
     }
 

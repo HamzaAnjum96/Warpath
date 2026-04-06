@@ -41,14 +41,14 @@ class BattleResultActivity : AppCompatActivity() {
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setBackgroundColor(if (playerWon) Color.parseColor("#1a1a2e") else Color.parseColor("#220707"))
-            setPadding(60, 80, 60, 80)
+            setBackgroundColor(Color.parseColor(UiTheme.BASE_BG))
+            setPadding(dp(32), dp(40), dp(32), dp(40))
         }
 
         val resultText = TextView(this).apply {
             text = if (playerWon) "VICTORY" else "DEFEAT"
             textSize = 42f
-            setTextColor(if (playerWon) Color.parseColor("#e6c84c") else Color.parseColor("#ff4a4a"))
+            setTextColor(if (playerWon) Color.parseColor(UiTheme.GOLD) else Color.parseColor(UiTheme.DANGER))
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
         }
@@ -59,14 +59,14 @@ class BattleResultActivity : AppCompatActivity() {
                 text = "☠"
                 textSize = 44f
                 gravity = Gravity.CENTER
-                setTextColor(Color.parseColor("#ff8888"))
+                setTextColor(Color.parseColor(UiTheme.DANGER))
             }, marginParams(bottom = 8))
         }
 
         layout.addView(TextView(this).apply {
             text = nodeName
             textSize = 18f
-            setTextColor(Color.parseColor("#aaaacc"))
+            setTextColor(Color.parseColor(UiTheme.TEXT_MUTED))
             gravity = Gravity.CENTER
         }, marginParams(bottom = 24))
 
@@ -80,17 +80,17 @@ class BattleResultActivity : AppCompatActivity() {
 
         val rows = mutableListOf<Triple<String, String, Int>>()
         rows.add(Triple("Enemies Defeated", "$enemiesKilled / $enemiesStarted", Color.WHITE))
-        rows.add(Triple("Morale at End", "$moraleEnd%", Color.parseColor("#66ccaa")))
+        rows.add(Triple("Morale at End", "$moraleEnd%", Color.parseColor(UiTheme.SUCCESS)))
         casualtiesRows.forEach { row ->
-            rows.add(Triple("Casualties", row, Color.parseColor("#ffcc99")))
+            rows.add(Triple("Casualties", row, Color.parseColor(UiTheme.GOLD)))
         }
 
         if (playerWon) {
-            rows.add(Triple("Supplies", "+$suppliesReward", Color.parseColor("#33aa33")))
-            rows.add(Triple("Renown", "+$renownReward", Color.parseColor("#ccaa33")))
+            rows.add(Triple("Supplies", "+$suppliesReward", Color.parseColor(UiTheme.SUCCESS)))
+            rows.add(Triple("Renown", "+$renownReward", Color.parseColor(UiTheme.GOLD)))
         } else {
-            rows.add(Triple("Supplies Lost", "-$suppliesLost", Color.parseColor("#ff6666")))
-            rows.add(Triple("Warband Status", warbandStatus, Color.parseColor("#ff9999")))
+            rows.add(Triple("Supplies Lost", "-$suppliesLost", Color.parseColor(UiTheme.DANGER)))
+            rows.add(Triple("Warband Status", warbandStatus, Color.parseColor(UiTheme.DANGER)))
         }
 
         var delay = 100L
@@ -106,11 +106,11 @@ class BattleResultActivity : AppCompatActivity() {
         ))
 
         if (playerWon) {
-            layout.addView(makeActionButton("Continue Campaign", Color.parseColor("#33aa33")) {
+            layout.addView(makeActionButton("Continue Campaign", UiTheme.SUCCESS) {
                 finish()
             }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
         } else {
-            layout.addView(makeActionButton("⚔ Try Again", Color.parseColor("#aa2222")) {
+            layout.addView(makeActionButton("⚔ Try Again", UiTheme.DANGER) {
                 val intent = Intent(this, BattleActivity::class.java)
                 intent.putExtra("node_id", nodeId)
                 startActivity(intent)
@@ -119,7 +119,7 @@ class BattleResultActivity : AppCompatActivity() {
                 bottomMargin = 14
             })
 
-            layout.addView(makeActionButton("↩ Retreat", Color.parseColor("#555566")) {
+            layout.addView(makeActionButton("↩ Retreat", UiTheme.SURFACE_ALT) {
                 finish()
             }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
         }
@@ -127,16 +127,12 @@ class BattleResultActivity : AppCompatActivity() {
         setContentView(layout)
     }
 
-    private fun makeActionButton(label: String, color: Int, action: () -> Unit): Button {
+    private fun makeActionButton(label: String, color: String, action: () -> Unit): Button {
         return Button(this).apply {
             text = label
-            textSize = 18f
-            setTextColor(Color.WHITE)
-            setBackgroundColor(color)
-            isAllCaps = false
-            typeface = Typeface.DEFAULT_BOLD
-            setPadding(40, 24, 40, 24)
-            stateListAnimator = null
+            textSize = 16f
+            setPadding(dp(20), dp(14), dp(20), dp(14))
+            applyUiButtonStyle(color, 16f)
             setOnClickListener { action() }
         }
     }
@@ -149,7 +145,7 @@ class BattleResultActivity : AppCompatActivity() {
         row.addView(TextView(this).apply {
             text = label
             textSize = 16f
-            setTextColor(Color.parseColor("#8888aa"))
+            setTextColor(Color.parseColor(UiTheme.TEXT_MUTED))
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
 
         row.addView(TextView(this).apply {

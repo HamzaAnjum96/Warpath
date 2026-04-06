@@ -682,7 +682,7 @@ class CampaignActivity : AppCompatActivity() {
     private fun openPoiContextMenu(node: CampaignNode) {
         val options = when (node.type) {
             NodeType.ENEMY_PATROL, NodeType.ELITE_CHALLENGE, NodeType.BOSS ->
-                arrayOf("Attack", "Ambush", "Bribe", "Observe", "Flee")
+                arrayOf("Attack", "Ambush", "Bribe", "Observe")
 
             NodeType.TOWN, NodeType.VILLAGE ->
                 arrayOf("Recruit", "Heal", "Trade Supplies", "Rest", "Gather Rumours")
@@ -1013,7 +1013,15 @@ class CampaignActivity : AppCompatActivity() {
             return
         }
         travelHintText.text = "Nearby: ${filteredNearbyNode.name}"
-        if (selectedNode?.id == filteredNearbyNode.id && infoPanel.visibility == View.VISIBLE) return
+        if (
+            selectedNode?.id == filteredNearbyNode.id &&
+            infoPanel.visibility == View.VISIBLE &&
+            isNodeNearby(filteredNearbyNode)
+        ) {
+            val isAlreadyShowingActions = actionButton.visibility == View.VISIBLE &&
+                actionButton.text?.toString() == "Open Actions"
+            if (isAlreadyShowingActions) return
+        }
         onNodeSelected(filteredNearbyNode)
     }
 

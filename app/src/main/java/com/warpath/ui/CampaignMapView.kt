@@ -736,10 +736,12 @@ class CampaignMapView @JvmOverloads constructor(
 
         for (party in enemyParties) {
             val node = nodes.find { it.id == party.nodeId } ?: continue
-            if (!node.isRevealed || !inViewport(node.mapX, node.mapY, 0.2f)) continue
-
             val profile = partyVisualProfile(party)
             val partyPos = enemyDisplayPositions[party.id] ?: Pair(node.mapX, node.mapY)
+            if (!node.isRevealed) continue
+            val isVisibleByNode = inViewport(node.mapX, node.mapY, 0.2f)
+            val isVisibleByPartyPos = inViewport(partyPos.first, partyPos.second, 0.2f)
+            if (!isVisibleByNode && !isVisibleByPartyPos) continue
             val x = screenX((partyPos.first + profile.offsetNormX).coerceIn(0.02f, 0.98f))
             val y = screenY((partyPos.second + profile.offsetNormY).coerceIn(0.02f, 0.98f))
             val ringRadius = profile.iconRadiusPx + pulseValue * 6f

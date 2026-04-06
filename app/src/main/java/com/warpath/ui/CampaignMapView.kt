@@ -43,6 +43,8 @@ class CampaignMapView @JvmOverloads constructor(
 
     var enemyParties: List<EnemyParty> = emptyList()
         set(value) { field = value; invalidate() }
+    var enemyDisplayPositions: Map<String, Pair<Float, Float>> = emptyMap()
+        set(value) { field = value; invalidate() }
 
     var inputEnabled: Boolean = true
     var showPaths: Boolean = false
@@ -184,7 +186,13 @@ class CampaignMapView @JvmOverloads constructor(
         moveAnimator?.cancel()
     }
 
-    fun animatePlayerTo(targetNode: CampaignNode, onComplete: () -> Unit) {
+    private var moveWasCancelled = false
+
+    fun animatePlayerTo(
+        targetNode: CampaignNode,
+        onProgress: ((Float, Float, Float) -> Unit)? = null,
+        onComplete: (Boolean) -> Unit
+    ) {
         val startX = playerNormX
         val startY = playerNormY
         val endX = targetNode.mapX
@@ -193,11 +201,12 @@ class CampaignMapView @JvmOverloads constructor(
         val dx = endX - startX
         val dy = endY - startY
         if (dx * dx + dy * dy < 0.0001f) {
-            onComplete()
+            onComplete(false)
             return
         }
 
         isMoving = true
+        moveWasCancelled = false
         trail.clear()
         lastTrailNX = startX
         lastTrailNY = startY
@@ -211,6 +220,7 @@ class CampaignMapView @JvmOverloads constructor(
                 val t = anim.animatedValue as Float
                 playerNormX = startX + (endX - startX) * t
                 playerNormY = startY + (endY - startY) * t
+                onProgress?.invoke(t, playerNormX, playerNormY)
                 if (followPlayerFocus) {
                     cameraNormX = playerNormX
                     cameraNormY = playerNormY
@@ -228,18 +238,26 @@ class CampaignMapView @JvmOverloads constructor(
 
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) {
-                    finishMove(endX, endY, onComplete)
+                    if (!moveWasCancelled) {
+                        finishMove(endX, endY, onComplete, cancelled = false)
+                    }
                 }
 
                 override fun onAnimationCancel(animation: Animator) {
-                    finishMove(endX, endY, onComplete)
+                    moveWasCancelled = true
+                    finishMove(playerNormX, playerNormY, onComplete, cancelled = true)
                 }
             })
             start()
         }
     }
 
-    fun animatePlayerTo(normX: Float, normY: Float, onComplete: () -> Unit = {}) {
+    fun animatePlayerTo(
+        normX: Float,
+        normY: Float,
+        onProgress: ((Float, Float, Float) -> Unit)? = null,
+        onComplete: (Boolean) -> Unit = {}
+    ) {
         val endX = normX.coerceIn(0.02f, 0.98f)
         val endY = normY.coerceIn(0.02f, 0.98f)
         val startX = playerNormX
@@ -247,11 +265,12 @@ class CampaignMapView @JvmOverloads constructor(
         val dx = endX - startX
         val dy = endY - startY
         if (dx * dx + dy * dy < 0.00002f) {
-            onComplete()
+            onComplete(false)
             return
         }
 
         isMoving = true
+        moveWasCancelled = false
         trail.clear()
         lastTrailNX = startX
         lastTrailNY = startY
@@ -264,6 +283,7 @@ class CampaignMapView @JvmOverloads constructor(
                 val t = anim.animatedValue as Float
                 playerNormX = startX + (endX - startX) * t
                 playerNormY = startY + (endY - startY) * t
+                onProgress?.invoke(t, playerNormX, playerNormY)
                 if (followPlayerFocus) {
                     cameraNormX = playerNormX
                     cameraNormY = playerNormY
@@ -279,16 +299,26 @@ class CampaignMapView @JvmOverloads constructor(
             }
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) {
-                    finishMove(endX, endY, onComplete)
+                    if (!moveWasCancelled) {
+                        finishMove(endX, endY, onComplete, cancelled = false)
+                    }
                 }
 
                 override fun onAnimationCancel(animation: Animator) {
-                    finishMove(endX, endY, onComplete)
+                    moveWasCancelled = true
+                    finishMove(playerNormX, playerNormY, onComplete, cancelled = true)
                 }
             })
             start()
         }
     }
+
+    fun cancelMovement() {
+        if (!isMoving) return
+        moveAnimator?.cancel()
+    }
+
+    fun isMovementActive(): Boolean = isMoving
 
     fun setPlayerPosition(normX: Float, normY: Float) {
         playerNormX = normX
@@ -341,7 +371,7 @@ class CampaignMapView @JvmOverloads constructor(
         invalidate()
     }
 
-    private fun finishMove(endX: Float, endY: Float, onComplete: () -> Unit) {
+    private fun finishMove(endX: Float, endY: Float, onComplete: (Boolean) -> Unit, cancelled: Boolean) {
         isMoving = false
         playerNormX = endX
         playerNormY = endY
@@ -351,7 +381,7 @@ class CampaignMapView @JvmOverloads constructor(
         }
         trail.clear()
         invalidate()
-        post { onComplete() }
+        post { onComplete(cancelled) }
     }
 
     private fun visibleSpanX() = (baseViewportSpanX / cameraZoom).coerceIn(0.08f, 1f)
@@ -571,26 +601,6 @@ class CampaignMapView @JvmOverloads constructor(
                 continue
             }
 
-            if (node.id == currentNodeId) {
-                val glowR = nodeRadius + 5f + pulseValue * 10f
-                val glowAlpha = (80 + (pulseValue * 120).toInt())
-                glowPaint.color = Color.argb(glowAlpha, 230, 200, 76)
-                glowPaint.strokeWidth = 5f + pulseValue * 3f
-                canvas.drawCircle(cx, cy, glowR, glowPaint)
-            }
-
-            if (selectedNodeId == node.id) {
-                glowPaint.color = Color.parseColor("#ccb78646")
-                glowPaint.strokeWidth = 3.5f
-                canvas.drawCircle(cx, cy, nodeRadius + 13f + pulseValue * 3f, glowPaint)
-            }
-
-            if (isAccessibleFromCurrent(node) && !node.isCleared) {
-                val ringAlpha = (50 + (pulseValue * 80).toInt())
-                accessibleRingPaint.color = Color.argb(ringAlpha, 200, 200, 255)
-                canvas.drawCircle(cx, cy, nodeRadius + 5f, accessibleRingPaint)
-            }
-
             nodePaint.style = Paint.Style.FILL
             nodePaint.color = node.type.color.toInt()
             nodePaint.alpha = if (node.isCleared) 90 else 255
@@ -690,12 +700,6 @@ class CampaignMapView @JvmOverloads constructor(
             }
         }
 
-        val glowRadius = 24f + pulseValue * 8f
-        val glowAlpha = (100 + (pulseValue * 100).toInt())
-        playerOuterGlowPaint.color = Color.argb(glowAlpha, 220, 190, 90)
-        playerOuterGlowPaint.strokeWidth = 4f + pulseValue * 2f
-        canvas.drawCircle(px, py, glowRadius, playerOuterGlowPaint)
-
         playerPaint.color = Color.parseColor("#e6c84c")
         canvas.drawCircle(px, py, 16f, playerPaint)
 
@@ -735,8 +739,9 @@ class CampaignMapView @JvmOverloads constructor(
             if (!node.isRevealed || !inViewport(node.mapX, node.mapY, 0.2f)) continue
 
             val profile = partyVisualProfile(party)
-            val x = screenX((node.mapX + profile.offsetNormX).coerceIn(0.02f, 0.98f))
-            val y = screenY((node.mapY + profile.offsetNormY).coerceIn(0.02f, 0.98f))
+            val partyPos = enemyDisplayPositions[party.id] ?: Pair(node.mapX, node.mapY)
+            val x = screenX((partyPos.first + profile.offsetNormX).coerceIn(0.02f, 0.98f))
+            val y = screenY((partyPos.second + profile.offsetNormY).coerceIn(0.02f, 0.98f))
             val ringRadius = profile.iconRadiusPx + pulseValue * 6f
             val ringAlpha = (70 + pulseValue * 140f).toInt()
             val rangeRadius = worldRadiusToPixels(profile.rangeRadiusNorm)

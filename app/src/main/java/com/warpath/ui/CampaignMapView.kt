@@ -16,7 +16,10 @@ import com.warpath.model.NodeType
 import com.warpath.model.PartyFaction
 import com.warpath.model.UnitType
 import kotlin.math.abs
+import kotlin.math.atan2
+import kotlin.math.cos
 import kotlin.math.hypot
+import kotlin.math.sin
 
 class CampaignMapView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null
@@ -81,6 +84,7 @@ class CampaignMapView @JvmOverloads constructor(
     private var lastTrailNY = playerNormY
 
     private var moveAnimator: ValueAnimator? = null
+    private var cameraAnimator: ValueAnimator? = null
     private var pulseAnimator: ValueAnimator? = null
     private var pulseValue: Float = 0f
 
@@ -91,6 +95,11 @@ class CampaignMapView @JvmOverloads constructor(
         strokeWidth = 1f
     }
     private val terrainPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private val texturePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 1.6f
+        alpha = 70
+    }
     private val roadPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         color = Color.parseColor("#2a3551")
@@ -152,6 +161,13 @@ class CampaignMapView @JvmOverloads constructor(
     }
 
     private val nodeRadius = 34f
+    private val mapLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textSize = 34f
+        color = Color.parseColor("#4A5575")
+        textAlign = Paint.Align.CENTER
+        typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
+        letterSpacing = 0.12f
+    }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
@@ -184,6 +200,7 @@ class CampaignMapView @JvmOverloads constructor(
         super.onDetachedFromWindow()
         pulseAnimator?.cancel()
         moveAnimator?.cancel()
+        cameraAnimator?.cancel()
     }
 
     private var moveWasCancelled = false
@@ -354,10 +371,8 @@ class CampaignMapView @JvmOverloads constructor(
 
     fun recenterOnPlayer() {
         followPlayerFocus = true
-        cameraNormX = playerNormX
-        cameraNormY = playerNormY
+        animateCameraTo(playerNormX, playerNormY)
         onFocusChanged?.invoke(true)
-        invalidate()
     }
 
     fun isCenteredOnPlayer(): Boolean = followPlayerFocus
@@ -382,6 +397,23 @@ class CampaignMapView @JvmOverloads constructor(
         trail.clear()
         invalidate()
         post { onComplete(cancelled) }
+    }
+
+    private fun animateCameraTo(targetX: Float, targetY: Float) {
+        val startX = cameraNormX
+        val startY = cameraNormY
+        cameraAnimator?.cancel()
+        cameraAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 260
+            interpolator = AccelerateDecelerateInterpolator()
+            addUpdateListener { animator ->
+                val t = animator.animatedValue as Float
+                cameraNormX = startX + (targetX - startX) * t
+                cameraNormY = startY + (targetY - startY) * t
+                invalidate()
+            }
+            start()
+        }
     }
 
     private fun visibleSpanX() = (baseViewportSpanX / cameraZoom).coerceIn(0.08f, 1f)
@@ -444,7 +476,7 @@ class CampaignMapView @JvmOverloads constructor(
     private fun drawBackground(canvas: Canvas) {
         canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), bgPaint)
 
-        val worldStep = 0.05f
+        val worldStep = 0.1f
         var wx = 0f
         while (wx <= 1.001f) {
             val sx = screenX(wx)
@@ -458,22 +490,10 @@ class CampaignMapView @JvmOverloads constructor(
             wy += worldStep
         }
 
-        val terrainZones = listOf(
-            Triple(0.22f, 0.18f, Pair(0.22f, 0.16f) to "#17243D"), // hills
-            Triple(0.57f, 0.69f, Pair(0.30f, 0.20f) to "#132A2A"), // forests
-            Triple(0.80f, 0.22f, Pair(0.22f, 0.15f) to "#352C1D"), // drylands
-            Triple(0.24f, 0.74f, Pair(0.20f, 0.22f) to "#1D2538")  // plains
-        )
-        for ((bx, by, zone) in terrainZones) {
-            val (size, color) = zone
-            val (bw, bh) = size
-            terrainPaint.color = Color.parseColor(color)
-            val left = screenX(bx - bw / 2f)
-            val top = screenY(by - bh / 2f)
-            val right = screenX(bx + bw / 2f)
-            val bottom = screenY(by + bh / 2f)
-            canvas.drawOval(RectF(left, top, right, bottom), terrainPaint)
-        }
+        drawBiome(canvas, 0.81f, 0.24f, 0.36f, 0.24f, "#66543A", BiomeType.DESERT)
+        drawBiome(canvas, 0.23f, 0.73f, 0.36f, 0.26f, "#3B4B3A", BiomeType.PLAINS)
+        drawBiome(canvas, 0.56f, 0.67f, 0.34f, 0.24f, "#1E4035", BiomeType.FOREST)
+        drawBiome(canvas, 0.23f, 0.19f, 0.30f, 0.22f, "#364255", BiomeType.HILLS)
 
         val rivers = listOf(
             Pair(0.08f to 0.10f, 0.44f to 0.22f),
@@ -488,29 +508,8 @@ class CampaignMapView @JvmOverloads constructor(
         }
         terrainPaint.style = Paint.Style.FILL
 
-        for (node in nodes) {
-            if (!node.isRevealed) continue
-            for (connId in node.connections) {
-                val toNode = nodes.find { it.id == connId } ?: continue
-                if (!toNode.isRevealed) continue
-                roadPaint.alpha = if (showPaths) 140 else 90
-                canvas.drawLine(screenX(node.mapX), screenY(node.mapY), screenX(toNode.mapX), screenY(toNode.mapY), roadPaint)
-            }
-        }
-
-        val blobs = listOf(
-            Triple(0.32f, 0.12f, 0.18f to 0.2f),
-            Triple(0.62f, 0.72f, 0.22f to 0.22f)
-        )
-        for ((bx, by, size) in blobs) {
-            val (bw, bh) = size
-            val left = screenX(bx - bw / 2f)
-            val top = screenY(by - bh / 2f)
-            val right = screenX(bx + bw / 2f)
-            val bottom = screenY(by + bh / 2f)
-            terrainPaint.color = Color.parseColor("#111733")
-            canvas.drawOval(RectF(left, top, right, bottom), terrainPaint)
-        }
+        drawRoads(canvas)
+        drawRegionLabels(canvas)
     }
 
     private fun drawFogOfWar(canvas: Canvas) {
@@ -531,6 +530,71 @@ class CampaignMapView @JvmOverloads constructor(
             canvas.drawCircle(sx, sy, radius, fogHolePaint)
         }
         fogHolePaint.shader = null
+    }
+
+    private enum class BiomeType { DESERT, PLAINS, FOREST, HILLS }
+
+    private fun biomeAt(nx: Float, ny: Float): BiomeType {
+        return when {
+            nx > 0.63f && ny < 0.42f -> BiomeType.DESERT
+            ny > 0.56f && nx > 0.38f -> BiomeType.FOREST
+            nx < 0.40f && ny < 0.40f -> BiomeType.HILLS
+            else -> BiomeType.PLAINS
+        }
+    }
+
+    private fun drawBiome(canvas: Canvas, centerX: Float, centerY: Float, widthNorm: Float, heightNorm: Float, color: String, biome: BiomeType) {
+        terrainPaint.color = Color.parseColor(color)
+        val left = screenX(centerX - widthNorm / 2f)
+        val top = screenY(centerY - heightNorm / 2f)
+        val right = screenX(centerX + widthNorm / 2f)
+        val bottom = screenY(centerY + heightNorm / 2f)
+        canvas.drawOval(RectF(left, top, right, bottom), terrainPaint)
+
+        texturePaint.color = when (biome) {
+            BiomeType.DESERT -> Color.parseColor("#91744E")
+            BiomeType.PLAINS -> Color.parseColor("#5E7154")
+            BiomeType.FOREST -> Color.parseColor("#355B4B")
+            BiomeType.HILLS -> Color.parseColor("#63708A")
+        }
+        val step = when (biome) {
+            BiomeType.DESERT -> 26f
+            BiomeType.PLAINS -> 30f
+            BiomeType.FOREST -> 22f
+            BiomeType.HILLS -> 24f
+        }
+        var y = top + 8f
+        while (y <= bottom - 8f) {
+            canvas.drawLine(left + 10f, y, right - 10f, y + if (biome == BiomeType.HILLS) 5f else 2f, texturePaint)
+            y += step
+        }
+    }
+
+    private fun drawRoads(canvas: Canvas) {
+        val drawn = mutableSetOf<String>()
+        for (node in nodes) {
+            for (connId in node.connections) {
+                val toNode = nodes.find { it.id == connId } ?: continue
+                val key = if (node.id < toNode.id) "${node.id}-${toNode.id}" else "${toNode.id}-${node.id}"
+                if (!drawn.add(key)) continue
+                roadPaint.color = when (biomeAt((node.mapX + toNode.mapX) / 2f, (node.mapY + toNode.mapY) / 2f)) {
+                    BiomeType.DESERT -> Color.parseColor("#A08966")
+                    BiomeType.PLAINS -> Color.parseColor("#7C8A6D")
+                    BiomeType.FOREST -> Color.parseColor("#5A6F5E")
+                    BiomeType.HILLS -> Color.parseColor("#7A8193")
+                }
+                roadPaint.alpha = if (showPaths) 150 else 105
+                roadPaint.strokeWidth = 2.5f
+                canvas.drawLine(screenX(node.mapX), screenY(node.mapY), screenX(toNode.mapX), screenY(toNode.mapY), roadPaint)
+            }
+        }
+    }
+
+    private fun drawRegionLabels(canvas: Canvas) {
+        canvas.drawText("ASHEN DUNES", screenX(0.77f), screenY(0.16f), mapLabelPaint)
+        canvas.drawText("IRON HILLS", screenX(0.23f), screenY(0.10f), mapLabelPaint)
+        canvas.drawText("SABLE WOODS", screenX(0.58f), screenY(0.80f), mapLabelPaint)
+        canvas.drawText("BROKEN PLAINS", screenX(0.22f), screenY(0.86f), mapLabelPaint)
     }
 
     private fun drawConnections(canvas: Canvas) {
@@ -609,12 +673,17 @@ class CampaignMapView @JvmOverloads constructor(
 
             drawNodeShape(canvas, node, cx, cy)
             if (node.isCleared) canvas.drawCircle(cx, cy, nodeRadius + 3f, clearedRingPaint)
+            if (selectedNodeId == node.id) {
+                val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    style = Paint.Style.STROKE
+                    color = Color.parseColor("#D6E0FF")
+                    strokeWidth = 3f
+                }
+                val selRadius = nodeRadius + 8f + pulseValue * 3f
+                canvas.drawCircle(cx, cy, selRadius, ringPaint)
+            }
 
-            textPaint.color = if (node.isCleared) Color.argb(160, 255, 255, 255) else Color.WHITE
-            textPaint.textSize = 24f
-            canvas.drawText(nodeIcon(node.type), cx, cy + 9f, textPaint)
-            textPaint.textSize = 26f
-            textPaint.color = Color.WHITE
+            drawNodeGlyph(canvas, node, cx, cy)
 
             val label = if (node.isCleared) "✓ ${node.name}" else node.name
             val shouldShowLabel = selectedNodeId == node.id ||
@@ -645,6 +714,22 @@ class CampaignMapView @JvmOverloads constructor(
     private fun isTemporaryNode(node: CampaignNode): Boolean = when (node.type) {
         NodeType.ENEMY_PATROL, NodeType.RESOURCE_CACHE, NodeType.ELITE_CHALLENGE, NodeType.RECOVERY_CAMP -> true
         else -> false
+    }
+
+    private fun drawNodeGlyph(canvas: Canvas, node: CampaignNode, cx: Float, cy: Float) {
+        textPaint.color = if (node.isCleared) Color.argb(150, 255, 255, 255) else Color.WHITE
+        textPaint.textSize = 20f
+        val glyph = when (node.type) {
+            NodeType.TOWN -> "⌂"
+            NodeType.VILLAGE -> "⌂"
+            NodeType.RECOVERY_CAMP, NodeType.FACTION_OUTPOST -> "⌇"
+            NodeType.ENEMY_PATROL, NodeType.ELITE_CHALLENGE, NodeType.BOSS -> "⛬"
+            NodeType.RESOURCE_CACHE -> "◈"
+            NodeType.START -> "▲"
+        }
+        canvas.drawText(glyph, cx, cy + 7f, textPaint)
+        textPaint.textSize = 26f
+        textPaint.color = Color.WHITE
     }
 
     private fun drawNodeShape(canvas: Canvas, node: CampaignNode, cx: Float, cy: Float) {
@@ -701,18 +786,17 @@ class CampaignMapView @JvmOverloads constructor(
         }
 
         playerPaint.color = Color.parseColor("#e6c84c")
-        canvas.drawCircle(px, py, 16f, playerPaint)
+        canvas.drawCircle(px, py, 14f, playerPaint)
 
-        val lookLine = 28f
-        val lx = px + playerLookDirX * lookLine
-        val ly = py + playerLookDirY * lookLine
-        val lookPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.parseColor("#f5e4ab")
-            strokeWidth = 4f
-            style = Paint.Style.STROKE
+        val heading = atan2(playerLookDirY, playerLookDirX)
+        val pointer = Path().apply {
+            moveTo(px + cos(heading) * 24f, py + sin(heading) * 24f)
+            lineTo(px + cos(heading + 2.42f) * 8f, py + sin(heading + 2.42f) * 8f)
+            lineTo(px + cos(heading - 2.42f) * 8f, py + sin(heading - 2.42f) * 8f)
+            close()
         }
-        canvas.drawLine(px, py, lx, ly, lookPaint)
-        canvas.drawCircle(lx, ly, 4f, lookPaint)
+        val lookPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#F5E4AB") }
+        canvas.drawPath(pointer, lookPaint)
 
         playerIconPaint.color = Color.parseColor("#2c2c2c")
         canvas.drawText("▲", px, py + 8f, playerIconPaint)
@@ -772,14 +856,30 @@ class CampaignMapView @JvmOverloads constructor(
             pulseRingPaint.alpha = 255
             canvas.drawCircle(x, y, ringRadius, pulseRingPaint)
             canvas.drawCircle(x, y, profile.iconRadiusPx, markerPaint)
-            canvas.drawText(if (party.faction == PartyFaction.FRIENDLY) "🛡" else "☠", x, y + 9f, symbolPaint)
+            val biome = biomeAt(partyPos.first, partyPos.second)
+            val symbol = if (party.faction == PartyFaction.FRIENDLY) "△" else enemySymbolForBiome(biome)
+            canvas.drawText(symbol, x, y + 9f, symbolPaint)
             canvas.drawText(
-                if (party.faction == PartyFaction.FRIENDLY) "ALLY L${profile.level}" else "ROAMING L${profile.level}",
+                if (party.faction == PartyFaction.FRIENDLY) "ALLY L${profile.level}" else "${enemyFamilyForBiome(biome)} L${profile.level}",
                 x,
                 y - (profile.iconRadiusPx + 9f),
                 labelPaint
             )
         }
+    }
+
+    private fun enemyFamilyForBiome(biome: BiomeType): String = when (biome) {
+        BiomeType.DESERT -> "DUNE RAIDERS"
+        BiomeType.PLAINS -> "HORSE WARBAND"
+        BiomeType.FOREST -> "FOREST BANDITS"
+        BiomeType.HILLS -> "HILL AMBUSHERS"
+    }
+
+    private fun enemySymbolForBiome(biome: BiomeType): String = when (biome) {
+        BiomeType.DESERT -> "◇"
+        BiomeType.PLAINS -> "✦"
+        BiomeType.FOREST -> "◬"
+        BiomeType.HILLS -> "◆"
     }
 
     private data class PartyVisualProfile(
@@ -819,18 +919,6 @@ class CampaignMapView @JvmOverloads constructor(
     private fun isAccessibleFromCurrent(node: CampaignNode): Boolean {
         val current = nodes.find { it.id == currentNodeId } ?: return false
         return current.connections.contains(node.id)
-    }
-
-    private fun nodeIcon(type: NodeType): String = when (type) {
-        NodeType.ENEMY_PATROL -> "⚔"
-        NodeType.RESOURCE_CACHE -> "◈"
-        NodeType.ELITE_CHALLENGE -> "☠"
-        NodeType.RECOVERY_CAMP -> "♥"
-        NodeType.FACTION_OUTPOST -> "⚑"
-        NodeType.TOWN -> "♜"
-        NodeType.VILLAGE -> "⌂"
-        NodeType.BOSS -> "♛"
-        NodeType.START -> "⌂"
     }
 
     private fun lighten(color: Int, factor: Float): Int {

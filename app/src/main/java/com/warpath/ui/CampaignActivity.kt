@@ -43,6 +43,7 @@ class CampaignActivity : AppCompatActivity() {
     private lateinit var travelHintText: TextView
     private lateinit var recenterButton: Button
     private lateinit var stopMovementButton: Button
+    private lateinit var mapStateText: TextView
 
     private val phaseOnePocMode = true
     private val poiInteractionDistance = 0.07f
@@ -87,6 +88,7 @@ class CampaignActivity : AppCompatActivity() {
                 if (!focused) {
                     Toast.makeText(context, "Map unfocused. Drag to scout. Tap ⌖ to lock on warband.", Toast.LENGTH_SHORT).show()
                 }
+                updateMapStateText()
             }
         }
         root.addView(
@@ -151,15 +153,23 @@ class CampaignActivity : AppCompatActivity() {
             }
         )
 
+        mapStateText = TextView(this).apply {
+            textSize = if (compactUi) 9f else 10f
+            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+            setTextColor(Color.parseColor("#E7EEFF"))
+            setPadding(dp(10), dp(5), dp(10), dp(5))
+            letterSpacing = 0.08f
+        }
+        styleChip(mapStateText, "#33405E")
         root.addView(
-            buildMapControls(),
+            mapStateText,
             FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.WRAP_CONTENT,
                 FrameLayout.LayoutParams.WRAP_CONTENT,
-                Gravity.END or Gravity.BOTTOM
+                Gravity.TOP or Gravity.END
             ).apply {
+                topMargin = dp(124)
                 rightMargin = dp(16)
-                bottomMargin = dp(if (compactUi) 172 else 186)
             }
         )
 
@@ -200,7 +210,7 @@ class CampaignActivity : AppCompatActivity() {
             setBackgroundColor(Color.parseColor("#B1131D33"))
             typeface = Typeface.create("sans-serif", Typeface.NORMAL)
             setPadding(dp(14), dp(10), dp(14), dp(10))
-            text = "Tap to select. Tap terrain to travel. Pinch to zoom."
+            text = "Tap to select. Tap terrain to travel. Pinch or double-tap to zoom."
         }
         root.addView(
             travelHintText,
@@ -216,6 +226,7 @@ class CampaignActivity : AppCompatActivity() {
 
         setContentView(root)
         updateHud()
+        updateMapStateText()
         checkFogDiscovery(showToast = false)
         showNearbyPoiIfAny()
     }
@@ -286,9 +297,10 @@ class CampaignActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
-                cornerRadius = dpF(20f)
-                setColor(Color.parseColor("#EB0C1426"))
-                setStroke(dp(1), Color.parseColor("#53668D"))
+                cornerRadius = dpF(14f)
+                orientation = GradientDrawable.Orientation.TOP_BOTTOM
+                colors = intArrayOf(Color.parseColor("#E1142643"), Color.parseColor("#E10E1D35"))
+                setStroke(dp(1), Color.parseColor("#556C97"))
             }
             visibility = View.GONE
         }
@@ -298,13 +310,13 @@ class CampaignActivity : AppCompatActivity() {
             panelAccentBar,
             LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                5
+                3
             )
         )
 
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(22), dp(18), dp(22), dp(20))
+            setPadding(dp(20), dp(14), dp(20), dp(16))
         }
 
         val headerRow = LinearLayout(this).apply {
@@ -328,10 +340,10 @@ class CampaignActivity : AppCompatActivity() {
         )
 
         nodeNameText = TextView(this).apply {
-            textSize = if (compactUi) 19f else 21f
-            setTextColor(Color.WHITE)
+            textSize = if (compactUi) 18f else 20f
+            setTextColor(Color.parseColor("#F6F8FF"))
             typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
-            letterSpacing = 0.03f
+            letterSpacing = 0.02f
         }
         headerRow.addView(nodeNameText, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
 
@@ -340,7 +352,12 @@ class CampaignActivity : AppCompatActivity() {
             textSize = if (compactUi) 16f else 18f
             setTextColor(Color.parseColor("#8C98B4"))
             setPadding(8, 0, 4, 0)
-            setOnClickListener { infoPanel.visibility = View.GONE }
+            setOnClickListener {
+                infoPanel.visibility = View.GONE
+                selectedNode = null
+                mapView.selectedNodeId = null
+                updateMapStateText()
+            }
         }
         headerRow.addView(dismissX)
 
@@ -381,10 +398,11 @@ class CampaignActivity : AppCompatActivity() {
         )
 
         nodeDescText = TextView(this).apply {
-            textSize = if (compactUi) 12f else 13f
+            textSize = if (compactUi) 11f else 12f
             setTextColor(Color.parseColor("#C3CAE2"))
             typeface = Typeface.create("sans-serif", Typeface.NORMAL)
             setLineSpacing(4f, 1f)
+            maxLines = 1
         }
         content.addView(
             nodeDescText,
@@ -408,13 +426,13 @@ class CampaignActivity : AppCompatActivity() {
         )
 
         actionButton = Button(this).apply {
-            textSize = if (compactUi) 14f else 16f
+            textSize = if (compactUi) 13f else 15f
             setTextColor(Color.WHITE)
             isAllCaps = false
             typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
-            setPadding(dp(16), dp(13), dp(16), dp(13))
+            setPadding(dp(16), dp(10), dp(16), dp(10))
             stateListAnimator = null
-            applyRoundedStyle(backgroundColor = "#4A3F88", borderColor = "#6B63A8", topEdgeColor = "#8A82CA", cornerRadius = 18f)
+            applyRoundedStyle(backgroundColor = "#3F4482", borderColor = "#6571A8", topEdgeColor = "#7D8AC3", cornerRadius = 14f)
         }
         content.addView(
             actionButton,
@@ -443,40 +461,6 @@ class CampaignActivity : AppCompatActivity() {
         )
 
         return container
-    }
-
-    private fun buildMapControls(): View {
-        val container = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.END
-        }
-
-        val zoomIn = mapIconButton("＋") { mapView.zoomIn() }
-        val zoomOut = mapIconButton("－") { mapView.zoomOut() }
-        container.addView(zoomIn)
-        container.addView(
-            zoomOut,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { topMargin = 10 }
-        )
-        return container
-    }
-
-    private fun mapIconButton(symbol: String, onClick: () -> Unit): Button {
-        return Button(this).apply {
-            text = symbol
-            textSize = 12f
-            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
-            setTextColor(Color.parseColor("#C6D1EA"))
-            isAllCaps = false
-            setPadding(dp(8), dp(4), dp(8), dp(4))
-            stateListAnimator = null
-            alpha = 0.7f
-            applyRoundedStyle(backgroundColor = "#1D263B", borderColor = "#42516F", topEdgeColor = "#5D7094", cornerRadius = 16f)
-            setOnClickListener { onClick() }
-        }
     }
 
     private fun Button.applyRoundedStyle(
@@ -509,6 +493,21 @@ class CampaignActivity : AppCompatActivity() {
         return "${meters.toInt()}m"
     }
 
+    private fun updateMapStateText() {
+        if (!::mapStateText.isInitialized) return
+        val moving = mapView.isMovementActive()
+        val hasTarget = selectedNode != null
+        val centered = mapView.isCenteredOnPlayer()
+        val (label, color) = when {
+            moving -> "TRAVELLING" to "#4D5F87"
+            hasTarget -> "TARGET LOCKED" to "#5E4E82"
+            !centered -> "SCOUTING" to "#3A5B66"
+            else -> "FOLLOW WARBAND" to "#33405E"
+        }
+        mapStateText.text = label
+        styleChip(mapStateText, color)
+    }
+
 
     private fun dp(value: Int): Int = (value * density).toInt()
     private fun dpF(value: Float): Float = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value, resources.displayMetrics)
@@ -526,6 +525,7 @@ class CampaignActivity : AppCompatActivity() {
         mapView.showPaths = !phaseOnePocMode
         mapView.invalidate()
         recenterButton.visibility = if (mapView.isCenteredOnPlayer()) View.GONE else View.VISIBLE
+        updateMapStateText()
         updateHud()
         checkFogDiscovery(showToast = false)
         showNearbyPoiIfAny()
@@ -552,6 +552,7 @@ class CampaignActivity : AppCompatActivity() {
         selectedNode = null
         mapView.selectedNodeId = null
         infoPanel.visibility = View.GONE
+        updateMapStateText()
         moveWarbandTo(normX, normY)
     }
 
@@ -574,6 +575,7 @@ class CampaignActivity : AppCompatActivity() {
         selectedNode = node
         mapView.selectedNodeId = node.id
         infoPanel.visibility = View.VISIBLE
+        updateMapStateText()
 
         panelAccentBar.setBackgroundColor(node.type.color.toInt())
 
@@ -612,7 +614,7 @@ class CampaignActivity : AppCompatActivity() {
                     nodeDescText.text = node.description
                     nodeStatsText.text = "Enemies: $enemyCount  |  ⚔ +${node.suppliesReward}  ★ +${node.renownReward}"
                     actionButton.text = if (node.type == NodeType.BOSS) "⚔ Storm the Stronghold!" else "⚔ Attack!"
-                    actionButton.applyRoundedStyle(backgroundColor = "#4A3F88", borderColor = "#6B63A8", topEdgeColor = "#8A82CA", cornerRadius = 18f)
+                    actionButton.applyRoundedStyle(backgroundColor = "#3F4482", borderColor = "#6571A8", topEdgeColor = "#7D8AC3", cornerRadius = 14f)
                     actionButton.visibility = View.VISIBLE
                     actionButton.setOnClickListener { animateAndThen(node) { engageBattle(node) } }
                 }
@@ -621,7 +623,7 @@ class CampaignActivity : AppCompatActivity() {
                     nodeDescText.text = node.description
                     nodeStatsText.text = "Cost: 20 supplies  |  Heal 40% HP"
                     actionButton.text = "♥ Rest & Heal"
-                    actionButton.applyRoundedStyle(backgroundColor = "#4A3F88", borderColor = "#6B63A8", topEdgeColor = "#8A82CA", cornerRadius = 18f)
+                    actionButton.applyRoundedStyle(backgroundColor = "#3F4482", borderColor = "#6571A8", topEdgeColor = "#7D8AC3", cornerRadius = 14f)
                     actionButton.visibility = View.VISIBLE
                     actionButton.setOnClickListener { animateAndThen(node) { restAtCamp(node) } }
                 }
@@ -630,7 +632,7 @@ class CampaignActivity : AppCompatActivity() {
                     nodeDescText.text = node.description
                     nodeStatsText.text = "Reward: ⚔ +${node.suppliesReward}  ★ +${node.renownReward}"
                     actionButton.text = "◈ Collect Supplies"
-                    actionButton.applyRoundedStyle(backgroundColor = "#4A3F88", borderColor = "#6B63A8", topEdgeColor = "#8A82CA", cornerRadius = 18f)
+                    actionButton.applyRoundedStyle(backgroundColor = "#3F4482", borderColor = "#6571A8", topEdgeColor = "#7D8AC3", cornerRadius = 14f)
                     actionButton.visibility = View.VISIBLE
                     actionButton.setOnClickListener { animateAndThen(node) { collectResources(node) } }
                 }
@@ -639,7 +641,7 @@ class CampaignActivity : AppCompatActivity() {
                     nodeDescText.text = node.description
                     nodeStatsText.text = "Recruit troops and resupply"
                     actionButton.text = "⚑ Visit Outpost"
-                    actionButton.applyRoundedStyle(backgroundColor = "#4A3F88", borderColor = "#6B63A8", topEdgeColor = "#8A82CA", cornerRadius = 18f)
+                    actionButton.applyRoundedStyle(backgroundColor = "#3F4482", borderColor = "#6571A8", topEdgeColor = "#7D8AC3", cornerRadius = 14f)
                     actionButton.visibility = View.VISIBLE
                     actionButton.setOnClickListener { animateAndThen(node) { visitOutpost(node) } }
                 }
@@ -648,7 +650,7 @@ class CampaignActivity : AppCompatActivity() {
                     nodeDescText.text = node.description
                     nodeStatsText.text = "Cost: 35 supplies  |  Full heal + recruit support"
                     actionButton.text = "♜ Rest in Town"
-                    actionButton.applyRoundedStyle(backgroundColor = "#4A3F88", borderColor = "#6B63A8", topEdgeColor = "#8A82CA", cornerRadius = 18f)
+                    actionButton.applyRoundedStyle(backgroundColor = "#3F4482", borderColor = "#6571A8", topEdgeColor = "#7D8AC3", cornerRadius = 14f)
                     actionButton.visibility = View.VISIBLE
                     actionButton.setOnClickListener { animateAndThen(node) { restAtSettlement(node, true) } }
                 }
@@ -657,7 +659,7 @@ class CampaignActivity : AppCompatActivity() {
                     nodeDescText.text = node.description
                     nodeStatsText.text = "Cost: 15 supplies  |  Heal 50%"
                     actionButton.text = "⌂ Rest in Village"
-                    actionButton.applyRoundedStyle(backgroundColor = "#4A3F88", borderColor = "#6B63A8", topEdgeColor = "#8A82CA", cornerRadius = 18f)
+                    actionButton.applyRoundedStyle(backgroundColor = "#3F4482", borderColor = "#6571A8", topEdgeColor = "#7D8AC3", cornerRadius = 14f)
                     actionButton.visibility = View.VISIBLE
                     actionButton.setOnClickListener { animateAndThen(node) { restAtSettlement(node, false) } }
                 }
@@ -692,7 +694,7 @@ class CampaignActivity : AppCompatActivity() {
             nodeStatsText.text = "Within interaction range."
             actionButton.text = "Open Actions"
             actionButton.visibility = View.VISIBLE
-            actionButton.applyRoundedStyle(backgroundColor = "#4A3F88", borderColor = "#6B63A8", topEdgeColor = "#8A82CA", cornerRadius = 18f)
+            actionButton.applyRoundedStyle(backgroundColor = "#3F4482", borderColor = "#6571A8", topEdgeColor = "#7D8AC3", cornerRadius = 14f)
             actionSecondaryText.text = "More details"
             actionSecondaryText.visibility = View.VISIBLE
             actionButton.setOnClickListener {
@@ -707,7 +709,7 @@ class CampaignActivity : AppCompatActivity() {
         nodeStatsText.text = "Out of range. Travel to this location."
         actionButton.text = "Travel"
         actionButton.visibility = View.VISIBLE
-        actionButton.applyRoundedStyle(backgroundColor = "#4A3F88", borderColor = "#6B63A8", topEdgeColor = "#8A82CA", cornerRadius = 18f)
+        actionButton.applyRoundedStyle(backgroundColor = "#3F4482", borderColor = "#6571A8", topEdgeColor = "#7D8AC3", cornerRadius = 14f)
         actionButton.setOnClickListener { moveWarbandTo(node.mapX, node.mapY) }
     }
 
@@ -956,7 +958,7 @@ class CampaignActivity : AppCompatActivity() {
             isAllCaps = false
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE)
-            applyRoundedStyle(backgroundColor = "#4A3F88")
+            applyRoundedStyle(backgroundColor = "#3F4482", borderColor = "#6571A8", topEdgeColor = "#7D8AC3", cornerRadius = 14f)
             setOnClickListener { dialog.dismiss() }
         }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
             topMargin = dp(14)
@@ -975,9 +977,10 @@ class CampaignActivity : AppCompatActivity() {
         var latestPlayerX = startX
         var latestPlayerY = startY
         mapView.inputEnabled = false
-        statusText.text = "▶ Marching…"
+        statusText.text = "▶ Travelling · 0%"
         statusText.visibility = View.VISIBLE
         stopMovementButton.visibility = View.VISIBLE
+        updateMapStateText()
         mapView.animatePlayerTo(
             normX,
             normY,
@@ -991,6 +994,8 @@ class CampaignActivity : AppCompatActivity() {
                     totalPlayerTravelNorm = totalDistanceNorm,
                     playerMetersPerAction = playerMetersPerMoveAction
                 )
+                val meters = (latestProgressNorm * 1000f).toInt()
+                statusText.text = "▶ Travelling · ${(t * 100f).toInt()}% · ${meters}m"
             }
         ) { cancelled ->
             val movedNorm = latestProgressNorm
@@ -1009,6 +1014,7 @@ class CampaignActivity : AppCompatActivity() {
             mapView.inputEnabled = true
             statusText.visibility = View.GONE
             stopMovementButton.visibility = View.GONE
+            updateMapStateText()
             if (cancelled) {
                 Toast.makeText(this, "Movement cancelled.", Toast.LENGTH_SHORT).show()
             }
@@ -1034,6 +1040,7 @@ class CampaignActivity : AppCompatActivity() {
         )
         mapView.recenterOnPlayer()
         mapView.invalidate()
+        updateMapStateText()
         updateHud()
         Toast.makeText(this, "Explored ${node.name}.", Toast.LENGTH_SHORT).show()
         infoPanel.visibility = View.GONE

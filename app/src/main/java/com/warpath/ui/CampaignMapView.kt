@@ -104,7 +104,7 @@ class CampaignMapView @JvmOverloads constructor(
     private var pulseValue: Float = 0f
     private var ambientValue: Float = 0f
 
-    private val bgPaint = Paint().apply { color = Color.parseColor("#111B2D") }
+    private val bgPaint = Paint().apply { color = Color.parseColor("#0E1726") }
     private val terrainPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val texturePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
@@ -113,48 +113,47 @@ class CampaignMapView @JvmOverloads constructor(
     }
     private val roadPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        color = Color.parseColor("#5E5E5A")
+        color = Color.parseColor("#B89C6B")
         strokeWidth = 3f
         strokeCap = Paint.Cap.ROUND
     }
     private val contourPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        color = Color.parseColor("#4F5C72")
+        color = Color.parseColor("#707985")
         strokeWidth = 1.8f
         alpha = 65
     }
     private val landShadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        color = Color.parseColor("#1b12101A")
+        color = Color.parseColor("#0A122026")
     }
     private val riverPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeCap = Paint.Cap.ROUND
         strokeJoin = Paint.Join.ROUND
-        color = Color.parseColor("#5A6057")
+        color = Color.parseColor("#2A4D63")
         alpha = 180
         strokeWidth = 7f
     }
     private val dryRiverPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeCap = Paint.Cap.ROUND
-        color = Color.parseColor("#7f6b4f")
+        color = Color.parseColor("#8C7450")
         pathEffect = DashPathEffect(floatArrayOf(16f, 11f), 0f)
         strokeWidth = 3f
         alpha = 120
     }
     private val fogPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        color = Color.parseColor("#B6141E31")
+        color = Color.parseColor("#3A0A1220")
     }
-    private val fogHolePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#4A5A71")
+        color = Color.parseColor("#27415E")
         strokeWidth = 3f
         style = Paint.Style.STROKE
     }
     private val activeLinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#B59A6D")
+        color = Color.parseColor("#B89C6B")
         strokeWidth = 5f
         style = Paint.Style.STROKE
     }
@@ -170,17 +169,17 @@ class CampaignMapView @JvmOverloads constructor(
         typeface = Typeface.DEFAULT_BOLD
     }
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#D8DEEA")
+        color = Color.parseColor("#F2F0EA")
         textSize = 17f
         textAlign = Paint.Align.CENTER
     }
     private val labelBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#AA111D31")
+        color = Color.parseColor("#C0111C2D")
         style = Paint.Style.FILL
     }
     private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
     private val clearedRingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#6E8A62")
+        color = Color.parseColor("#5FAF7A")
         style = Paint.Style.STROKE
         strokeWidth = 2.5f
     }
@@ -198,34 +197,34 @@ class CampaignMapView @JvmOverloads constructor(
     }
     private val nearbyNodeRingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        color = Color.parseColor("#7AB89B84")
+        color = Color.parseColor("#6E8E9BB0")
         strokeWidth = 1.7f
         alpha = 80
     }
     private val selectedNodeRingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        color = Color.parseColor("#D9C8B3")
+        color = Color.parseColor("#D4B15A")
         strokeWidth = 3f
     }
     private val playerRouteLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#D6DCEF")
+        color = Color.parseColor("#B8C2D1")
         textSize = 11f
         textAlign = Paint.Align.CENTER
         typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
     }
     private val playerRingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        color = Color.parseColor("#D4AE52")
+        color = Color.parseColor("#D4B15A")
         strokeWidth = 4f
     }
     private val playerLookPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#E7D9AB")
+        color = Color.parseColor("#D4B15A")
     }
 
     private val nodeRadius = 34f
     private val mapLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textSize = 34f
-        color = Color.parseColor("#8C7A66")
+        color = Color.parseColor("#B8C2D1")
         textAlign = Paint.Align.CENTER
         typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
         letterSpacing = 0.12f
@@ -233,7 +232,7 @@ class CampaignMapView @JvmOverloads constructor(
     private val ambiencePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val campfirePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        color = Color.parseColor("#A77636")
+        color = Color.parseColor("#B89C6B")
         alpha = 120
     }
 
@@ -622,11 +621,11 @@ class CampaignMapView @JvmOverloads constructor(
     private fun drawBackground(canvas: Canvas) {
         canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), bgPaint)
 
-        drawBiome(canvas, 0.50f, 0.50f, 1.32f, 1.24f, "#41506A", BiomeType.PLAINS)
-        drawBiome(canvas, 0.79f, 0.24f, 0.52f, 0.36f, "#7A6A4A", BiomeType.DESERT)
-        drawBiome(canvas, 0.58f, 0.71f, 0.60f, 0.42f, "#374F45", BiomeType.FOREST)
-        drawBiome(canvas, 0.21f, 0.21f, 0.45f, 0.36f, "#4C5869", BiomeType.HILLS)
-        drawBiome(canvas, 0.20f, 0.74f, 0.34f, 0.24f, "#586882", BiomeType.PLAINS)
+        drawBiome(canvas, 0.50f, 0.50f, 1.32f, 1.24f, "#596B4F", BiomeType.PLAINS)
+        drawBiome(canvas, 0.79f, 0.24f, 0.52f, 0.36f, "#8C7450", BiomeType.DESERT)
+        drawBiome(canvas, 0.58f, 0.71f, 0.60f, 0.42f, "#31483A", BiomeType.FOREST)
+        drawBiome(canvas, 0.21f, 0.21f, 0.45f, 0.36f, "#58606A", BiomeType.HILLS)
+        drawBiome(canvas, 0.20f, 0.74f, 0.34f, 0.24f, "#6D7C5A", BiomeType.PLAINS)
 
         drawTerrainRelief(canvas)
         drawRiverbeds(canvas)
@@ -637,23 +636,9 @@ class CampaignMapView @JvmOverloads constructor(
     }
 
     private fun drawFogOfWar(canvas: Canvas) {
+        fogPaint.alpha = 34
         canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), fogPaint)
-        val revealPoints = nodes.filter { it.isRevealed }.map { Pair(it.mapX, it.mapY) } + Pair(playerNormX, playerNormY)
-        revealPoints.forEach { (nx, ny) ->
-            val sx = screenX(nx)
-            val sy = screenY(ny)
-            val radius = width.coerceAtLeast(height) * 0.12f
-            fogHolePaint.shader = RadialGradient(
-                sx,
-                sy,
-                radius,
-                intArrayOf(Color.argb(18, 60, 40, 36), Color.argb(158, 28, 18, 20), Color.argb(220, 16, 12, 14)),
-                floatArrayOf(0f, 0.58f, 1f),
-                Shader.TileMode.CLAMP
-            )
-            canvas.drawCircle(sx, sy, radius, fogHolePaint)
-        }
-        fogHolePaint.shader = null
+        fogPaint.alpha = 255
     }
 
     private fun drawWorldAtmosphere(canvas: Canvas) {
@@ -661,7 +646,7 @@ class CampaignMapView @JvmOverloads constructor(
         val parallaxY = (cameraNormY - 0.5f) * 16f
 
         // Desert dust
-        ambiencePaint.color = Color.parseColor("#809E7F5F")
+        ambiencePaint.color = Color.parseColor("#556D7C5A")
         ambiencePaint.alpha = 24
         repeat(4) { i ->
             val drift = (ambientValue * 2f + i * 0.22f) % 1f
@@ -671,7 +656,7 @@ class CampaignMapView @JvmOverloads constructor(
         }
 
         // Forest mist
-        ambiencePaint.color = Color.parseColor("#706C6E62")
+        ambiencePaint.color = Color.parseColor("#553D5A49")
         ambiencePaint.alpha = 22
         repeat(3) { i ->
             val drift = ((ambientValue + i * 0.27f) % 1f)
@@ -681,7 +666,7 @@ class CampaignMapView @JvmOverloads constructor(
         }
 
         // Soft moving cloud shadows
-        ambiencePaint.color = Color.parseColor("#4D111922")
+        ambiencePaint.color = Color.parseColor("#330A1220")
         ambiencePaint.alpha = 18
         val cloudDrift = ((ambientValue * 0.6f) % 1f)
         canvas.drawOval(
@@ -695,7 +680,7 @@ class CampaignMapView @JvmOverloads constructor(
         )
 
         // River shimmer
-        ambiencePaint.color = Color.parseColor("#556E6E67")
+        ambiencePaint.color = Color.parseColor("#332A4D63")
         ambiencePaint.alpha = 28
         val shimmer = sin(ambientValue * 6.28f) * 5f
         canvas.drawRect(
@@ -707,7 +692,7 @@ class CampaignMapView @JvmOverloads constructor(
         campfirePaint.alpha = 75
         canvas.drawCircle(screenX(0.25f), screenY(0.45f), 3.6f, campfirePaint)
         canvas.drawCircle(screenX(0.66f), screenY(0.73f), 3.6f, campfirePaint)
-        ambiencePaint.color = Color.parseColor("#BFAE9A84")
+        ambiencePaint.color = Color.parseColor("#66B89C6B")
         ambiencePaint.alpha = 65
         canvas.drawCircle(screenX(0.25f) + 3f, screenY(0.45f) - 10f - pulseValue * 2f, 4.5f, ambiencePaint)
         canvas.drawCircle(screenX(0.66f) + 3f, screenY(0.73f) - 10f - pulseValue * 2f, 4.5f, ambiencePaint)
@@ -718,7 +703,7 @@ class CampaignMapView @JvmOverloads constructor(
         val birdPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeWidth = 1.5f
-            color = Color.parseColor("#907C776A")
+            color = Color.parseColor("#708694A8")
             alpha = 100
         }
         canvas.drawArc(RectF(birdX - 8f, birdY - 3f, birdX, birdY + 3f), 180f, 170f, false, birdPaint)
@@ -745,10 +730,10 @@ class CampaignMapView @JvmOverloads constructor(
         canvas.drawOval(RectF(left, top, right, bottom), terrainPaint)
 
         texturePaint.color = when (biome) {
-            BiomeType.DESERT -> Color.parseColor("#9E8760")
-            BiomeType.PLAINS -> Color.parseColor("#667B97")
-            BiomeType.FOREST -> Color.parseColor("#4B6358")
-            BiomeType.HILLS -> Color.parseColor("#68758B")
+            BiomeType.DESERT -> Color.parseColor("#A48A63")
+            BiomeType.PLAINS -> Color.parseColor("#6D7C5A")
+            BiomeType.FOREST -> Color.parseColor("#3D5A49")
+            BiomeType.HILLS -> Color.parseColor("#707985")
         }
         val step = when (biome) {
             BiomeType.DESERT -> 44f
@@ -808,10 +793,10 @@ class CampaignMapView @JvmOverloads constructor(
         riverPaint.strokeWidth = 7.5f
         canvas.drawPath(riverPath, riverPaint)
         riverPaint.strokeWidth = 3.5f
-        riverPaint.color = Color.parseColor("#7F7A6A")
+        riverPaint.color = Color.parseColor("#58606A")
         riverPaint.alpha = 90
         canvas.drawPath(riverPath, riverPaint)
-        riverPaint.color = Color.parseColor("#5A6057")
+        riverPaint.color = Color.parseColor("#2A4D63")
         riverPaint.alpha = 180
 
         val dryBed = Path().apply {
@@ -826,7 +811,7 @@ class CampaignMapView @JvmOverloads constructor(
         val zoom = zoomState()
         val landmarkPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
         val ruins = listOf(0.32f to 0.28f, 0.72f to 0.76f, 0.15f to 0.57f)
-        landmarkPaint.color = Color.parseColor("#7E8178")
+        landmarkPaint.color = Color.parseColor("#707985")
         ruins.forEach { (nx, ny) ->
             val sx = screenX(nx)
             val sy = screenY(ny)
@@ -834,7 +819,7 @@ class CampaignMapView @JvmOverloads constructor(
         }
 
         val groves = listOf(0.48f to 0.67f, 0.64f to 0.62f, 0.57f to 0.81f)
-        landmarkPaint.color = Color.parseColor("#2F4838")
+        landmarkPaint.color = Color.parseColor("#3D5A49")
         groves.forEach { (nx, ny) ->
             val sx = screenX(nx)
             val sy = screenY(ny)
@@ -843,7 +828,7 @@ class CampaignMapView @JvmOverloads constructor(
         }
 
         val watchPosts = listOf(0.84f to 0.34f, 0.26f to 0.46f)
-        landmarkPaint.color = Color.parseColor("#8E7655")
+        landmarkPaint.color = Color.parseColor("#A48A63")
         watchPosts.forEach { (nx, ny) ->
             val sx = screenX(nx)
             val sy = screenY(ny)
@@ -857,19 +842,19 @@ class CampaignMapView @JvmOverloads constructor(
         }
 
         // Biome-specific camp props around likely spawn zones.
-        landmarkPaint.color = Color.parseColor("#9E7F59") // desert worn cloth / wood
+        landmarkPaint.color = Color.parseColor("#A48A63") // desert worn cloth / wood
         canvas.drawRect(screenX(0.76f) - 9f, screenY(0.28f) - 4f, screenX(0.76f) + 9f, screenY(0.28f) + 4f, landmarkPaint)
-        landmarkPaint.color = Color.parseColor("#3F5A44") // forest traps
+        landmarkPaint.color = Color.parseColor("#31483A") // forest traps
         canvas.drawCircle(screenX(0.54f), screenY(0.66f), 6f, landmarkPaint)
-        landmarkPaint.color = Color.parseColor("#7A7D82") // hill spikes / stone
+        landmarkPaint.color = Color.parseColor("#58606A") // hill spikes / stone
         canvas.drawRect(screenX(0.24f) - 7f, screenY(0.24f) - 7f, screenX(0.24f) + 7f, screenY(0.24f) + 7f, landmarkPaint)
-        landmarkPaint.color = Color.parseColor("#B29B6F") // plains horse-post feel
+        landmarkPaint.color = Color.parseColor("#8C7450") // plains horse-post feel
         canvas.drawRect(screenX(0.29f) - 10f, screenY(0.78f) - 3f, screenX(0.29f) + 10f, screenY(0.78f) + 3f, landmarkPaint)
 
         if (zoom != ZoomState.FAR) {
             val chokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 textSize = if (zoom == ZoomState.CLOSE) 14f else 11f
-            color = Color.parseColor("#D4C5AF")
+            color = Color.parseColor("#F2F0EA")
                 textAlign = Paint.Align.CENTER
                 typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             }
@@ -888,10 +873,10 @@ class CampaignMapView @JvmOverloads constructor(
                 val key = if (node.id < toNode.id) "${node.id}-${toNode.id}" else "${toNode.id}-${node.id}"
                 if (!drawn.add(key)) continue
                 roadPaint.color = when (biomeAt((node.mapX + toNode.mapX) / 2f, (node.mapY + toNode.mapY) / 2f)) {
-                    BiomeType.DESERT -> Color.parseColor("#A08966")
-                    BiomeType.PLAINS -> Color.parseColor("#7A6B59")
-                    BiomeType.FOREST -> Color.parseColor("#5E5A4A")
-                    BiomeType.HILLS -> Color.parseColor("#75695E")
+                    BiomeType.DESERT -> Color.parseColor("#A48A63")
+                    BiomeType.PLAINS -> Color.parseColor("#8C7450")
+                    BiomeType.FOREST -> Color.parseColor("#596B4F")
+                    BiomeType.HILLS -> Color.parseColor("#707985")
                 }
                 roadPaint.alpha = if (showPaths) 150 else 105
                 roadPaint.strokeWidth = 2.5f
@@ -1039,9 +1024,9 @@ class CampaignMapView @JvmOverloads constructor(
             strokeJoin = Paint.Join.ROUND
             strokeWidth = 2.8f
             color = when (activeRouteType) {
-                RouteType.ROAD -> Color.parseColor("#C0AD86")
-                RouteType.OFF_ROAD -> Color.parseColor("#A79573")
-                RouteType.RISKY -> Color.parseColor("#B85A62")
+                RouteType.ROAD -> Color.parseColor("#B89C6B")
+                RouteType.OFF_ROAD -> Color.parseColor("#B89C6B")
+                RouteType.RISKY -> Color.parseColor("#C65A5A")
             }
             alpha = if (routePreviewCommitted) 240 else 185
             pathEffect = when (activeRouteType) {
@@ -1062,7 +1047,7 @@ class CampaignMapView @JvmOverloads constructor(
             val progressPoint = pointOnRoute(points, travelProgress)
             val progressPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 style = Paint.Style.STROKE
-                color = Color.parseColor("#D5C8B6")
+                color = Color.parseColor("#F2F0EA")
                 strokeWidth = 2.8f
                 alpha = 185
             }
@@ -1083,7 +1068,7 @@ class CampaignMapView @JvmOverloads constructor(
         val endY = screenY(destination.second)
         val destPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
-            color = Color.parseColor("#E3D4B6")
+            color = Color.parseColor("#F2F0EA")
             strokeWidth = 2f
             alpha = 210
         }
@@ -1212,15 +1197,15 @@ class CampaignMapView @JvmOverloads constructor(
 
     private fun drawClearedTaskMarker(canvas: Canvas, cx: Float, cy: Float) {
         val markerRadius = 10f
-        nodePaint.color = Color.parseColor("#6A5A4A")
+        nodePaint.color = Color.parseColor("#58606A")
         nodePaint.style = Paint.Style.FILL
         canvas.drawCircle(cx, cy, markerRadius, nodePaint)
-        nodeStrokePaint.color = Color.parseColor("#A48D74")
+        nodeStrokePaint.color = Color.parseColor("#B8C2D1")
         nodeStrokePaint.alpha = 170
         canvas.drawCircle(cx, cy, markerRadius, nodeStrokePaint)
 
         textPaint.textSize = 14f
-        textPaint.color = Color.parseColor("#E5D6C2")
+        textPaint.color = Color.parseColor("#F2F0EA")
         canvas.drawText("⚔", cx, cy + 5f, textPaint)
         textPaint.textSize = 26f
     }
@@ -1332,16 +1317,16 @@ class CampaignMapView @JvmOverloads constructor(
     }
 
     private fun nodeBaseColor(node: CampaignNode): Int = when (node.type) {
-        NodeType.TOWN, NodeType.VILLAGE, NodeType.FACTION_OUTPOST -> Color.parseColor("#4A6A92")
-        NodeType.RECOVERY_CAMP -> Color.parseColor("#3F7A58")
+        NodeType.TOWN, NodeType.VILLAGE, NodeType.FACTION_OUTPOST -> Color.parseColor("#5E8FD6")
+        NodeType.RECOVERY_CAMP -> Color.parseColor("#5FAF7A")
         NodeType.ENEMY_PATROL, NodeType.ELITE_CHALLENGE, NodeType.BOSS -> when (biomeAt(node.mapX, node.mapY)) {
-            BiomeType.DESERT -> Color.parseColor("#8A5A40")
-            BiomeType.FOREST -> Color.parseColor("#6C3F42")
-            BiomeType.HILLS -> Color.parseColor("#7A4E57")
-            BiomeType.PLAINS -> Color.parseColor("#7F4A50")
+            BiomeType.DESERT -> Color.parseColor("#C65A5A")
+            BiomeType.FOREST -> Color.parseColor("#C65A5A")
+            BiomeType.HILLS -> Color.parseColor("#C65A5A")
+            BiomeType.PLAINS -> Color.parseColor("#C65A5A")
         }
-        NodeType.RESOURCE_CACHE -> Color.parseColor("#7F6A42")
-        NodeType.START -> Color.parseColor("#C29B45")
+        NodeType.RESOURCE_CACHE -> Color.parseColor("#8E9BB0")
+        NodeType.START -> Color.parseColor("#D4B15A")
     }
 
     private fun drawLabel(canvas: Canvas, text: String, cx: Float, cy: Float) {
@@ -1362,7 +1347,7 @@ class CampaignMapView @JvmOverloads constructor(
         }
 
         canvas.drawCircle(px, py, 17f, playerRingPaint)
-        playerPaint.color = Color.parseColor("#CFA44E")
+        playerPaint.color = Color.parseColor("#D4B15A")
         canvas.drawCircle(px, py, 11f, playerPaint)
 
         val heading = atan2(playerLookDirY, playerLookDirX)
@@ -1374,7 +1359,7 @@ class CampaignMapView @JvmOverloads constructor(
         }
         canvas.drawPath(pointer, playerLookPaint)
 
-        playerIconPaint.color = Color.parseColor("#242219")
+        playerIconPaint.color = Color.parseColor("#0E1726")
         canvas.drawText("✦", px, py + 7f, playerIconPaint)
     }
 
@@ -1391,18 +1376,18 @@ class CampaignMapView @JvmOverloads constructor(
         val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             textSize = 13f
             textAlign = Paint.Align.CENTER
-            color = Color.parseColor("#E4D4BF")
+            color = Color.parseColor("#F2F0EA")
             typeface = Typeface.DEFAULT_BOLD
         }
         val statePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             textSize = 11f
             textAlign = Paint.Align.CENTER
-            color = Color.parseColor("#CABAA5")
+            color = Color.parseColor("#B8C2D1")
             typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
         }
         val threatPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
-            color = Color.parseColor("#DD7B7B")
+            color = Color.parseColor("#C65A5A")
             strokeWidth = 2f
             pathEffect = DashPathEffect(floatArrayOf(10f, 8f), pulseValue * 15f)
             alpha = 180
@@ -1427,15 +1412,15 @@ class CampaignMapView @JvmOverloads constructor(
             val iconRadius = profile.iconRadiusPx * iconScale
 
             if (party.faction == PartyFaction.FRIENDLY) {
-                markerPaint.color = Color.parseColor("#355C8A")
-                pulseRingPaint.color = Color.parseColor("#7FA9D5")
-                symbolPaint.color = Color.parseColor("#E9F2FF")
-                labelPaint.color = Color.parseColor("#AFCBF0")
+                markerPaint.color = Color.parseColor("#5E8FD6")
+                pulseRingPaint.color = Color.parseColor("#5E8FD6")
+                symbolPaint.color = Color.parseColor("#F2F0EA")
+                labelPaint.color = Color.parseColor("#B8C2D1")
             } else {
-                markerPaint.color = Color.parseColor("#943E49")
-                pulseRingPaint.color = Color.parseColor("#D67B87")
+                markerPaint.color = Color.parseColor("#C65A5A")
+                pulseRingPaint.color = Color.parseColor("#C65A5A")
                 symbolPaint.color = Color.WHITE
-                labelPaint.color = Color.parseColor("#D9989C")
+                labelPaint.color = Color.parseColor("#B8C2D1")
             }
 
             if (selectedNodeId == node.id && zoom != ZoomState.FAR) {

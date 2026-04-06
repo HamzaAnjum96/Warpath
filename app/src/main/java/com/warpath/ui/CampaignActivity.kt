@@ -7,6 +7,9 @@ import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
 import android.view.Gravity
 import android.view.View
 import android.util.TypedValue
@@ -53,6 +56,7 @@ class CampaignActivity : AppCompatActivity() {
     private lateinit var recenterButton: Button
     private lateinit var stopMovementButton: Button
     private lateinit var mapStateText: TextView
+    private lateinit var controlCluster: LinearLayout
     private lateinit var alertBanner: LinearLayout
     private lateinit var alertAccent: View
     private lateinit var alertIconText: TextView
@@ -79,6 +83,19 @@ class CampaignActivity : AppCompatActivity() {
     private val duplicateAlertWindowMs = 2500L
     private val recentAlertRetentionMs = 12000L
     private val maxQueuedAlerts = 6
+
+    private object Palette {
+        const val BASE_BG = "#0E1726"
+        const val HUD_SURFACE = "#E111C2D"
+        const val HUD_SURFACE_ALT = "#DD16263A"
+        const val HUD_BORDER = "#2C3F57"
+        const val HUD_TEXT = "#F2F0EA"
+        const val HUD_TEXT_MUTED = "#9AA9BC"
+        const val GOLD = "#D4B15A"
+        const val PRIMARY = "#6C83C8"
+        const val SUCCESS = "#5FAF7A"
+        const val DANGER = "#C56A5D"
+    }
 
     private enum class AlertPriority(val holdMs: Long) {
         MINOR(1400L),
@@ -115,7 +132,7 @@ class CampaignActivity : AppCompatActivity() {
             campaignManager.startNewCampaign()
         }
 
-        val root = FrameLayout(this).apply { setBackgroundColor(Color.parseColor("#0E1726")) }
+        val root = FrameLayout(this).apply { setBackgroundColor(Color.parseColor(Palette.BASE_BG)) }
 
         mapView = CampaignMapView(this).apply {
             nodes = campaignManager.campaignMap
@@ -130,7 +147,7 @@ class CampaignActivity : AppCompatActivity() {
                 handleMapTap(normX, normY)
             }
             onFocusChanged = { focused ->
-                recenterButton.visibility = if (focused) View.GONE else View.VISIBLE
+                updateControlClusterVisibility()
                 if (!focused) {
                     enqueueWorldAlert("Scouting View", AlertCategory.TRAVEL, AlertPriority.MINOR, "map_unfocused")
                 }
@@ -157,11 +174,13 @@ class CampaignActivity : AppCompatActivity() {
         root.addView(
             buildAlertBanner(),
             FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.WRAP_CONTENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-                Gravity.TOP or Gravity.CENTER_HORIZONTAL
+                Gravity.TOP
             ).apply {
-                topMargin = dp(68)
+                topMargin = dp(96)
+                marginStart = dp(16)
+                marginEnd = dp(16)
             }
         )
 
@@ -179,12 +198,12 @@ class CampaignActivity : AppCompatActivity() {
         )
 
         statusText = TextView(this).apply {
-            textSize = if (compactUi) 13f else 15f
-            setTextColor(Color.parseColor("#D4B15A"))
+            textSize = if (compactUi) 12f else 13f
+            setTextColor(Color.parseColor(Palette.GOLD))
             typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
             gravity = Gravity.CENTER
             setPadding(dp(16), dp(8), dp(16), dp(8))
-            setBackgroundColor(Color.parseColor("#C0111C2D"))
+            setBackgroundColor(Color.parseColor(Palette.HUD_SURFACE))
             visibility = View.GONE
         }
         root.addView(
@@ -199,47 +218,52 @@ class CampaignActivity : AppCompatActivity() {
         recenterButton = Button(this).apply {
             text = "⌖"
             contentDescription = "Recenter map on warband"
-            textSize = if (compactUi) 11f else 12f
+            textSize = if (compactUi) 10f else 11f
             typeface = Typeface.DEFAULT_BOLD
             isAllCaps = false
-            setTextColor(Color.parseColor("#F2F0EA"))
-            setPadding(dp(14), dp(10), dp(14), dp(10))
+            minWidth = dp(40)
+            minimumWidth = dp(40)
+            minHeight = dp(40)
+            minimumHeight = dp(40)
+            setTextColor(Color.parseColor(Palette.HUD_TEXT))
+            setPadding(0, 0, 0, 0)
             stateListAnimator = null
             visibility = View.GONE
-            applyHudButtonStyle()
+            applyHudButtonStyle(10f)
             setOnClickListener {
                 mapView.recenterOnPlayer()
                 enqueueWorldAlert("Warband Focus Restored", AlertCategory.TRAVEL, AlertPriority.MINOR, "camera_recentered")
             }
         }
-        root.addView(
-            recenterButton,
-            FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-                Gravity.TOP or Gravity.END
-            ).apply {
-                topMargin = dp(78)
-                rightMargin = dp(16)
-            }
-        )
 
         mapStateText = TextView(this).apply {
             textSize = if (compactUi) 9f else 10f
             typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
-            setTextColor(Color.parseColor("#F2F0EA"))
-            setPadding(dp(10), dp(5), dp(10), dp(5))
+            setTextColor(Color.parseColor(Palette.HUD_TEXT))
+            setPadding(dp(10), dp(6), dp(10), dp(6))
             letterSpacing = 0.08f
         }
-        styleChip(mapStateText, "#132033")
-        root.addView(
+        styleChip(mapStateText, Palette.HUD_SURFACE_ALT, 10f)
+
+        controlCluster = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.END
+        }
+        controlCluster.addView(recenterButton)
+        controlCluster.addView(
             mapStateText,
+            LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(8)
+            }
+        )
+        root.addView(
+            controlCluster,
             FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.WRAP_CONTENT,
                 FrameLayout.LayoutParams.WRAP_CONTENT,
                 Gravity.TOP or Gravity.END
             ).apply {
-                topMargin = dp(124)
+                topMargin = dp(106)
                 rightMargin = dp(16)
             }
         )
@@ -259,9 +283,11 @@ class CampaignActivity : AppCompatActivity() {
             textSize = if (compactUi) 10f else 11f
             typeface = Typeface.DEFAULT_BOLD
             isAllCaps = false
-            setTextColor(Color.parseColor("#F2F0EA"))
+            setTextColor(Color.parseColor(Palette.HUD_TEXT))
             minHeight = dp(34)
             minimumHeight = dp(34)
+            minWidth = dp(76)
+            minimumWidth = dp(76)
             applyHudButtonStyle(cornerRadius = 10f)
             visibility = View.GONE
             setOnClickListener { mapView.cancelMovement() }
@@ -271,23 +297,23 @@ class CampaignActivity : AppCompatActivity() {
             FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.WRAP_CONTENT,
                 FrameLayout.LayoutParams.WRAP_CONTENT,
-                Gravity.END or Gravity.BOTTOM
+                Gravity.END or Gravity.TOP
             ).apply {
                 rightMargin = dp(16)
-                bottomMargin = dp(if (compactUi) 126 else 140)
+                topMargin = dp(170)
             }
         )
 
         travelHintText = TextView(this).apply {
             textSize = if (compactUi) 11f else 12f
-            setTextColor(Color.parseColor("#B8C2D1"))
+            setTextColor(Color.parseColor(Palette.HUD_TEXT_MUTED))
             typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
-            setPadding(dp(10), dp(6), dp(12), dp(6))
-            text = "◉ SCOUTING MODE · Tap to select, tap terrain to travel"
+            setPadding(dp(12), dp(8), dp(12), dp(8))
+            text = "◉ Scouting mode  ·  Drag to survey. Tap terrain to mark route."
             background = GradientDrawable().apply {
-                cornerRadius = dpF(9f)
-                setColor(Color.parseColor("#DD111C2D"))
-                setStroke(dp(1), Color.parseColor("#27415E"))
+                cornerRadius = dpF(16f)
+                setColor(Color.parseColor(Palette.HUD_SURFACE))
+                setStroke(dp(1), Color.parseColor(Palette.HUD_BORDER))
             }
         }
         root.addView(
@@ -295,10 +321,11 @@ class CampaignActivity : AppCompatActivity() {
             FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.WRAP_CONTENT,
                 FrameLayout.LayoutParams.WRAP_CONTENT,
-                Gravity.BOTTOM or Gravity.START
+                Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
             ).apply {
-                leftMargin = dp(18)
-                bottomMargin = dp(if (compactUi) 360 else 390)
+                marginStart = dp(24)
+                marginEnd = dp(24)
+                bottomMargin = dp(if (compactUi) 180 else 192)
             }
         )
 
@@ -314,104 +341,139 @@ class CampaignActivity : AppCompatActivity() {
             orientation = LinearLayout.HORIZONTAL
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
-                cornerRadius = dpF(0f)
-                setColor(Color.parseColor("#E00E1726"))
-                setStroke(dp(1), Color.parseColor("#27415E"))
+                cornerRadius = 0f
+                setColor(Color.parseColor(Palette.HUD_SURFACE))
             }
-            setPadding(dp(14), dp(10), dp(14), dp(10))
+            setPadding(dp(16), dp(12), dp(16), dp(12))
             gravity = Gravity.CENTER_VERTICAL
+            minimumHeight = dp(92)
         }
 
         val title = TextView(this).apply {
             text = "WARPATH"
-            textSize = if (compactUi) 15f else 17f
-            setTextColor(Color.parseColor("#D4B15A"))
+            textSize = if (compactUi) 14f else 16f
+            setTextColor(Color.parseColor(Palette.GOLD))
             typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
-            letterSpacing = 0.08f
+            letterSpacing = 0.12f
         }
-        bar.addView(title, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        bar.addView(title, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 0.85f))
 
         suppliesText = hudStatText()
         renownText = hudStatText()
         warbandText = hudStatText()
 
-        bar.addView(suppliesText)
-        bar.addView(hudSpacer())
-        bar.addView(renownText)
-        bar.addView(hudSpacer())
-        bar.addView(warbandText)
-        bar.addView(hudSpacer())
+        val resourceRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+        }
+        resourceRow.addView(suppliesText)
+        resourceRow.addView(hudSpacer())
+        resourceRow.addView(renownText)
+        resourceRow.addView(hudSpacer())
+        resourceRow.addView(warbandText)
+        bar.addView(resourceRow, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
 
         val warbandBtn = Button(this).apply {
             text = "⚑"
-            textSize = if (compactUi) 11f else 12f
-            setTextColor(Color.parseColor("#F2F0EA"))
+            textSize = if (compactUi) 10f else 11f
+            minWidth = dp(40)
+            minimumWidth = dp(40)
+            minHeight = dp(40)
+            minimumHeight = dp(40)
+            setTextColor(Color.parseColor(Palette.HUD_TEXT))
             isAllCaps = false
             typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
-            setPadding(dp(12), dp(6), dp(12), dp(6))
+            setPadding(0, 0, 0, 0)
             stateListAnimator = null
-            applyHudButtonStyle(cornerRadius = 9f)
+            applyHudButtonStyle(cornerRadius = 10f)
             setOnClickListener { startActivity(Intent(this@CampaignActivity, WarbandActivity::class.java)) }
         }
         bar.addView(warbandBtn)
 
-        return bar
+        val divider = View(this).apply { setBackgroundColor(Color.parseColor("#324660")) }
+        val shell = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        shell.addView(bar)
+        shell.addView(divider, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1))
+        return shell
     }
 
     private fun hudStatText() = TextView(this).apply {
-        textSize = if (compactUi) 12f else 13f
-        setTextColor(Color.parseColor("#B8C2D1"))
+        textSize = if (compactUi) 11f else 12f
+        setTextColor(Color.parseColor(Palette.HUD_TEXT))
         typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
     }
 
     private fun hudSpacer(): View = View(this).also {
-        it.layoutParams = LinearLayout.LayoutParams(dp(14), 1)
+        it.layoutParams = LinearLayout.LayoutParams(dp(16), 1)
     }
 
     private fun buildAlertBanner(): View {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
         alertBanner = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(10), dp(8), dp(14), dp(8))
+            setPadding(dp(8), dp(8), dp(16), dp(8))
             alpha = 0f
             translationY = -dp(12).toFloat()
             visibility = View.GONE
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
-                cornerRadius = dpF(8f)
-                setColor(Color.parseColor("#EE111C2D"))
-                setStroke(dp(1), Color.parseColor("#27415E"))
+                cornerRadius = dpF(16f)
+                setColor(Color.parseColor(Palette.HUD_SURFACE))
+                setStroke(dp(1), Color.parseColor(Palette.HUD_BORDER))
             }
             elevation = dpF(3f)
         }
 
-        alertAccent = View(this).apply {
-            setBackgroundColor(Color.parseColor(AlertCategory.TRAVEL.accentHex))
-        }
+        alertAccent = View(this).apply { setBackgroundColor(Color.parseColor(AlertCategory.TRAVEL.accentHex)) }
         alertBanner.addView(
             alertAccent,
-            LinearLayout.LayoutParams(dp(3), LinearLayout.LayoutParams.MATCH_PARENT).apply {
-                marginEnd = dp(8)
-            }
+            LinearLayout.LayoutParams(dp(4), LinearLayout.LayoutParams.MATCH_PARENT).apply { marginEnd = dp(8) }
         )
 
         alertIconText = TextView(this).apply {
             text = AlertCategory.EVENT.icon
             textSize = if (compactUi) 11f else 12f
             typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
-            setTextColor(Color.parseColor("#F2F0EA"))
+            setTextColor(Color.parseColor(Palette.HUD_TEXT))
             setPadding(0, 0, dp(8), 0)
         }
         alertBanner.addView(alertIconText)
 
         alertMessageText = TextView(this).apply {
-            textSize = if (compactUi) 12f else 13f
+            textSize = if (compactUi) 11f else 12f
             typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
-            setTextColor(Color.parseColor("#F2F0EA"))
+            setTextColor(Color.parseColor(Palette.HUD_TEXT))
             letterSpacing = 0.02f
         }
         alertBanner.addView(alertMessageText)
-        return alertBanner
+        row.addView(alertBanner, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        row.addView(Space(this), LinearLayout.LayoutParams(dp(8), 1))
+        return row
+    }
+
+    private fun updateControlClusterVisibility() {
+        if (!::controlCluster.isInitialized || !::mapView.isInitialized || !::recenterButton.isInitialized) return
+        recenterButton.visibility = if (mapView.isCenteredOnPlayer()) View.GONE else View.VISIBLE
+    }
+
+    private fun compactRowText() = TextView(this).apply {
+        textSize = if (compactUi) 10f else 11f
+        setTextColor(Color.parseColor(Palette.HUD_TEXT_MUTED))
+        setPadding(0, dp(1), 0, dp(1))
+        typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+    }
+
+    private fun styledStat(label: String, value: String): CharSequence {
+        val combined = "$label  $value"
+        return SpannableString(combined).apply {
+            setSpan(ForegroundColorSpan(Color.parseColor(Palette.HUD_TEXT_MUTED)), 0, label.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            setSpan(ForegroundColorSpan(Color.parseColor(Palette.HUD_TEXT)), label.length + 2, combined.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
     }
 
     private fun enqueueWorldAlert(message: String, category: AlertCategory, priority: AlertPriority, key: String = message) {
@@ -511,12 +573,6 @@ class CampaignActivity : AppCompatActivity() {
         }.start()
     }
 
-    private fun compactRowText() = TextView(this).apply {
-        textSize = if (compactUi) 10f else 11f
-        setTextColor(Color.parseColor("#B8C2D1"))
-        setPadding(0, dp(1), 0, dp(1))
-        typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-    }
 
     private fun buildInfoPanel(): View {
         val container = FrameLayout(this)
@@ -525,12 +581,13 @@ class CampaignActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
-                cornerRadius = dpF(12f)
+                cornerRadius = dpF(22f)
                 orientation = GradientDrawable.Orientation.TOP_BOTTOM
-                colors = intArrayOf(Color.parseColor("#F0111C2D"), Color.parseColor("#F00E1726"))
-                setStroke(dp(1), Color.parseColor("#27415E"))
+                colors = intArrayOf(Color.parseColor("#F116263A"), Color.parseColor("#EF111C2D"))
+                setStroke(dp(1), Color.parseColor(Palette.HUD_BORDER))
             }
             visibility = View.GONE
+            elevation = dpF(4f)
         }
 
         panelAccentBar = View(this)
@@ -544,7 +601,7 @@ class CampaignActivity : AppCompatActivity() {
 
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(12), dp(16), dp(12))
+            setPadding(dp(16), dp(16), dp(16), dp(16))
         }
 
         val headerRow = LinearLayout(this).apply {
@@ -553,10 +610,10 @@ class CampaignActivity : AppCompatActivity() {
         }
 
         nodeTypeChip = TextView(this).apply {
-            textSize = if (compactUi) 10f else 11f
-            setTextColor(Color.WHITE)
+            textSize = if (compactUi) 9f else 10f
+            setTextColor(Color.parseColor(Palette.HUD_TEXT))
             typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
-            setPadding(dp(12), dp(5), dp(12), dp(5))
+            setPadding(dp(8), dp(4), dp(8), dp(4))
             letterSpacing = 0.08f
         }
         headerRow.addView(
@@ -564,12 +621,12 @@ class CampaignActivity : AppCompatActivity() {
             LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { marginEnd = 14 }
+            ).apply { marginEnd = dp(8) }
         )
 
         nodeNameText = TextView(this).apply {
-            textSize = if (compactUi) 17f else 19f
-            setTextColor(Color.parseColor("#F2F0EA"))
+            textSize = if (compactUi) 18f else 20f
+            setTextColor(Color.parseColor(Palette.HUD_TEXT))
             typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
             letterSpacing = 0.02f
         }
@@ -577,9 +634,13 @@ class CampaignActivity : AppCompatActivity() {
 
         val dismissX = TextView(this).apply {
             text = "✕"
-            textSize = if (compactUi) 16f else 18f
-            setTextColor(Color.parseColor("#8694A8"))
-            setPadding(8, 0, 4, 0)
+            textSize = if (compactUi) 13f else 14f
+            setTextColor(Color.parseColor(Palette.HUD_TEXT_MUTED))
+            setPadding(dp(8), dp(4), dp(8), dp(4))
+            background = GradientDrawable().apply {
+                cornerRadius = dpF(10f)
+                setColor(Color.parseColor(Palette.HUD_SURFACE_ALT))
+            }
             setOnClickListener {
                 infoPanel.visibility = View.GONE
                 selectedNode = null
@@ -592,44 +653,32 @@ class CampaignActivity : AppCompatActivity() {
         content.addView(headerRow)
 
         nodeRangeTagText = TextView(this).apply {
-            textSize = if (compactUi) 10f else 11f
+            textSize = if (compactUi) 9f else 10f
             typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
-            setTextColor(Color.parseColor("#F2F0EA"))
-            setPadding(dp(10), dp(5), dp(10), dp(5))
+            setTextColor(Color.parseColor(Palette.HUD_TEXT))
+            setPadding(dp(8), dp(4), dp(8), dp(4))
             letterSpacing = 0.06f
             visibility = View.GONE
         }
-        content.addView(
-            nodeRangeTagText,
-            LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                topMargin = dp(10)
-            }
-        )
+        val statusChipRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        statusChipRow.addView(nodeRangeTagText)
 
         distanceText = TextView(this).apply {
             textSize = if (compactUi) 10f else 11f
             typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-            setTextColor(Color.parseColor("#B8C2D1"))
-            setPadding(dp(0), dp(8), dp(0), dp(0))
+            setTextColor(Color.parseColor(Palette.HUD_TEXT_MUTED))
+            setPadding(dp(8), dp(8), dp(8), dp(0))
         }
-        content.addView(distanceText)
-
-        content.addView(
-            View(this).apply { setBackgroundColor(Color.parseColor("#22344B")) },
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                1
-            ).apply {
-                topMargin = 10
-                bottomMargin = 10
-            }
-        )
+        statusChipRow.addView(distanceText)
+        content.addView(statusChipRow, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+            topMargin = dp(8)
+        })
 
         nodeDescText = TextView(this).apply {
             textSize = if (compactUi) 11f else 12f
-            setTextColor(Color.parseColor("#B8C2D1"))
+            setTextColor(Color.parseColor(Palette.HUD_TEXT_MUTED))
             typeface = Typeface.create("sans-serif", Typeface.NORMAL)
-            setLineSpacing(2f, 1f)
+            setLineSpacing(3f, 1f)
             maxLines = 2
             setOnClickListener {
                 detailsExpanded = !detailsExpanded
@@ -641,37 +690,56 @@ class CampaignActivity : AppCompatActivity() {
             LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { bottomMargin = 6 }
+            ).apply { topMargin = dp(16); bottomMargin = dp(8) }
         )
 
+        val statsGrid = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply {
+                cornerRadius = dpF(16f)
+                setColor(Color.parseColor(Palette.HUD_SURFACE_ALT))
+                setStroke(dp(1), Color.parseColor(Palette.HUD_BORDER))
+            }
+            setPadding(dp(16), dp(8), dp(16), dp(8))
+        }
         threatRowText = compactRowText()
         strengthRowText = compactRowText()
         suppliesRowText = compactRowText()
         reputationRowText = compactRowText()
-        content.addView(threatRowText)
-        content.addView(strengthRowText)
-        content.addView(suppliesRowText)
-        content.addView(reputationRowText)
+        val statsRowOne = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        statsRowOne.addView(threatRowText, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        statsRowOne.addView(strengthRowText, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        val statsRowTwo = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        statsRowTwo.addView(suppliesRowText, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        statsRowTwo.addView(reputationRowText, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        statsGrid.addView(statsRowOne)
+        statsGrid.addView(statsRowTwo, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) })
+        content.addView(statsGrid)
 
         nodeStatsText = TextView(this).apply {
             textSize = if (compactUi) 11f else 12f
-            setTextColor(Color.parseColor("#8694A8"))
+            setTextColor(Color.parseColor(Palette.HUD_TEXT_MUTED))
             typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            background = GradientDrawable().apply {
+                cornerRadius = dpF(10f)
+                setColor(Color.parseColor(Palette.HUD_SURFACE_ALT))
+            }
+            setPadding(dp(8), dp(8), dp(8), dp(8))
         }
         content.addView(
             nodeStatsText,
             LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { bottomMargin = 14 }
+            ).apply { topMargin = dp(8); bottomMargin = dp(16) }
         )
 
         actionButton = Button(this).apply {
-            textSize = if (compactUi) 13f else 15f
-            setTextColor(Color.WHITE)
+            textSize = if (compactUi) 13f else 14f
+            setTextColor(Color.parseColor(Palette.HUD_TEXT))
             isAllCaps = false
             typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
-            setPadding(dp(16), dp(10), dp(16), dp(10))
+            setPadding(dp(16), dp(12), dp(16), dp(12))
             stateListAnimator = null
             applyPrimaryButtonStyle()
         }
@@ -685,9 +753,9 @@ class CampaignActivity : AppCompatActivity() {
 
         actionSecondaryText = TextView(this).apply {
             textSize = if (compactUi) 11f else 12f
-            setTextColor(Color.parseColor("#8694A8"))
+            setTextColor(Color.parseColor(Palette.HUD_TEXT_MUTED))
             gravity = Gravity.CENTER
-            setPadding(dp(8), dp(10), dp(8), dp(2))
+            setPadding(dp(8), dp(8), dp(8), dp(0))
             visibility = View.GONE
         }
         content.addView(actionSecondaryText)
@@ -698,7 +766,11 @@ class CampaignActivity : AppCompatActivity() {
             FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.WRAP_CONTENT
-            )
+            ).apply {
+                marginStart = dp(16)
+                marginEnd = dp(16)
+                bottomMargin = dp(16)
+            }
         )
 
         return container
@@ -706,9 +778,9 @@ class CampaignActivity : AppCompatActivity() {
 
     private fun Button.applyRoundedStyle(
         backgroundColor: String,
-        borderColor: String = "#7A514F",
-        topEdgeColor: String = "#9C706C",
-        cornerRadius: Float = 28f
+        borderColor: String = Palette.HUD_BORDER,
+        topEdgeColor: String = backgroundColor,
+        cornerRadius: Float = 16f
     ) {
         background = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
@@ -721,26 +793,26 @@ class CampaignActivity : AppCompatActivity() {
 
     private fun Button.applyHudButtonStyle(cornerRadius: Float = 11f) {
         applyRoundedStyle(
-            backgroundColor = "#132033",
-            borderColor = "#27415E",
-            topEdgeColor = "#22344B",
+            backgroundColor = Palette.HUD_SURFACE_ALT,
+            borderColor = Palette.HUD_BORDER,
+            topEdgeColor = Palette.HUD_SURFACE_ALT,
             cornerRadius = cornerRadius
         )
     }
 
     private fun Button.applyPrimaryButtonStyle() {
         applyRoundedStyle(
-            backgroundColor = "#5C6BC0",
-            borderColor = "#5C6BC0",
-            topEdgeColor = "#5C6BC0",
-            cornerRadius = 12f
+            backgroundColor = Palette.PRIMARY,
+            borderColor = Palette.PRIMARY,
+            topEdgeColor = Palette.PRIMARY,
+            cornerRadius = 16f
         )
     }
 
-    private fun styleChip(chip: TextView, fillHex: String) {
+    private fun styleChip(chip: TextView, fillHex: String, radiusDp: Float = 10f) {
         chip.background = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            cornerRadius = dpF(12f)
+            cornerRadius = dpF(radiusDp)
             setColor(Color.parseColor(fillHex))
         }
     }
@@ -759,14 +831,14 @@ class CampaignActivity : AppCompatActivity() {
         val hasPreview = pendingTravelTarget != null
         val centered = mapView.isCenteredOnPlayer()
         val (label, color) = when {
-            moving -> "TRAVELLING" to "#22344B"
-            hasPreview -> mapView.currentPreviewRouteTypeLabel() to "#27415E"
-            hasTarget -> "TARGET LOCKED" to "#27415E"
-            !centered -> "SCOUTING" to "#27415E"
-            else -> "FOLLOW WARBAND" to "#22344B"
+            moving -> "TRAVELLING" to Palette.HUD_SURFACE_ALT
+            hasPreview -> mapView.currentPreviewRouteTypeLabel() to Palette.HUD_SURFACE_ALT
+            hasTarget -> "TARGET LOCKED" to Palette.HUD_SURFACE_ALT
+            !centered -> "SCOUTING" to Palette.HUD_SURFACE_ALT
+            else -> "FOLLOW WARBAND" to Palette.HUD_SURFACE_ALT
         }
         mapStateText.text = label
-        styleChip(mapStateText, color)
+        styleChip(mapStateText, color, 10f)
     }
 
 
@@ -866,9 +938,9 @@ class CampaignActivity : AppCompatActivity() {
         panelAccentBar.setBackgroundColor(node.type.color.toInt())
 
         nodeTypeChip.text = node.type.displayName.uppercase()
-        styleChip(nodeTypeChip, "#22344B")
+        styleChip(nodeTypeChip, Palette.HUD_SURFACE_ALT, 10f)
         nodeNameText.text = node.name
-        nodeNameText.setTextColor(Color.parseColor("#F2F0EA"))
+        nodeNameText.setTextColor(Color.parseColor(Palette.HUD_TEXT))
 
         val isAccessible = node.isRevealed
         val isCurrent = node.id == campaignManager.gameState.currentNodeId
@@ -895,7 +967,7 @@ class CampaignActivity : AppCompatActivity() {
             actionButton.visibility = View.GONE
 
         } else if (isCurrent || isAccessible) {
-            nodeStatsText.setTextColor(Color.parseColor("#B89C6B"))
+            nodeStatsText.setTextColor(Color.parseColor(Palette.GOLD))
             when (node.type) {
                 NodeType.ENEMY_PATROL, NodeType.ELITE_CHALLENGE, NodeType.BOSS -> {
                     val enemyCount = node.enemySquads.sumOf { it.count }
@@ -961,7 +1033,7 @@ class CampaignActivity : AppCompatActivity() {
         } else {
             nodeDescText.text = node.description
             nodeStatsText.text = "⚠ Not accessible — scout closer to discover this POI"
-            nodeStatsText.setTextColor(Color.parseColor("#C65A5A"))
+            nodeStatsText.setTextColor(Color.parseColor(Palette.DANGER))
             actionButton.visibility = View.GONE
         }
     }
@@ -1004,14 +1076,14 @@ class CampaignActivity : AppCompatActivity() {
     private fun updateRangeTag(node: CampaignNode, isNearby: Boolean) {
         val (label, bg) = when {
             node.type == NodeType.ENEMY_PATROL || node.type == NodeType.ELITE_CHALLENGE || node.type == NodeType.BOSS ->
-                if (isNearby) "HOSTILE · NEARBY" to "#C65A5A" else "HOSTILE" to "#C65A5A"
-            node.type == NodeType.TOWN || node.type == NodeType.VILLAGE -> if (isNearby) "ALLY · NEARBY" to "#5E8FD6" else "ALLY" to "#5E8FD6"
-            node.type == NodeType.RESOURCE_CACHE -> if (isNearby) "NEARBY" to "#8E9BB0" else "NEARBY" to "#8E9BB0"
-            else -> if (isNearby) "NEUTRAL · NEARBY" to "#8E9BB0" else "NEUTRAL" to "#8E9BB0"
+                if (isNearby) "HOSTILE · NEARBY" to Palette.DANGER else "HOSTILE" to Palette.DANGER
+            node.type == NodeType.TOWN || node.type == NodeType.VILLAGE -> if (isNearby) "ALLY · NEARBY" to Palette.PRIMARY else "ALLY" to Palette.PRIMARY
+            node.type == NodeType.RESOURCE_CACHE -> if (isNearby) "NEARBY" to Palette.HUD_BORDER else "NEARBY" to Palette.HUD_BORDER
+            else -> if (isNearby) "NEUTRAL · NEARBY" to Palette.HUD_BORDER else "NEUTRAL" to Palette.HUD_BORDER
         }
         nodeRangeTagText.text = label
         nodeRangeTagText.visibility = View.VISIBLE
-        styleChip(nodeRangeTagText, bg)
+        styleChip(nodeRangeTagText, bg, 10f)
     }
 
     private fun bindCompactRows(node: CampaignNode) {
@@ -1021,10 +1093,12 @@ class CampaignActivity : AppCompatActivity() {
             NodeType.ELITE_CHALLENGE, NodeType.ENEMY_PATROL -> "Medium"
             else -> "Low"
         }
-        threatRowText.text = "Threat: $threatText"
-        strengthRowText.text = "Strength: ${enemyStrength.coerceAtLeast(0)}"
-        suppliesRowText.text = "Supplies: ${node.suppliesReward.coerceAtLeast(0)}"
-        reputationRowText.text = "Reputation: +${node.renownReward.coerceAtLeast(0)}"
+        val supplies = node.suppliesReward.coerceAtLeast(0)
+        val reputation = node.renownReward.coerceAtLeast(0)
+        threatRowText.text = styledStat("THREAT", threatText)
+        strengthRowText.text = styledStat("STRENGTH", enemyStrength.coerceAtLeast(0).toString())
+        suppliesRowText.text = styledStat("SUPPLIES", if (supplies == 0) "—" else supplies.toString())
+        reputationRowText.text = styledStat("REPUTATION", if (reputation == 0) "—" else "+$reputation")
     }
 
     private fun applyPanelType(type: PanelType) {
@@ -1402,9 +1476,9 @@ class CampaignActivity : AppCompatActivity() {
         if (!phaseOnePocMode || suppressAutoPoiSelection) return
         val nearbyNode = campaignManager.findNearbyRevealedNode(poiInteractionDistance)
         travelHintText.text = if (mapView.isCenteredOnPlayer()) {
-            "Tap POIs to inspect. Tap terrain to travel. Pinch to zoom."
+            "SCOUTING  ·  Tap POIs to inspect. Tap terrain to mark travel."
         } else {
-            "Scouting mode — drag to survey. Tap ⌖ to follow warband."
+            "SURVEY MODE  ·  Drag to scout. Tap ⌖ to follow warband."
         }
         val filteredNearbyNode = nearbyNode?.takeUnless { it.isCleared && isTemporaryNode(it) }
         if (filteredNearbyNode == null) {
@@ -1413,7 +1487,7 @@ class CampaignActivity : AppCompatActivity() {
             infoPanel.visibility = View.GONE
             return
         }
-        travelHintText.text = "Nearby: ${filteredNearbyNode.name}"
+        travelHintText.text = "NEARBY TARGET  ·  ${filteredNearbyNode.name}"
         if (
             selectedNode?.id == filteredNearbyNode.id &&
             infoPanel.visibility == View.VISIBLE &&

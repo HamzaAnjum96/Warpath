@@ -26,15 +26,15 @@ class MainMenuActivity : AppCompatActivity() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setBackgroundColor(Color.parseColor("#0b1020"))
-            setPadding(56, 72, 56, 72)
+            setBackgroundColor(Color.parseColor(UiTheme.BASE_BG))
+            setPadding(dp(32), dp(48), dp(32), dp(48))
         }
 
         val title = TextView(this).apply {
             text = "WARPATH"
-            textSize = 52f
-            setTextColor(Color.parseColor("#F2D06B"))
-            typeface = Typeface.DEFAULT_BOLD
+            textSize = 46f
+            setTextColor(Color.parseColor(UiTheme.GOLD))
+            typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
             gravity = Gravity.CENTER
             letterSpacing = 0.1f
         }
@@ -42,13 +42,13 @@ class MainMenuActivity : AppCompatActivity() {
 
         val subtitle = TextView(this).apply {
             text = "v1.3.0 · Minor Release"
-            textSize = 15f
-            setTextColor(Color.parseColor("#9AA4C2"))
+            textSize = 14f
+            setTextColor(Color.parseColor(UiTheme.TEXT_MUTED))
             gravity = Gravity.CENTER
         }
         root.addView(subtitle, lp(bottom = 36))
 
-        val playBtn = buildMenuBtn("Start", "#2C4A9E", accent = true)
+        val playBtn = buildMenuBtn("Start", UiTheme.PRIMARY, accent = true)
         playBtn.setOnClickListener {
             startActivity(
                 Intent(this, CampaignActivity::class.java).apply {
@@ -58,22 +58,22 @@ class MainMenuActivity : AppCompatActivity() {
         }
         root.addView(playBtn, lp(bottom = 14, hMargin = 20))
 
-        val howToPlayBtn = buildMenuBtn("How to Play", "#243053")
+        val howToPlayBtn = buildMenuBtn("How to Play", UiTheme.SURFACE_ALT)
         howToPlayBtn.setOnClickListener {
             startActivity(Intent(this, HowToPlayActivity::class.java))
         }
         root.addView(howToPlayBtn, lp(bottom = 14, hMargin = 20))
 
-        val quitBtn = buildMenuBtn("Exit", "#1D2438")
+        val quitBtn = buildMenuBtn("Exit", UiTheme.SURFACE)
         quitBtn.setOnClickListener { finish() }
         root.addView(quitBtn, lp(bottom = 0, hMargin = 20))
 
         val note = TextView(this).apply {
             text = "Phase 1 focus: fog-of-war POI discovery, free roam scouting, UI polish, and direct Fight/Run/Bribe interactions."
             textSize = 12f
-            setTextColor(Color.parseColor("#6D789B"))
+            setTextColor(Color.parseColor(UiTheme.TEXT_MUTED))
             gravity = Gravity.CENTER
-            setPadding(0, 34, 0, 0)
+            setPadding(0, dp(32), 0, 0)
         }
         root.addView(note, lp())
 
@@ -83,13 +83,10 @@ class MainMenuActivity : AppCompatActivity() {
     private fun buildMenuBtn(label: String, bgHex: String, accent: Boolean = false): Button {
         return Button(this).apply {
             text = label
-            textSize = 17f
-            setTextColor(if (accent) Color.WHITE else Color.parseColor("#D6DCEF"))
-            setBackgroundColor(Color.parseColor(bgHex))
-            setPadding(40, 24, 40, 24)
-            isAllCaps = false
-            typeface = Typeface.DEFAULT_BOLD
-            stateListAnimator = null
+            textSize = 16f
+            setTextColor(if (accent) Color.parseColor(UiTheme.TEXT_PRIMARY) else Color.parseColor(UiTheme.TEXT_PRIMARY))
+            setPadding(dp(24), dp(16), dp(24), dp(16))
+            applyUiButtonStyle(bgHex, 16f)
         }
     }
 

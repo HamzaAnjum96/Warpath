@@ -31,7 +31,7 @@ class MainMenuActivity : AppCompatActivity() {
         }
 
         val title = TextView(this).apply {
-            text = "SARHAD"
+            text = "WARPATH"
             textSize = 52f
             setTextColor(Color.parseColor("#F2D06B"))
             typeface = Typeface.DEFAULT_BOLD

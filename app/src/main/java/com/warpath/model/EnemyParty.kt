@@ -17,5 +17,8 @@ data class EnemyParty(
     val faction: PartyFaction = PartyFaction.HOSTILE,
     val maxLinkedFromHome: Int = 1,
     val behaviorType: EnemyPartyBehaviorType = EnemyPartyBehaviorType.PATROL,
-    var patrolForward: Boolean = true
+    var patrolForward: Boolean = true,
+    var travelFromNodeId: String? = null,
+    var travelToNodeId: String? = null,
+    var travelProgress: Float = 0f
 )

@@ -40,11 +40,11 @@ class CampaignActivity : AppCompatActivity() {
     private lateinit var statusText: TextView
     private lateinit var travelHintText: TextView
     private lateinit var recenterButton: Button
+    private lateinit var stopMovementButton: Button
 
     private val phaseOnePocMode = true
     private val poiInteractionDistance = 0.07f
-    private val roamingStepDistance = 0.06f
-    private var roamingDistanceAccumulator = 0f
+    private val playerMetersPerMoveAction = 50f
     private var selectedNode: CampaignNode? = null
     private var suppressAutoPoiSelection = false
 
@@ -74,6 +74,9 @@ class CampaignActivity : AppCompatActivity() {
             nodes = campaignManager.campaignMap
             currentNodeId = campaignManager.gameState.currentNodeId
             enemyParties = campaignManager.gameState.enemyParties
+            enemyDisplayPositions = campaignManager.gameState.enemyParties.associate { party ->
+                party.id to campaignManager.getEnemyPartyPosition(party)
+            }
             showPaths = !phaseOnePocMode
             setPlayerPosition(campaignManager.gameState.playerMapX, campaignManager.gameState.playerMapY)
             onMapTapped = { normX, normY ->
@@ -167,6 +170,28 @@ class CampaignActivity : AppCompatActivity() {
                 FrameLayout.LayoutParams.WRAP_CONTENT,
                 Gravity.BOTTOM
             )
+        )
+
+        stopMovementButton = Button(this).apply {
+            text = "✕ Stop"
+            textSize = if (compactUi) 11f else 12f
+            typeface = Typeface.DEFAULT_BOLD
+            isAllCaps = false
+            setTextColor(Color.WHITE)
+            applyRoundedStyle(backgroundColor = "#8A2A2A")
+            visibility = View.GONE
+            setOnClickListener { mapView.cancelMovement() }
+        }
+        root.addView(
+            stopMovementButton,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.END or Gravity.BOTTOM
+            ).apply {
+                rightMargin = dp(16)
+                bottomMargin = dp(if (compactUi) 126 else 140)
+            }
         )
 
         travelHintText = TextView(this).apply {
@@ -444,6 +469,9 @@ class CampaignActivity : AppCompatActivity() {
         mapView.nodes = campaignManager.campaignMap
         mapView.currentNodeId = campaignManager.gameState.currentNodeId
         mapView.enemyParties = campaignManager.gameState.enemyParties
+        mapView.enemyDisplayPositions = campaignManager.gameState.enemyParties.associate { party ->
+            party.id to campaignManager.getEnemyPartyPosition(party)
+        }
         mapView.setPlayerPosition(campaignManager.gameState.playerMapX, campaignManager.gameState.playerMapY)
         mapView.inputEnabled = true
         mapView.showPaths = !phaseOnePocMode
@@ -890,16 +918,54 @@ class CampaignActivity : AppCompatActivity() {
     private fun moveWarbandTo(normX: Float, normY: Float) {
         val startX = campaignManager.gameState.playerMapX
         val startY = campaignManager.gameState.playerMapY
+        val totalDistanceNorm = hypot(normX - startX, normY - startY)
+        if (totalDistanceNorm < 0.00002f) return
+        val enemySnapshot = campaignManager.createEnemyMovementSnapshot()
+        var latestProgressNorm = 0f
+        var latestPlayerX = startX
+        var latestPlayerY = startY
         mapView.inputEnabled = false
         statusText.text = "▶ Marching…"
         statusText.visibility = View.VISIBLE
-        mapView.animatePlayerTo(normX, normY) {
-            campaignManager.setPlayerPosition(normX, normY)
-            roamingDistanceAccumulator += hypot(normX - startX, normY - startY)
-            maybeStepRoamingParties(force = true)
+        stopMovementButton.visibility = View.VISIBLE
+        mapView.animatePlayerTo(
+            normX,
+            normY,
+            onProgress = { t, x, y ->
+                latestProgressNorm = totalDistanceNorm * t
+                latestPlayerX = x
+                latestPlayerY = y
+                mapView.enemyDisplayPositions = campaignManager.enemyPreviewPositions(
+                    snapshot = enemySnapshot,
+                    playerMovedNorm = latestProgressNorm,
+                    totalPlayerTravelNorm = totalDistanceNorm,
+                    playerMetersPerAction = playerMetersPerMoveAction
+                )
+            }
+        ) { cancelled ->
+            val movedNorm = latestProgressNorm
+            campaignManager.setPlayerPosition(latestPlayerX, latestPlayerY)
+            val playerHit = campaignManager.applyReactiveEnemyMovement(
+                snapshot = enemySnapshot,
+                playerMovedNorm = movedNorm,
+                totalPlayerTravelNorm = totalDistanceNorm,
+                playerMetersPerAction = playerMetersPerMoveAction
+            )
+            mapView.enemyParties = campaignManager.gameState.enemyParties
+            mapView.enemyDisplayPositions = campaignManager.gameState.enemyParties.associate { party ->
+                party.id to campaignManager.getEnemyPartyPosition(party)
+            }
             checkFogDiscovery()
             mapView.inputEnabled = true
             statusText.visibility = View.GONE
+            stopMovementButton.visibility = View.GONE
+            if (cancelled) {
+                Toast.makeText(this, "Movement cancelled.", Toast.LENGTH_SHORT).show()
+            }
+            if (playerHit) {
+                forceEnemyEngagement()
+                return@animatePlayerTo
+            }
             showNearbyPoiIfAny()
         }
     }
@@ -982,19 +1048,25 @@ class CampaignActivity : AppCompatActivity() {
         statusText.text = "▶ Marching to ${targetNode.name}…"
         statusText.visibility = View.VISIBLE
 
-        mapView.animatePlayerTo(targetNode) {
+        mapView.animatePlayerTo(targetNode, onComplete = {
             statusText.visibility = View.GONE
             mapView.inputEnabled = true
             actionButton.isEnabled = true
             actionButton.alpha = 1f
             if (campaignManager.stepEnemyParties()) {
                 mapView.enemyParties = campaignManager.gameState.enemyParties
+                mapView.enemyDisplayPositions = campaignManager.gameState.enemyParties.associate { party ->
+                    party.id to campaignManager.getEnemyPartyPosition(party)
+                }
                 forceEnemyEngagement()
                 return@animatePlayerTo
             }
             mapView.enemyParties = campaignManager.gameState.enemyParties
+            mapView.enemyDisplayPositions = campaignManager.gameState.enemyParties.associate { party ->
+                party.id to campaignManager.getEnemyPartyPosition(party)
+            }
             action()
-        }
+        })
     }
 
     private fun engageBattle(node: CampaignNode) {
@@ -1077,17 +1149,6 @@ class CampaignActivity : AppCompatActivity() {
             Toast.makeText(this, "☠ Enemy party intercepted your warband!", Toast.LENGTH_LONG).show()
             engageBattle(current)
         }
-    }
-
-    private fun maybeStepRoamingParties(force: Boolean = false) {
-        if (!force && roamingDistanceAccumulator < roamingStepDistance) return
-        roamingDistanceAccumulator = 0f
-        if (campaignManager.stepEnemyParties()) {
-            mapView.enemyParties = campaignManager.gameState.enemyParties
-            forceEnemyEngagement()
-            return
-        }
-        mapView.enemyParties = campaignManager.gameState.enemyParties
     }
 
     private fun showRunOverDialog() {

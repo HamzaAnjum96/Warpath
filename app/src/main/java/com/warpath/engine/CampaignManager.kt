@@ -1,6 +1,7 @@
 package com.warpath.engine
 
 import com.warpath.model.*
+import kotlin.math.hypot
 import kotlin.random.Random
 
 class CampaignManager {
@@ -15,6 +16,30 @@ class CampaignManager {
         val faction: PartyFaction,
         val maxLinked: Int,
         val templateOptions: List<List<EnemyTemplate>>
+    )
+
+    data class EnemyMovementSnapshot(
+        val states: List<PartyMovementState>
+    )
+
+    data class PartyMovementState(
+        val id: String,
+        val nodeId: String,
+        val patrolForward: Boolean,
+        val travelFromNodeId: String?,
+        val travelToNodeId: String?,
+        val travelProgress: Float
+    )
+
+    private data class SimulatedPartyResult(
+        val partyId: String,
+        val nodeId: String,
+        val patrolForward: Boolean,
+        val travelFromNodeId: String?,
+        val travelToNodeId: String?,
+        val travelProgress: Float,
+        val mapX: Float,
+        val mapY: Float
     )
 
     fun startNewCampaign(): GameState {
@@ -142,6 +167,188 @@ class CampaignManager {
         resolveFriendlyHostileCollisions()
         return hitPlayer
     }
+
+    fun createEnemyMovementSnapshot(): EnemyMovementSnapshot {
+        val states = gameState.enemyParties.map { party ->
+            PartyMovementState(
+                id = party.id,
+                nodeId = party.nodeId,
+                patrolForward = party.patrolForward,
+                travelFromNodeId = party.travelFromNodeId,
+                travelToNodeId = party.travelToNodeId,
+                travelProgress = party.travelProgress
+            )
+        }
+        return EnemyMovementSnapshot(states)
+    }
+
+    fun enemyPreviewPositions(
+        snapshot: EnemyMovementSnapshot,
+        playerMovedNorm: Float,
+        totalPlayerTravelNorm: Float,
+        playerMetersPerAction: Float
+    ): Map<String, Pair<Float, Float>> {
+        if (totalPlayerTravelNorm <= 0f) return emptyMap()
+        val progress = (playerMovedNorm / totalPlayerTravelNorm).coerceIn(0f, 1f)
+        val out = mutableMapOf<String, Pair<Float, Float>>()
+        for (party in gameState.enemyParties) {
+            val state = snapshot.states.find { it.id == party.id } ?: continue
+            val enemyTravelNorm = totalPlayerTravelNorm * progress * enemyMovementSpeedRatio(party, playerMetersPerAction)
+            val sim = simulatePartyMovement(party, state, enemyTravelNorm)
+            out[party.id] = Pair(sim.mapX, sim.mapY)
+        }
+        return out
+    }
+
+    fun applyReactiveEnemyMovement(
+        snapshot: EnemyMovementSnapshot,
+        playerMovedNorm: Float,
+        totalPlayerTravelNorm: Float,
+        playerMetersPerAction: Float
+    ): Boolean {
+        if (totalPlayerTravelNorm <= 0f) return false
+        val progress = (playerMovedNorm / totalPlayerTravelNorm).coerceIn(0f, 1f)
+        var hitPlayer = false
+        for (party in gameState.enemyParties) {
+            val state = snapshot.states.find { it.id == party.id } ?: continue
+            val enemyTravelNorm = totalPlayerTravelNorm * progress * enemyMovementSpeedRatio(party, playerMetersPerAction)
+            val sim = simulatePartyMovement(party, state, enemyTravelNorm)
+            party.nodeId = sim.nodeId
+            party.patrolForward = sim.patrolForward
+            party.travelFromNodeId = sim.travelFromNodeId
+            party.travelToNodeId = sim.travelToNodeId
+            party.travelProgress = sim.travelProgress
+            if (party.faction == PartyFaction.HOSTILE && sim.nodeId == gameState.currentNodeId) {
+                hitPlayer = true
+            }
+        }
+        resolveFriendlyHostileCollisions()
+        return hitPlayer
+    }
+
+    private fun enemyMovementSpeedRatio(party: EnemyParty, playerMetersPerAction: Float): Float {
+        val speedMeters = if (party.faction == PartyFaction.FRIENDLY) 40f else 30f
+        return speedMeters / playerMetersPerAction
+    }
+
+    private fun simulatePartyMovement(
+        party: EnemyParty,
+        start: PartyMovementState,
+        travelNorm: Float
+    ): SimulatedPartyResult {
+        var remaining = travelNorm.coerceAtLeast(0f)
+        var nodeId = start.nodeId
+        var patrolForward = start.patrolForward
+        var edgeFrom = start.travelFromNodeId
+        var edgeTo = start.travelToNodeId
+        var edgeProgress = start.travelProgress.coerceIn(0f, 1f)
+
+        while (remaining > 0.00001f) {
+            val onEdge = edgeFrom != null && edgeTo != null
+            if (onEdge) {
+                val fromNode = campaignMap.find { it.id == edgeFrom } ?: break
+                val toNode = campaignMap.find { it.id == edgeTo } ?: break
+                val edgeLen = distanceNorm(fromNode.mapX, fromNode.mapY, toNode.mapX, toNode.mapY)
+                if (edgeLen <= 0.00001f) {
+                    nodeId = toNode.id
+                    edgeFrom = null
+                    edgeTo = null
+                    edgeProgress = 0f
+                    continue
+                }
+                val left = (1f - edgeProgress) * edgeLen
+                if (remaining < left) {
+                    edgeProgress += remaining / edgeLen
+                    remaining = 0f
+                } else {
+                    remaining -= left
+                    nodeId = toNode.id
+                    edgeFrom = null
+                    edgeTo = null
+                    edgeProgress = 0f
+                }
+            } else {
+                val currentNode = campaignMap.find { it.id == nodeId } ?: break
+                if (currentNode.connections.isEmpty()) break
+                val nextId = selectNextNodeId(party.behaviorType, currentNode, patrolForward)
+                if (currentNode.connections.size > 1) patrolForward = !patrolForward
+                val nextNode = campaignMap.find { it.id == nextId } ?: break
+                val edgeLen = distanceNorm(currentNode.mapX, currentNode.mapY, nextNode.mapX, nextNode.mapY)
+                if (edgeLen <= 0.00001f) {
+                    nodeId = nextId
+                    continue
+                }
+                if (remaining < edgeLen) {
+                    edgeFrom = currentNode.id
+                    edgeTo = nextId
+                    edgeProgress = remaining / edgeLen
+                    remaining = 0f
+                } else {
+                    remaining -= edgeLen
+                    nodeId = nextId
+                }
+            }
+        }
+
+        val position = resolvePosition(nodeId, edgeFrom, edgeTo, edgeProgress)
+        return SimulatedPartyResult(
+            partyId = party.id,
+            nodeId = nodeId,
+            patrolForward = patrolForward,
+            travelFromNodeId = edgeFrom,
+            travelToNodeId = edgeTo,
+            travelProgress = edgeProgress,
+            mapX = position.first,
+            mapY = position.second
+        )
+    }
+
+    private fun selectNextNodeId(
+        behavior: EnemyPartyBehaviorType,
+        currentNode: CampaignNode,
+        patrolForward: Boolean
+    ): String {
+        return when (behavior) {
+            EnemyPartyBehaviorType.PATROL -> {
+                val sorted = currentNode.connections.sorted()
+                if (patrolForward) sorted.first() else sorted.last()
+            }
+        }
+    }
+
+    fun getEnemyPartyPosition(party: EnemyParty): Pair<Float, Float> {
+        return resolvePosition(
+            party.nodeId,
+            party.travelFromNodeId,
+            party.travelToNodeId,
+            party.travelProgress
+        )
+    }
+
+    private fun resolvePosition(
+        nodeId: String,
+        travelFromNodeId: String?,
+        travelToNodeId: String?,
+        travelProgress: Float
+    ): Pair<Float, Float> {
+        val fromId = travelFromNodeId
+        val toId = travelToNodeId
+        if (fromId != null && toId != null) {
+            val from = campaignMap.find { it.id == fromId }
+            val to = campaignMap.find { it.id == toId }
+            if (from != null && to != null) {
+                val t = travelProgress.coerceIn(0f, 1f)
+                return Pair(
+                    from.mapX + (to.mapX - from.mapX) * t,
+                    from.mapY + (to.mapY - from.mapY) * t
+                )
+            }
+        }
+        val node = campaignMap.find { it.id == nodeId } ?: return Pair(gameState.playerMapX, gameState.playerMapY)
+        return Pair(node.mapX, node.mapY)
+    }
+
+    private fun distanceNorm(x1: Float, y1: Float, x2: Float, y2: Float): Float = hypot(x2 - x1, y2 - y1)
 
     fun resolveNodeRewards(node: CampaignNode, battleWon: Boolean) {
         if (battleWon) {

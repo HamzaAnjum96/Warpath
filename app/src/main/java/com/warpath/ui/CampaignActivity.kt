@@ -21,6 +21,8 @@ import kotlin.math.hypot
 
 class CampaignActivity : AppCompatActivity() {
 
+    private enum class PanelType { SETTLEMENT, ROAMING, EVENT, RESULT }
+
     companion object {
         var campaignManager: CampaignManager = CampaignManager()
     }
@@ -34,6 +36,10 @@ class CampaignActivity : AppCompatActivity() {
     private lateinit var nodeTypeChip: TextView
     private lateinit var nodeDescText: TextView
     private lateinit var nodeStatsText: TextView
+    private lateinit var threatRowText: TextView
+    private lateinit var strengthRowText: TextView
+    private lateinit var suppliesRowText: TextView
+    private lateinit var reputationRowText: TextView
     private lateinit var nodeRangeTagText: TextView
     private lateinit var distanceText: TextView
     private lateinit var actionSecondaryText: TextView
@@ -50,6 +56,8 @@ class CampaignActivity : AppCompatActivity() {
     private val playerMetersPerMoveAction = 50f
     private var selectedNode: CampaignNode? = null
     private var suppressAutoPoiSelection = false
+    private var pendingTravelTarget: Pair<Float, Float>? = null
+    private var detailsExpanded: Boolean = false
 
     private val density by lazy { resources.displayMetrics.density }
     private val screenWidthDp by lazy { resources.displayMetrics.widthPixels / density }
@@ -69,7 +77,7 @@ class CampaignActivity : AppCompatActivity() {
             campaignManager.startNewCampaign()
         }
 
-        val root = FrameLayout(this).apply { setBackgroundColor(Color.parseColor("#070B16")) }
+        val root = FrameLayout(this).apply { setBackgroundColor(Color.parseColor("#080D17")) }
 
         mapView = CampaignMapView(this).apply {
             nodes = campaignManager.campaignMap
@@ -183,12 +191,14 @@ class CampaignActivity : AppCompatActivity() {
         )
 
         stopMovementButton = Button(this).apply {
-            text = "✕ Stop"
-            textSize = if (compactUi) 11f else 12f
+            text = "Stop"
+            textSize = if (compactUi) 10f else 11f
             typeface = Typeface.DEFAULT_BOLD
             isAllCaps = false
-            setTextColor(Color.WHITE)
-            applyRoundedStyle(backgroundColor = "#5C2A39", borderColor = "#8B465B", topEdgeColor = "#AC6880")
+            setTextColor(Color.parseColor("#F2F5FF"))
+            minHeight = dp(34)
+            minimumHeight = dp(34)
+            applyRoundedStyle(backgroundColor = "#2D3550", borderColor = "#526489", topEdgeColor = "#5E729A", cornerRadius = 10f)
             visibility = View.GONE
             setOnClickListener { mapView.cancelMovement() }
         }
@@ -206,8 +216,8 @@ class CampaignActivity : AppCompatActivity() {
 
         travelHintText = TextView(this).apply {
             textSize = if (compactUi) 11f else 12f
-            setTextColor(Color.parseColor("#d7def7"))
-            setBackgroundColor(Color.parseColor("#B1131D33"))
+            setTextColor(Color.parseColor("#CBD2E5"))
+            setBackgroundColor(Color.parseColor("#A2121A2A"))
             typeface = Typeface.create("sans-serif", Typeface.NORMAL)
             setPadding(dp(14), dp(10), dp(14), dp(10))
             text = "Tap to select. Tap terrain to travel. Pinch or double-tap to zoom."
@@ -290,6 +300,13 @@ class CampaignActivity : AppCompatActivity() {
         it.layoutParams = LinearLayout.LayoutParams(dp(14), 1)
     }
 
+    private fun compactRowText() = TextView(this).apply {
+        textSize = if (compactUi) 10f else 11f
+        setTextColor(Color.parseColor("#9DAAC2"))
+        setPadding(0, dp(1), 0, dp(1))
+        typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+    }
+
     private fun buildInfoPanel(): View {
         val container = FrameLayout(this)
 
@@ -297,10 +314,10 @@ class CampaignActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
-                cornerRadius = dpF(14f)
+                cornerRadius = dpF(12f)
                 orientation = GradientDrawable.Orientation.TOP_BOTTOM
-                colors = intArrayOf(Color.parseColor("#E1142643"), Color.parseColor("#E10E1D35"))
-                setStroke(dp(1), Color.parseColor("#556C97"))
+                colors = intArrayOf(Color.parseColor("#F0101A2F"), Color.parseColor("#F00D1526"))
+                setStroke(dp(1), Color.parseColor("#334661"))
             }
             visibility = View.GONE
         }
@@ -316,7 +333,7 @@ class CampaignActivity : AppCompatActivity() {
 
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(14), dp(20), dp(16))
+            setPadding(dp(16), dp(12), dp(16), dp(12))
         }
 
         val headerRow = LinearLayout(this).apply {
@@ -340,9 +357,9 @@ class CampaignActivity : AppCompatActivity() {
         )
 
         nodeNameText = TextView(this).apply {
-            textSize = if (compactUi) 18f else 20f
-            setTextColor(Color.parseColor("#F6F8FF"))
-            typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
+            textSize = if (compactUi) 17f else 19f
+            setTextColor(Color.parseColor("#ECEFF8"))
+            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
             letterSpacing = 0.02f
         }
         headerRow.addView(nodeNameText, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
@@ -399,18 +416,31 @@ class CampaignActivity : AppCompatActivity() {
 
         nodeDescText = TextView(this).apply {
             textSize = if (compactUi) 11f else 12f
-            setTextColor(Color.parseColor("#C3CAE2"))
+            setTextColor(Color.parseColor("#B5BED1"))
             typeface = Typeface.create("sans-serif", Typeface.NORMAL)
-            setLineSpacing(4f, 1f)
-            maxLines = 1
+            setLineSpacing(2f, 1f)
+            maxLines = 2
+            setOnClickListener {
+                detailsExpanded = !detailsExpanded
+                maxLines = if (detailsExpanded) 6 else 2
+            }
         }
         content.addView(
             nodeDescText,
             LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { bottomMargin = 8 }
+            ).apply { bottomMargin = 6 }
         )
+
+        threatRowText = compactRowText()
+        strengthRowText = compactRowText()
+        suppliesRowText = compactRowText()
+        reputationRowText = compactRowText()
+        content.addView(threatRowText)
+        content.addView(strengthRowText)
+        content.addView(suppliesRowText)
+        content.addView(reputationRowText)
 
         nodeStatsText = TextView(this).apply {
             textSize = if (compactUi) 11f else 12f
@@ -497,9 +527,11 @@ class CampaignActivity : AppCompatActivity() {
         if (!::mapStateText.isInitialized) return
         val moving = mapView.isMovementActive()
         val hasTarget = selectedNode != null
+        val hasPreview = pendingTravelTarget != null
         val centered = mapView.isCenteredOnPlayer()
         val (label, color) = when {
             moving -> "TRAVELLING" to "#4D5F87"
+            hasPreview -> mapView.currentPreviewRouteTypeLabel() to "#4B5876"
             hasTarget -> "TARGET LOCKED" to "#5E4E82"
             !centered -> "SCOUTING" to "#3A5B66"
             else -> "FOLLOW WARBAND" to "#33405E"
@@ -546,14 +578,25 @@ class CampaignActivity : AppCompatActivity() {
     private fun handleMapTap(normX: Float, normY: Float) {
         val tappedNode = findNodeNear(normX, normY)
         if (tappedNode != null) {
+            pendingTravelTarget = null
+            mapView.clearRoutePreview()
             onNodeSelected(tappedNode)
             return
         }
         selectedNode = null
         mapView.selectedNodeId = null
         infoPanel.visibility = View.GONE
-        updateMapStateText()
-        moveWarbandTo(normX, normY)
+        val pending = pendingTravelTarget
+        if (pending != null && hypot(pending.first - normX, pending.second - normY) < 0.03f) {
+            pendingTravelTarget = null
+            mapView.previewRouteTo(normX, normY, committed = true)
+            moveWarbandTo(normX, normY)
+        } else {
+            pendingTravelTarget = Pair(normX, normY)
+            mapView.previewRouteTo(normX, normY, committed = false)
+            Toast.makeText(this, "Route preview ready. Tap again to commit travel.", Toast.LENGTH_SHORT).show()
+            updateMapStateText()
+        }
     }
 
     private fun findNodeNear(normX: Float, normY: Float): CampaignNode? {
@@ -573,6 +616,7 @@ class CampaignActivity : AppCompatActivity() {
 
     private fun onNodeSelected(node: CampaignNode) {
         selectedNode = node
+        detailsExpanded = false
         mapView.selectedNodeId = node.id
         infoPanel.visibility = View.VISIBLE
         updateMapStateText()
@@ -589,6 +633,8 @@ class CampaignActivity : AppCompatActivity() {
         val isNearby = isNodeNearby(node)
         distanceText.text = "Range: ${formatDistanceToNode(node)}"
         actionSecondaryText.visibility = View.GONE
+        applyPanelType(if (node.type == NodeType.TOWN || node.type == NodeType.VILLAGE || node.type == NodeType.FACTION_OUTPOST) PanelType.SETTLEMENT else PanelType.ROAMING)
+        bindCompactRows(node)
 
         updateRangeTag(node, isNearby)
 
@@ -726,6 +772,39 @@ class CampaignActivity : AppCompatActivity() {
         styleChip(nodeRangeTagText, bg)
     }
 
+    private fun bindCompactRows(node: CampaignNode) {
+        val enemyStrength = node.enemySquads.sumOf { it.count }
+        val threatText = when (node.type) {
+            NodeType.BOSS -> "High"
+            NodeType.ELITE_CHALLENGE, NodeType.ENEMY_PATROL -> "Medium"
+            else -> "Low"
+        }
+        threatRowText.text = "Threat: $threatText"
+        strengthRowText.text = "Strength: ${enemyStrength.coerceAtLeast(0)}"
+        suppliesRowText.text = "Supplies: ${node.suppliesReward.coerceAtLeast(0)}"
+        reputationRowText.text = "Reputation: +${node.renownReward.coerceAtLeast(0)}"
+    }
+
+    private fun applyPanelType(type: PanelType) {
+        val accent = when (type) {
+            PanelType.SETTLEMENT -> "#587B9A"
+            PanelType.ROAMING -> "#625A86"
+            PanelType.EVENT -> "#8B6A43"
+            PanelType.RESULT -> "#3F7D67"
+        }
+        panelAccentBar.setBackgroundColor(Color.parseColor(accent))
+        infoPanel.alpha = 0f
+        infoPanel.translationY = dp(12).toFloat()
+        infoPanel.animate().alpha(1f).translationY(0f).setDuration(
+            when (type) {
+                PanelType.SETTLEMENT -> 240L
+                PanelType.ROAMING -> 150L
+                PanelType.EVENT -> 210L
+                PanelType.RESULT -> 170L
+            }
+        ).start()
+    }
+
     private fun openPoiContextMenu(node: CampaignNode) {
         val options = when (node.type) {
             NodeType.ENEMY_PATROL, NodeType.ELITE_CHALLENGE, NodeType.BOSS ->
@@ -776,14 +855,14 @@ class CampaignActivity : AppCompatActivity() {
         options.forEach { label ->
             val row = TextView(this).apply {
                 text = label
-                textSize = 15f
-                typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
-                setTextColor(Color.parseColor("#E0E8FF"))
-                setPadding(dp(14), dp(12), dp(14), dp(12))
+                textSize = 13f
+                typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+                setTextColor(Color.parseColor("#D2DBEE"))
+                setPadding(dp(12), dp(9), dp(12), dp(9))
                 background = GradientDrawable().apply {
-                    cornerRadius = dpF(10f)
-                    setColor(Color.parseColor("#19233C"))
-                    setStroke(dp(1), Color.parseColor("#425A84"))
+                    cornerRadius = dpF(9f)
+                    setColor(Color.parseColor("#182137"))
+                    setStroke(dp(1), Color.parseColor("#344862"))
                 }
                 setOnClickListener {
                     dialog.dismiss()
@@ -928,46 +1007,69 @@ class CampaignActivity : AppCompatActivity() {
 
     private fun showOutcomeSheet(title: String, summary: String, details: List<String>) {
         val dialog = BottomSheetDialog(this)
+        val isDefeatTone = title.contains("Failed", ignoreCase = true) || title.contains("Retreat", ignoreCase = true)
+        val isDiscoveryTone = title.contains("Intel", ignoreCase = true) || title.contains("Discovered", ignoreCase = true)
+        val background = when {
+            isDefeatTone -> "#12182A"
+            isDiscoveryTone -> "#182234"
+            else -> "#1A2033"
+        }
+        val header = when {
+            isDefeatTone -> "RESOLUTION"
+            isDiscoveryTone -> "DISCOVERY"
+            else -> "VICTORY"
+        }
+
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(16), dp(20), dp(24))
-            setBackgroundColor(Color.parseColor("#131B2F"))
+            setPadding(dp(18), dp(14), dp(18), dp(20))
+            setBackgroundColor(Color.parseColor(background))
         }
         content.addView(TextView(this).apply {
+            text = header
+            textSize = 10f
+            letterSpacing = 0.1f
+            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+            setTextColor(Color.parseColor("#9DA9C5"))
+        })
+        content.addView(TextView(this).apply {
             text = title
-            textSize = 20f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.parseColor("#F4F7FF"))
+            textSize = 18f
+            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+            setTextColor(Color.parseColor("#ECEFF8"))
+            setPadding(0, dp(4), 0, dp(4))
         })
         content.addView(TextView(this).apply {
             text = summary
-            textSize = 13f
-            setTextColor(Color.parseColor("#B9C5E2"))
-            setPadding(0, dp(6), 0, dp(12))
+            textSize = 12f
+            setTextColor(Color.parseColor("#B4BED2"))
+            setPadding(0, 0, 0, dp(10))
         })
         details.forEach { line ->
             content.addView(TextView(this).apply {
-                text = "• $line"
-                textSize = 13f
-                setTextColor(Color.parseColor("#DCE5FF"))
+                text = line
+                textSize = 12f
+                setTextColor(Color.parseColor("#D6DDEB"))
                 setPadding(0, dp(2), 0, dp(2))
             })
         }
         content.addView(Button(this).apply {
-            text = "Continue"
+            text = "Next Action"
             isAllCaps = false
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.WHITE)
-            applyRoundedStyle(backgroundColor = "#3F4482", borderColor = "#6571A8", topEdgeColor = "#7D8AC3", cornerRadius = 14f)
+            minHeight = dp(38)
+            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+            setTextColor(Color.parseColor("#F1F3FA"))
+            applyRoundedStyle(backgroundColor = "#4B4E8D", borderColor = "#6972A6", topEdgeColor = "#757EB7", cornerRadius = 10f)
             setOnClickListener { dialog.dismiss() }
         }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-            topMargin = dp(14)
+            topMargin = dp(12)
         })
         dialog.setContentView(content)
         dialog.show()
     }
 
     private fun moveWarbandTo(normX: Float, normY: Float) {
+        pendingTravelTarget = null
         val startX = campaignManager.gameState.playerMapX
         val startY = campaignManager.gameState.playerMapY
         val totalDistanceNorm = hypot(normX - startX, normY - startY)
@@ -977,7 +1079,7 @@ class CampaignActivity : AppCompatActivity() {
         var latestPlayerX = startX
         var latestPlayerY = startY
         mapView.inputEnabled = false
-        statusText.text = "▶ Travelling · 0%"
+        statusText.text = "▶ ${mapView.currentPreviewRouteTypeLabel()} · 0%"
         statusText.visibility = View.VISIBLE
         stopMovementButton.visibility = View.VISIBLE
         updateMapStateText()
@@ -1016,7 +1118,7 @@ class CampaignActivity : AppCompatActivity() {
             stopMovementButton.visibility = View.GONE
             updateMapStateText()
             if (cancelled) {
-                Toast.makeText(this, "Movement cancelled.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Movement aborted at current position.", Toast.LENGTH_SHORT).show()
             }
             if (playerHit) {
                 forceEnemyEngagement()
@@ -1107,6 +1209,7 @@ class CampaignActivity : AppCompatActivity() {
         }
 
         mapView.inputEnabled = false
+        showPreEventState(targetNode)
         actionButton.text = "  Traveling…"
         actionButton.isEnabled = false
         actionButton.alpha = 0.5f
@@ -1134,6 +1237,18 @@ class CampaignActivity : AppCompatActivity() {
         })
     }
 
+
+    private fun showPreEventState(node: CampaignNode) {
+        val cue = when (node.type) {
+            NodeType.ENEMY_PATROL, NodeType.ELITE_CHALLENGE, NodeType.BOSS -> "Enemy sighted"
+            NodeType.TOWN, NodeType.VILLAGE -> "Entering settlement"
+            NodeType.RESOURCE_CACHE -> "Ruins discovered"
+            else -> "Ambush warning"
+        }
+        statusText.text = cue
+        statusText.visibility = View.VISIBLE
+        statusText.postDelayed({ if (!mapView.isMovementActive()) statusText.visibility = View.GONE }, 650)
+    }
     private fun engageBattle(node: CampaignNode) {
         campaignManager.moveToNode(node.id)
         mapView.currentNodeId = campaignManager.gameState.currentNodeId

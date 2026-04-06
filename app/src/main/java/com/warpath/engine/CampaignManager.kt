@@ -160,6 +160,9 @@ class CampaignManager {
                 }
             }
             party.nodeId = nextId
+            party.travelFromNodeId = null
+            party.travelToNodeId = null
+            party.travelProgress = 0f
             if (party.faction == PartyFaction.HOSTILE && nextId == gameState.currentNodeId) {
                 hitPlayer = true
             }

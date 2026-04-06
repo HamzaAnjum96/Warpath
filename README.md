@@ -1,28 +1,9 @@
-# Sarhad (formerly Warpath)
+# Warpath
 
-Sarhad is a **portrait-mode, Android-first strategy RPG** where you command a roaming warband across a living frontier.
+Warpath is an Android-first, portrait strategy RPG where you guide a roaming warband across a dangerous frontier, balancing movement, battles, recovery, and scarce resources to keep your force alive and growing.
 
-## One-line summary
-**Lead your warband in real time, recruit and recover in settlements, and choose when to battle, run, or bribe to survive and grow.**
-
-## Current direction (pivot)
-This repository is now aligned to the **Sarhad** concept pivot:
-- Live overworld traversal (portrait, thumb-first controls)
-- Fast encounter decisions (Battle / Run / Bribe)
-- Short real-time tactical fights
-- Settlement-driven recovery, recruitment, supplies, and missions
-- Survival pressure through troops, supplies, gold, and time
-
-## Planning documents
-- [Game Design](planning/GAME_DESIGN.md)
-- [Tech Stack](planning/TECH_STACK.md)
-- [Architecture](planning/ARCHITECTURE.md)
-- [Roadmap](planning/ROADMAP.md)
-
-## Prototype status
-The Android prototype under `app/` remains in active iteration and may still contain naming from the previous "Warpath" label while docs are being migrated.
-
-Current implementation slice: **v1.3.0 minor release** (fog-of-war POI discovery, proximity-first POI interactions without route-chain gating, elite intel reveal hook, and campaign UI visual polish).
-
-## Build
-See [BUILD_INSTRUCTIONS.md](BUILD_INSTRUCTIONS.md).
+## Documentation
+- [Build Instructions](BUILD_INSTRUCTIONS.md)
+- [Game Design](docs/GAME_DESIGN.md)
+- [Tech Stack](docs/TECH_STACK.md)
+- [Architecture](docs/ARCHITECTURE.md)

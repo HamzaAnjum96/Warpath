@@ -67,14 +67,6 @@ class BattleActivity : AppCompatActivity() {
                 battleEngine.issueCommand(BattleCommand.FOCUS_TARGET, this@BattleActivity.battleState, enemy.id)
             }
         }
-        root.addView(battleView, FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.MATCH_PARENT,
-            0
-        ).apply {
-            height = 0
-            gravity = Gravity.TOP
-        })
-
         // Main container
         val mainLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL

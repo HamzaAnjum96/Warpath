@@ -56,6 +56,7 @@ class CampaignActivity : AppCompatActivity() {
     private lateinit var recenterButton: Button
     private lateinit var stopMovementButton: Button
     private lateinit var mapStateText: TextView
+    private lateinit var modeStripText: TextView
     private lateinit var controlCluster: LinearLayout
     private lateinit var alertBanner: LinearLayout
     private lateinit var alertAccent: View
@@ -63,7 +64,7 @@ class CampaignActivity : AppCompatActivity() {
     private lateinit var alertMessageText: TextView
     private lateinit var alertEdgeTint: View
 
-    private val phaseOnePocMode = true
+    private val phaseOnePocMode = false
     private val poiInteractionDistance = 0.07f
     private val playerMetersPerMoveAction = 50f
     private var selectedNode: CampaignNode? = null
@@ -85,16 +86,16 @@ class CampaignActivity : AppCompatActivity() {
     private val maxQueuedAlerts = 6
 
     private object Palette {
-        const val BASE_BG = "#0E1726"
-        const val HUD_SURFACE = "#EE111C2D"
-        const val HUD_SURFACE_ALT = "#DD16263A"
-        const val HUD_BORDER = "#2C3F57"
-        const val HUD_TEXT = "#F2F0EA"
-        const val HUD_TEXT_MUTED = "#9AA9BC"
-        const val GOLD = "#D4B15A"
-        const val PRIMARY = "#6C83C8"
-        const val SUCCESS = "#5FAF7A"
-        const val DANGER = "#C56A5D"
+        val BASE_BG = UiTheme.BASE_BG
+        val HUD_SURFACE = "#EE${UiTheme.SURFACE.removePrefix("#")}"
+        val HUD_SURFACE_ALT = "#DD${UiTheme.SURFACE_ALT.removePrefix("#")}"
+        val HUD_BORDER = UiTheme.BORDER
+        val HUD_TEXT = UiTheme.TEXT_PRIMARY
+        val HUD_TEXT_MUTED = UiTheme.TEXT_MUTED
+        val GOLD = UiTheme.WARNING
+        val PRIMARY = UiTheme.PRIMARY
+        val SUCCESS = UiTheme.POSITIVE
+        val DANGER = UiTheme.HOSTILE
     }
 
     private enum class AlertPriority(val holdMs: Long) {
@@ -141,7 +142,7 @@ class CampaignActivity : AppCompatActivity() {
             enemyDisplayPositions = campaignManager.gameState.enemyParties.associate { party ->
                 party.id to campaignManager.getEnemyPartyPosition(party)
             }
-            showPaths = !phaseOnePocMode
+            showPaths = false
             setPlayerPosition(campaignManager.gameState.playerMapX, campaignManager.gameState.playerMapY)
             onMapTapped = { normX, normY ->
                 handleMapTap(normX, normY)
@@ -170,6 +171,14 @@ class CampaignActivity : AppCompatActivity() {
                 Gravity.TOP
             )
         )
+        root.addView(
+            buildModeStrip(),
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.TOP or Gravity.CENTER_HORIZONTAL
+            ).apply { topMargin = dp(92) }
+        )
 
         root.addView(
             buildAlertBanner(),
@@ -179,8 +188,8 @@ class CampaignActivity : AppCompatActivity() {
                 Gravity.TOP
             ).apply {
                 topMargin = dp(96)
-                marginStart = dp(16)
-                marginEnd = dp(16)
+                marginStart = dp(UiTheme.SPACE_4)
+                marginEnd = dp(UiTheme.SPACE_4)
             }
         )
 
@@ -264,7 +273,7 @@ class CampaignActivity : AppCompatActivity() {
                 Gravity.TOP or Gravity.END
             ).apply {
                 topMargin = dp(106)
-                rightMargin = dp(16)
+                rightMargin = dp(UiTheme.SPACE_4)
             }
         )
 
@@ -323,8 +332,8 @@ class CampaignActivity : AppCompatActivity() {
                 FrameLayout.LayoutParams.WRAP_CONTENT,
                 Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
             ).apply {
-                marginStart = dp(24)
-                marginEnd = dp(24)
+                marginStart = dp(UiTheme.SPACE_5)
+                marginEnd = dp(UiTheme.SPACE_5)
                 bottomMargin = dp(if (compactUi) 180 else 192)
             }
         )
@@ -344,7 +353,7 @@ class CampaignActivity : AppCompatActivity() {
                 cornerRadius = 0f
                 setColor(Color.parseColor(Palette.HUD_SURFACE))
             }
-            setPadding(dp(16), dp(12), dp(16), dp(12))
+            setPadding(dp(UiTheme.SPACE_4), dp(UiTheme.SPACE_3), dp(UiTheme.SPACE_4), dp(UiTheme.SPACE_3))
             gravity = Gravity.CENTER_VERTICAL
             minimumHeight = dp(92)
         }
@@ -422,7 +431,7 @@ class CampaignActivity : AppCompatActivity() {
             visibility = View.GONE
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
-                cornerRadius = dpF(16f)
+                cornerRadius = dpF(UiTheme.RADIUS_MD)
                 setColor(Color.parseColor(Palette.HUD_SURFACE))
                 setStroke(dp(1), Color.parseColor(Palette.HUD_BORDER))
             }
@@ -454,6 +463,19 @@ class CampaignActivity : AppCompatActivity() {
         row.addView(alertBanner, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         row.addView(Space(this), LinearLayout.LayoutParams(dp(8), 1))
         return row
+    }
+
+    private fun buildModeStrip(): View {
+        modeStripText = TextView(this).apply {
+            textSize = if (compactUi) 9f else 10f
+            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+            setTextColor(Color.parseColor(Palette.HUD_TEXT))
+            setPadding(dp(12), dp(5), dp(12), dp(5))
+            letterSpacing = 0.08f
+            alpha = 0.95f
+        }
+        styleChip(modeStripText, Palette.HUD_SURFACE_ALT, 10f)
+        return modeStripText
     }
 
     private fun updateControlClusterVisibility() {
@@ -514,6 +536,17 @@ class CampaignActivity : AppCompatActivity() {
         alertIconText.text = alert.category.icon
         alertIconText.setTextColor(accentColor)
         alertMessageText.text = alert.message
+        val borderColor = when (alert.priority) {
+            AlertPriority.MINOR -> Palette.HUD_BORDER
+            AlertPriority.STANDARD -> alert.category.accentHex
+            AlertPriority.HIGH -> Palette.GOLD
+        }
+        alertBanner.background = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = dpF(UiTheme.RADIUS_MD)
+            setColor(Color.parseColor(Palette.HUD_SURFACE))
+            setStroke(dp(1), Color.parseColor(borderColor))
+        }
 
         alertBanner.visibility = View.VISIBLE
         alertBanner.alpha = 0f
@@ -581,13 +614,13 @@ class CampaignActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
-                cornerRadius = dpF(22f)
+                cornerRadius = dpF(UiTheme.RADIUS_LG)
                 orientation = GradientDrawable.Orientation.TOP_BOTTOM
                 colors = intArrayOf(Color.parseColor("#F116263A"), Color.parseColor("#EF111C2D"))
                 setStroke(dp(1), Color.parseColor(Palette.HUD_BORDER))
             }
             visibility = View.GONE
-            elevation = dpF(4f)
+            elevation = dpF(UiTheme.HUD_ELEVATION)
         }
 
         panelAccentBar = View(this)
@@ -831,14 +864,18 @@ class CampaignActivity : AppCompatActivity() {
         val hasPreview = pendingTravelTarget != null
         val centered = mapView.isCenteredOnPlayer()
         val (label, color) = when {
-            moving -> "TRAVELLING" to Palette.HUD_SURFACE_ALT
+            moving -> "TRAVELLING" to Palette.SUCCESS
             hasPreview -> mapView.currentPreviewRouteTypeLabel() to Palette.HUD_SURFACE_ALT
-            hasTarget -> "TARGET LOCKED" to Palette.HUD_SURFACE_ALT
+            hasTarget -> "TARGET LOCKED" to Palette.PRIMARY
             !centered -> "SCOUTING" to Palette.HUD_SURFACE_ALT
             else -> "FOLLOW WARBAND" to Palette.HUD_SURFACE_ALT
         }
         mapStateText.text = label
         styleChip(mapStateText, color, 10f)
+        if (::modeStripText.isInitialized) {
+            modeStripText.text = "MODE · $label"
+            styleChip(modeStripText, color, 10f)
+        }
     }
 
 
@@ -855,7 +892,7 @@ class CampaignActivity : AppCompatActivity() {
         }
         mapView.setPlayerPosition(campaignManager.gameState.playerMapX, campaignManager.gameState.playerMapY)
         mapView.inputEnabled = true
-        mapView.showPaths = !phaseOnePocMode
+        mapView.showPaths = false
         mapView.invalidate()
         recenterButton.visibility = if (mapView.isCenteredOnPlayer()) View.GONE else View.VISIBLE
         updateMapStateText()
@@ -1395,7 +1432,13 @@ class CampaignActivity : AppCompatActivity() {
         var latestPlayerX = startX
         var latestPlayerY = startY
         mapView.inputEnabled = false
-        statusText.text = "▶ ${mapView.currentPreviewRouteTypeLabel()} · 0%"
+        val routeLabel = mapView.currentPreviewRouteTypeLabel()
+        statusText.text = "▶ $routeLabel · 0%"
+        when (routeLabel) {
+            "THREATENED ROUTE" -> enqueueWorldAlert("Intercept Risk Active", AlertCategory.DANGER, AlertPriority.HIGH, "route_risky")
+            "OFF-ROAD ROUTE" -> enqueueWorldAlert("Off-road march speed reduced", AlertCategory.TRAVEL, AlertPriority.STANDARD, "route_offroad")
+            else -> enqueueWorldAlert("Road route secured", AlertCategory.TRAVEL, AlertPriority.MINOR, "route_road")
+        }
         statusText.visibility = View.VISIBLE
         stopMovementButton.visibility = View.VISIBLE
         updateMapStateText()

@@ -74,6 +74,7 @@ class CampaignMapView @JvmOverloads constructor(
     private var previewRoutePoints: List<Pair<Float, Float>> = emptyList()
     private var movementRoutePoints: List<Pair<Float, Float>> = emptyList()
     private var activeRouteType: RouteType = RouteType.OFF_ROAD
+    private var activeRouteRisk: RouteRisk = RouteRisk.SAFE
 
     private var cameraZoom = 1.6f
     private val minZoom = 0.85f
@@ -233,6 +234,47 @@ class CampaignMapView @JvmOverloads constructor(
     private val playerLookPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor(Palette.GOLD)
     }
+    private val routePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+    }
+    private val routeUnderlayPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+        color = Color.parseColor("#45121D2E")
+    }
+    private val hazardPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+    }
+    private val routeProgressPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        color = Color.parseColor("#F2F0EA")
+        strokeWidth = 2.8f
+        alpha = 185
+    }
+    private val routeDestinationPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 2.2f
+        alpha = 210
+    }
+    private val routeChevronPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL_AND_STROKE
+        strokeWidth = 1.4f
+        alpha = 225
+    }
+    private val routeThreatPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+        strokeWidth = 1.8f
+        color = Color.parseColor("#C65A5A")
+    }
+    private val routePath = Path()
+    private val routeProgressPath = Path()
+    private val routeChevronPath = Path()
 
     private val nodeRadius = 34f
     private val mapLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -251,6 +293,7 @@ class CampaignMapView @JvmOverloads constructor(
 
     private enum class ZoomState { FAR, MID, CLOSE }
     private enum class RouteType { ROAD, OFF_ROAD, RISKY }
+    private enum class RouteRisk { SAFE, THREATENED, INTERCEPT }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
@@ -401,6 +444,7 @@ class CampaignMapView @JvmOverloads constructor(
         val route = buildTravelRoute(startX, startY, endX, endY)
         movementRoutePoints = route.points
         activeRouteType = route.type
+        activeRouteRisk = route.risk
         val routeLength = routeNormLength(movementRoutePoints).coerceAtLeast(0.04f)
 
         isMoving = true
@@ -472,6 +516,7 @@ class CampaignMapView @JvmOverloads constructor(
         val route = buildTravelRoute(playerNormX, playerNormY, target.first, target.second)
         previewRoutePoints = route.points
         activeRouteType = route.type
+        activeRouteRisk = route.risk
         invalidate()
     }
 
@@ -479,13 +524,23 @@ class CampaignMapView @JvmOverloads constructor(
         routePreviewTargetNorm = null
         routePreviewCommitted = false
         previewRoutePoints = emptyList()
+        activeRouteType = RouteType.OFF_ROAD
+        activeRouteRisk = RouteRisk.SAFE
         invalidate()
     }
 
     fun currentPreviewRouteTypeLabel(): String = when (activeRouteType) {
-        RouteType.ROAD -> "ROAD ROUTE"
-        RouteType.OFF_ROAD -> "OFF-ROAD ROUTE"
-        RouteType.RISKY -> "THREATENED ROUTE"
+        RouteType.ROAD -> when (activeRouteRisk) {
+            RouteRisk.INTERCEPT -> "INTERCEPT RISK ROUTE"
+            RouteRisk.THREATENED -> "THREATENED ROAD"
+            RouteRisk.SAFE -> "ROAD ROUTE"
+        }
+        RouteType.OFF_ROAD -> when (activeRouteRisk) {
+            RouteRisk.INTERCEPT -> "INTERCEPT RISK ROUTE"
+            RouteRisk.THREATENED -> "THREATENED OFF-ROAD"
+            RouteRisk.SAFE -> "OFF-ROAD ROUTE"
+        }
+        RouteType.RISKY -> "INTERCEPT RISK ROUTE"
     }
 
     fun cancelMovement() {
@@ -551,6 +606,8 @@ class CampaignMapView @JvmOverloads constructor(
         routePreviewCommitted = false
         previewRoutePoints = emptyList()
         movementRoutePoints = emptyList()
+        activeRouteType = RouteType.OFF_ROAD
+        activeRouteRisk = RouteRisk.SAFE
         invalidate()
         post { onComplete(cancelled) }
     }
@@ -954,7 +1011,7 @@ class CampaignMapView @JvmOverloads constructor(
         else -> ZoomState.CLOSE
     }
 
-    private data class TravelRoute(val points: List<Pair<Float, Float>>, val type: RouteType)
+    private data class TravelRoute(val points: List<Pair<Float, Float>>, val type: RouteType, val risk: RouteRisk)
 
     private fun buildTravelRoute(startX: Float, startY: Float, endX: Float, endY: Float): TravelRoute {
         val start = Pair(startX, startY)
@@ -965,11 +1022,7 @@ class CampaignMapView @JvmOverloads constructor(
             distanceNorm(startX, startY, nearestA.mapX, nearestA.mapY) < 0.08f &&
             distanceNorm(endX, endY, nearestB.mapX, nearestB.mapY) < 0.08f
 
-        val routeType = when {
-            routeRiskTo(endX, endY) == RouteRisk.INTERCEPT -> RouteType.RISKY
-            nearRoad -> RouteType.ROAD
-            else -> RouteType.OFF_ROAD
-        }
+        val endpointRisk = routeRiskTo(endX, endY)
 
         val points = mutableListOf(start)
         if (nearRoad) {
@@ -1000,7 +1053,14 @@ class CampaignMapView @JvmOverloads constructor(
             }
         }
         points.add(end)
-        return TravelRoute(points, routeType)
+        val sampledRisk = routeRiskForPath(points)
+        val finalRisk = if (sampledRisk.ordinal > endpointRisk.ordinal) sampledRisk else endpointRisk
+        val routeType = when {
+            finalRisk == RouteRisk.INTERCEPT -> RouteType.RISKY
+            nearRoad -> RouteType.ROAD
+            else -> RouteType.OFF_ROAD
+        }
+        return TravelRoute(points, routeType, finalRisk)
     }
 
     private fun nearestNode(x: Float, y: Float): CampaignNode? = nodes.minByOrNull { distanceNorm(x, y, it.mapX, it.mapY) }
@@ -1048,88 +1108,125 @@ class CampaignMapView @JvmOverloads constructor(
             else -> return
         }
 
-        val routePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeCap = Paint.Cap.ROUND
-            strokeJoin = Paint.Join.ROUND
-            strokeWidth = if (activeRouteType == RouteType.RISKY) 3.6f else 3f
-            color = when (activeRouteType) {
-                RouteType.ROAD -> Color.parseColor("#B89C6B")
-                RouteType.OFF_ROAD -> Color.parseColor("#A3AFBF")
-                RouteType.RISKY -> Color.parseColor("#C65A5A")
-            }
-            alpha = if (routePreviewCommitted) 240 else 185
-            pathEffect = when (activeRouteType) {
-                RouteType.ROAD -> null
-                RouteType.OFF_ROAD -> DashPathEffect(floatArrayOf(10f, 8f), pulseValue * 18f)
-                RouteType.RISKY -> DashPathEffect(floatArrayOf(7f, 6f), pulseValue * 16f)
-            }
+        routePaint.strokeWidth = if (activeRouteType == RouteType.RISKY) 3.6f else 3f
+        routePaint.color = when (activeRouteType) {
+            RouteType.ROAD -> Color.parseColor("#B89C6B")
+            RouteType.OFF_ROAD -> Color.parseColor("#A3AFBF")
+            RouteType.RISKY -> Color.parseColor("#C65A5A")
         }
-        val routeUnderlayPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeCap = Paint.Cap.ROUND
-            strokeJoin = Paint.Join.ROUND
-            strokeWidth = routePaint.strokeWidth + 2.4f
-            color = Color.parseColor("#45121D2E")
+        routePaint.alpha = if (routePreviewCommitted) 240 else 185
+        routePaint.pathEffect = when (activeRouteType) {
+            RouteType.ROAD -> DashPathEffect(floatArrayOf(26f, 14f), pulseValue * 30f)
+            RouteType.OFF_ROAD -> DashPathEffect(floatArrayOf(10f, 8f), pulseValue * 18f)
+            RouteType.RISKY -> DashPathEffect(floatArrayOf(7f, 6f), pulseValue * 16f)
         }
-        val path = Path()
+        routeUnderlayPaint.strokeWidth = routePaint.strokeWidth + 2.4f
+        routePath.reset()
         points.forEachIndexed { index, pt ->
             val sx = screenX(pt.first)
             val sy = screenY(pt.second)
-            if (index == 0) path.moveTo(sx, sy) else path.lineTo(sx, sy)
+            if (index == 0) routePath.moveTo(sx, sy) else routePath.lineTo(sx, sy)
         }
-        canvas.drawPath(path, routeUnderlayPaint)
-        canvas.drawPath(path, routePaint)
+        canvas.drawPath(routePath, routeUnderlayPaint)
+        canvas.drawPath(routePath, routePaint)
+        if (activeRouteRisk == RouteRisk.THREATENED || activeRouteRisk == RouteRisk.INTERCEPT) {
+            hazardPaint.strokeWidth = if (activeRouteRisk == RouteRisk.INTERCEPT) 2.4f else 1.8f
+            hazardPaint.color = if (activeRouteRisk == RouteRisk.INTERCEPT) Color.parseColor("#E48787") else Color.parseColor("#D29A7D")
+            hazardPaint.alpha = if (activeRouteRisk == RouteRisk.INTERCEPT) 160 else 125
+            hazardPaint.pathEffect = DashPathEffect(floatArrayOf(5f, 10f), pulseValue * 20f)
+            canvas.drawPath(routePath, hazardPaint)
+        }
 
         if (isMoving) {
             val progressPoint = pointOnRoute(points, travelProgress)
-            val progressPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                style = Paint.Style.STROKE
-                color = Color.parseColor("#F2F0EA")
-                strokeWidth = 2.8f
-                alpha = 185
-            }
-            val progressPath = Path()
-            progressPath.moveTo(screenX(points.first().first), screenY(points.first().second))
+            routeProgressPath.reset()
+            routeProgressPath.moveTo(screenX(points.first().first), screenY(points.first().second))
             val sampleCount = 14
             for (i in 1..sampleCount) {
                 val t = (travelProgress * i / sampleCount.toFloat()).coerceIn(0f, travelProgress)
                 val p = pointOnRoute(points, t)
-                progressPath.lineTo(screenX(p.first), screenY(p.second))
+                routeProgressPath.lineTo(screenX(p.first), screenY(p.second))
             }
-            progressPath.lineTo(screenX(progressPoint.first), screenY(progressPoint.second))
-            canvas.drawPath(progressPath, progressPaint)
+            routeProgressPath.lineTo(screenX(progressPoint.first), screenY(progressPoint.second))
+            canvas.drawPath(routeProgressPath, routeProgressPaint)
+            val headingPoint = pointOnRoute(points, (travelProgress + 0.025f).coerceAtMost(1f))
+            drawRouteHeadingChevron(canvas, progressPoint, headingPoint, activeRouteType)
         }
 
         val destination = points.last()
         val endX = screenX(destination.first)
         val endY = screenY(destination.second)
-        val destPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            color = when (activeRouteType) {
-                RouteType.RISKY -> Color.parseColor("#E48787")
-                RouteType.OFF_ROAD -> Color.parseColor("#D0D8E3")
-                RouteType.ROAD -> Color.parseColor("#F2F0EA")
-            }
-            strokeWidth = 2.2f
-            alpha = 210
+        routeDestinationPaint.color = when (activeRouteType) {
+            RouteType.RISKY -> Color.parseColor("#E48787")
+            RouteType.OFF_ROAD -> Color.parseColor("#D0D8E3")
+            RouteType.ROAD -> Color.parseColor("#F2F0EA")
         }
         val pulse = if (routePreviewCommitted) 1f + pulseValue * 1.8f else 1f + pulseValue * 1.1f
         val markerRadius = 8.5f + pulse * 2f
-        canvas.drawCircle(endX, endY, markerRadius, destPaint)
-        canvas.drawLine(endX - 7f, endY, endX + 7f, endY, destPaint)
-        canvas.drawLine(endX, endY - 7f, endX, endY + 7f, destPaint)
+        canvas.drawCircle(endX, endY, markerRadius, routeDestinationPaint)
+        canvas.drawLine(endX - 7f, endY, endX + 7f, endY, routeDestinationPaint)
+        canvas.drawLine(endX, endY - 7f, endX, endY + 7f, routeDestinationPaint)
         if (activeRouteType == RouteType.RISKY) {
-            destPaint.alpha = 120
-            canvas.drawCircle(endX, endY, markerRadius + 8f + pulseValue * 4f, destPaint)
+            routeDestinationPaint.alpha = 120
+            canvas.drawCircle(endX, endY, markerRadius + 8f + pulseValue * 4f, routeDestinationPaint)
+            routeDestinationPaint.alpha = 210
         }
 
-        val targetLabel = when (activeRouteType) {
-            RouteType.ROAD -> "ROAD LOCKED"
-            RouteType.OFF_ROAD -> "OFF-ROAD LOCKED"
-            RouteType.RISKY -> "INTERCEPT RISK"
+        val targetLabel = when {
+            activeRouteRisk == RouteRisk.INTERCEPT -> "INTERCEPT RISK"
+            activeRouteRisk == RouteRisk.THREATENED -> "THREAT RANGE"
+            activeRouteType == RouteType.ROAD -> "ROAD LOCKED"
+            else -> "OFF-ROAD LOCKED"
         }
         drawLabel(canvas, targetLabel, endX, endY - 20f, LabelState.ROUTE_TARGET)
+        drawThreatVectors(canvas, points)
+    }
+
+    private fun drawRouteHeadingChevron(
+        canvas: Canvas,
+        from: Pair<Float, Float>,
+        to: Pair<Float, Float>,
+        type: RouteType
+    ) {
+        val fx = screenX(from.first)
+        val fy = screenY(from.second)
+        val tx = screenX(to.first)
+        val ty = screenY(to.second)
+        val dx = tx - fx
+        val dy = ty - fy
+        val len = hypot(dx, dy).coerceAtLeast(0.001f)
+        val nx = dx / len
+        val ny = dy / len
+        val size = 8f
+        routeChevronPaint.color = when (type) {
+            RouteType.ROAD -> Color.parseColor("#F2E7D4")
+            RouteType.OFF_ROAD -> Color.parseColor("#D0D8E3")
+            RouteType.RISKY -> Color.parseColor("#F3B1B1")
+        }
+        routeChevronPath.reset()
+        routeChevronPath.moveTo(fx + nx * size, fy + ny * size)
+        routeChevronPath.lineTo(fx - nx * size * 0.8f - ny * size * 0.7f, fy - ny * size * 0.8f + nx * size * 0.7f)
+        routeChevronPath.lineTo(fx - nx * size * 0.8f + ny * size * 0.7f, fy - ny * size * 0.8f - nx * size * 0.7f)
+        routeChevronPath.close()
+        canvas.drawPath(routeChevronPath, routeChevronPaint)
+    }
+
+    private fun drawThreatVectors(canvas: Canvas, routePoints: List<Pair<Float, Float>>) {
+        if (routePoints.size < 2) return
+        val hostileParties = enemyParties.filter { it.faction == PartyFaction.HOSTILE }
+        if (hostileParties.isEmpty()) return
+        routeThreatPaint.alpha = if (activeRouteRisk == RouteRisk.INTERCEPT) 170 else 145
+        routeThreatPaint.pathEffect = DashPathEffect(floatArrayOf(7f, 7f), pulseValue * 15f)
+        var vectorsDrawn = 0
+        hostileParties.forEach { party ->
+            val pos = enemyDisplayPositions[party.id] ?: (nodes.find { it.id == party.nodeId }?.let { it.mapX to it.mapY } ?: return@forEach)
+            val nearest = nearestPointOnPolyline(pos.first, pos.second, routePoints) ?: return@forEach
+            val maxThreatDistance = if (activeRouteRisk == RouteRisk.INTERCEPT) 0.16f else 0.13f
+            if (nearest.distanceNorm > maxThreatDistance) return@forEach
+            if (vectorsDrawn >= 4) return@forEach
+            canvas.drawLine(screenX(pos.first), screenY(pos.second), screenX(nearest.x), screenY(nearest.y), routeThreatPaint)
+            vectorsDrawn++
+        }
     }
 
     private fun drawConnections(canvas: Canvas) {
@@ -1684,8 +1781,6 @@ class CampaignMapView @JvmOverloads constructor(
         val offsetNormY: Float
     )
 
-    private enum class RouteRisk { SAFE, THREATENED, INTERCEPT }
-
     private fun routeRiskTo(targetX: Float, targetY: Float): RouteRisk {
         var closest = 1f
         for (party in enemyParties) {
@@ -1699,6 +1794,46 @@ class CampaignMapView @JvmOverloads constructor(
             closest < 0.14f -> RouteRisk.THREATENED
             else -> RouteRisk.SAFE
         }
+    }
+
+    private fun routeRiskForPath(points: List<Pair<Float, Float>>): RouteRisk {
+        var highest = RouteRisk.SAFE
+        val samples = maxOf(6, points.size * 4)
+        for (i in 0..samples) {
+            val point = pointOnRoute(points, i / samples.toFloat())
+            val risk = routeRiskTo(point.first, point.second)
+            if (risk.ordinal > highest.ordinal) {
+                highest = risk
+                if (highest == RouteRisk.INTERCEPT) return highest
+            }
+        }
+        return highest
+    }
+
+    private data class RouteNearestPoint(val x: Float, val y: Float, val distanceNorm: Float)
+
+    private fun nearestPointOnPolyline(x: Float, y: Float, points: List<Pair<Float, Float>>): RouteNearestPoint? {
+        if (points.size < 2) return null
+        var best: RouteNearestPoint? = null
+        for (i in 0 until points.lastIndex) {
+            val a = points[i]
+            val b = points[i + 1]
+            val ax = a.first
+            val ay = a.second
+            val bx = b.first
+            val by = b.second
+            val abx = bx - ax
+            val aby = by - ay
+            val abLen2 = (abx * abx + aby * aby).coerceAtLeast(0.000001f)
+            val t = (((x - ax) * abx + (y - ay) * aby) / abLen2).coerceIn(0f, 1f)
+            val px = ax + abx * t
+            val py = ay + aby * t
+            val dist = hypot(x - px, y - py)
+            if (best == null || dist < (best?.distanceNorm ?: Float.MAX_VALUE)) {
+                best = RouteNearestPoint(px, py, dist)
+            }
+        }
+        return best
     }
 
     private fun partyVisualProfile(party: EnemyParty): PartyVisualProfile {

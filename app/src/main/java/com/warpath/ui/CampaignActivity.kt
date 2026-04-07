@@ -899,6 +899,10 @@ class CampaignActivity : AppCompatActivity() {
         updateHud()
         checkFogDiscovery(showToast = false)
         showNearbyPoiIfAny()
+        if (isAlertShowing && activeWorldAlert != null && alertHideRunnable == null) {
+            alertHideRunnable = Runnable { hideCurrentWorldAlert() }
+            uiHandler.postDelayed(alertHideRunnable!!, 1400L)
+        }
 
         if (campaignManager.isRunOver()) {
             showRunOverDialog()

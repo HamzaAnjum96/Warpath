@@ -22,6 +22,7 @@ class BattleActivity : AppCompatActivity() {
     private lateinit var battleState: BattleState
     private lateinit var logText: TextView
     private lateinit var commandBar: LinearLayout
+    private lateinit var startBattleButton: Button
     private val handler = Handler(Looper.getMainLooper())
     private var isRunning = false
     private val tickInterval = 50L // 20 fps
@@ -97,6 +98,24 @@ class BattleActivity : AppCompatActivity() {
             FrameLayout.LayoutParams.MATCH_PARENT,
             FrameLayout.LayoutParams.MATCH_PARENT
         ))
+        startBattleButton = Button(this).apply {
+            text = "Start Battle"
+            textSize = 14f
+            setPadding(dp(18), dp(10), dp(18), dp(10))
+            applyUiButtonStyle(UiTheme.GOLD, 12f)
+            setOnClickListener {
+                visibility = View.GONE
+                if (!isRunning) {
+                    isRunning = true
+                    handler.post(battleTick)
+                }
+            }
+        }
+        battleContainer.addView(startBattleButton, FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.WRAP_CONTENT,
+            FrameLayout.LayoutParams.WRAP_CONTENT,
+            Gravity.CENTER
+        ))
         mainLayout.addView(battleContainer, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f
         ))
@@ -110,7 +129,7 @@ class BattleActivity : AppCompatActivity() {
             textSize = 12f
             setTextColor(Color.parseColor(UiTheme.TEXT_MUTED))
             maxLines = 2
-            text = "Battle begins!"
+            text = "Ready. Tap Start Battle."
         }
         logScroll.addView(logText)
         mainLayout.addView(logScroll, LinearLayout.LayoutParams(
@@ -151,9 +170,7 @@ class BattleActivity : AppCompatActivity() {
 
         setContentView(root)
 
-        // Start battle loop
-        isRunning = true
-        handler.post(battleTick)
+        // Wait for player to start battle loop
     }
 
     private fun getCommandColor(cmd: BattleCommand): String {

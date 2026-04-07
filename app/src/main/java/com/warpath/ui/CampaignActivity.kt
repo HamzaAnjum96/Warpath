@@ -86,7 +86,7 @@ class CampaignActivity : AppCompatActivity() {
 
     private object Palette {
         const val BASE_BG = "#0E1726"
-        const val HUD_SURFACE = "#E111C2D"
+        const val HUD_SURFACE = "#EE111C2D"
         const val HUD_SURFACE_ALT = "#DD16263A"
         const val HUD_BORDER = "#2C3F57"
         const val HUD_TEXT = "#F2F0EA"

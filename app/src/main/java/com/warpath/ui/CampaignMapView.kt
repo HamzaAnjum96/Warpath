@@ -11,6 +11,7 @@ import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
+import android.view.animation.LinearInterpolator
 import com.warpath.model.CampaignNode
 import com.warpath.model.EnemyParty
 import com.warpath.model.NodeType
@@ -63,9 +64,14 @@ class CampaignMapView @JvmOverloads constructor(
 
     private var playerNormX: Float = 0.1f
     private var playerNormY: Float = 0.5f
+    val currentPlayerNormX: Float get() = playerNormX
+    val currentPlayerNormY: Float get() = playerNormY
     private var playerLookDirX: Float = 1f
     private var playerLookDirY: Float = 0f
     private var isMoving: Boolean = false
+    var isPaused: Boolean = false
+        private set
+    private var isRedirecting: Boolean = false
     private var travelTargetNorm: Pair<Float, Float>? = null
     private var travelStartNorm: Pair<Float, Float>? = null
     private var travelProgress: Float = 0f
@@ -416,6 +422,10 @@ class CampaignMapView @JvmOverloads constructor(
                 }
 
                 override fun onAnimationCancel(animation: Animator) {
+                    if (isRedirecting) {
+                        isRedirecting = false
+                        return
+                    }
                     moveWasCancelled = true
                     finishMove(playerNormX, playerNormY, onComplete, cancelled = true)
                 }
@@ -471,8 +481,8 @@ class CampaignMapView @JvmOverloads constructor(
             else -> 0.96f
         }
         moveAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = (520f + routeLength * 1100f * durationFactor * terrainFactor).roundToInt().toLong()
-            interpolator = AccelerateDecelerateInterpolator()
+            duration = (800f + routeLength * 4400f * durationFactor * terrainFactor).roundToInt().toLong()
+            interpolator = LinearInterpolator()
             addUpdateListener { anim ->
                 val t = anim.animatedValue as Float
                 val routePoint = pointOnRoute(movementRoutePoints, t)
@@ -501,6 +511,10 @@ class CampaignMapView @JvmOverloads constructor(
                 }
 
                 override fun onAnimationCancel(animation: Animator) {
+                    if (isRedirecting) {
+                        isRedirecting = false
+                        return
+                    }
                     moveWasCancelled = true
                     finishMove(playerNormX, playerNormY, onComplete, cancelled = true)
                 }
@@ -548,7 +562,133 @@ class CampaignMapView @JvmOverloads constructor(
         moveAnimator?.cancel()
     }
 
+    fun pauseMovement() {
+        if (!isMoving || isPaused) return
+        isPaused = true
+        moveAnimator?.pause()
+        invalidate()
+    }
+
+    fun resumeMovement() {
+        if (!isPaused) return
+        isPaused = false
+        moveAnimator?.resume()
+        invalidate()
+    }
+
+    fun redirectMovement(
+        normX: Float,
+        normY: Float,
+        onProgress: ((Float, Float, Float) -> Unit)? = null,
+        onComplete: (Boolean) -> Unit = {}
+    ) {
+        val endX = normX.coerceIn(0.02f, 0.98f)
+        val endY = normY.coerceIn(0.02f, 0.98f)
+        val startX = playerNormX
+        val startY = playerNormY
+        val dx = endX - startX
+        val dy = endY - startY
+        if (dx * dx + dy * dy < 0.00002f) {
+            return
+        }
+
+        isRedirecting = true
+        isPaused = false
+        moveAnimator?.cancel()
+
+        trail.clear()
+        lastTrailNX = startX
+        lastTrailNY = startY
+
+        val route = buildTravelRoute(startX, startY, endX, endY)
+        movementRoutePoints = route.points
+        activeRouteType = route.type
+        activeRouteRisk = route.risk
+        val routeLength = routeNormLength(movementRoutePoints).coerceAtLeast(0.04f)
+
+        isMoving = true
+        moveWasCancelled = false
+        travelStartNorm = Pair(startX, startY)
+        travelTargetNorm = Pair(endX, endY)
+        travelProgress = 0f
+        routePreviewCommitted = true
+        routePreviewTargetNorm = Pair(endX, endY)
+        previewRoutePoints = movementRoutePoints
+
+        val durationFactor = when (route.type) {
+            RouteType.ROAD -> 0.92f
+            RouteType.OFF_ROAD -> 1.0f
+            RouteType.RISKY -> 1.06f
+        }
+        val terrainFactor = when (dominantBiomeOnRoute(movementRoutePoints)) {
+            BiomeType.FOREST -> 1.10f
+            BiomeType.HILLS -> 1.16f
+            else -> 0.96f
+        }
+        moveAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = (800f + routeLength * 4400f * durationFactor * terrainFactor).roundToInt().toLong()
+            interpolator = LinearInterpolator()
+            addUpdateListener { anim ->
+                val t = anim.animatedValue as Float
+                val routePoint = pointOnRoute(movementRoutePoints, t)
+                playerNormX = routePoint.first
+                playerNormY = routePoint.second
+                travelProgress = t
+                onProgress?.invoke(t, playerNormX, playerNormY)
+                if (followPlayerFocus) {
+                    cameraNormX = playerNormX
+                    cameraNormY = playerNormY
+                }
+                val tdx = playerNormX - lastTrailNX
+                val tdy = playerNormY - lastTrailNY
+                if (tdx * tdx + tdy * tdy > 0.0005f) {
+                    trail.add(Pair(playerNormX, playerNormY))
+                    if (trail.size > 14) trail.removeAt(0)
+                    lastTrailNX = playerNormX
+                    lastTrailNY = playerNormY
+                }
+            }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    if (!moveWasCancelled) {
+                        finishMove(endX, endY, onComplete, cancelled = false)
+                    }
+                }
+
+                override fun onAnimationCancel(animation: Animator) {
+                    if (isRedirecting) {
+                        isRedirecting = false
+                        return
+                    }
+                    moveWasCancelled = true
+                    finishMove(playerNormX, playerNormY, onComplete, cancelled = true)
+                }
+            })
+            start()
+        }
+    }
+
+    fun stopMovement() {
+        if (!isMoving && !isPaused) return
+        if (isPaused) {
+            isPaused = false
+            val anim = moveAnimator
+            if (anim != null && anim.isPaused) {
+                anim.resume()
+                anim.cancel()
+            } else {
+                finishMove(playerNormX, playerNormY, {}, cancelled = true)
+            }
+        } else {
+            moveAnimator?.cancel()
+        }
+    }
+
     fun isMovementActive(): Boolean = isMoving
+
+    fun currentTravelProgress(): Float = travelProgress
+
+    fun currentRouteLength(): Float = routeNormLength(movementRoutePoints)
 
     fun setPlayerPosition(normX: Float, normY: Float) {
         playerNormX = normX
@@ -2014,7 +2154,7 @@ class CampaignMapView @JvmOverloads constructor(
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (!inputEnabled || isMoving) return false
+        if (!inputEnabled) return false
         scaleDetector.onTouchEvent(event)
         if (::gestureDetector.isInitialized) {
             gestureDetector.onTouchEvent(event)

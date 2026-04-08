@@ -26,14 +26,18 @@ class BattleEngine {
     var currentStance: BattleCommand? = null
 
     fun createBattle(playerWarband: List<Squad>, enemyTemplates: List<EnemyTemplate>): BattleState {
-        val playerSquads = playerWarband.map { sq ->
+        val playerCount = playerWarband.size
+        val playerSpacing = if (playerCount <= 1) 0f else 9f / (playerCount - 1).coerceAtLeast(1)
+        val playerSquads = playerWarband.mapIndexed { idx, sq ->
             sq.copy(
                 x = 1f + Random.nextFloat() * 2f,
-                y = 1f + (playerWarband.indexOf(sq)) * 2.5f,
+                y = 1.5f + idx * playerSpacing,
                 state = SquadState.ADVANCE
             )
         }.toMutableList()
 
+        val enemyCount = enemyTemplates.size
+        val enemySpacing = if (enemyCount <= 1) 0f else 9f / (enemyCount - 1).coerceAtLeast(1)
         val enemySquads = enemyTemplates.mapIndexed { i, template ->
             Squad(
                 id = "enemy_${template.unitTypeId}_$i",
@@ -41,7 +45,7 @@ class BattleEngine {
                 count = template.count,
                 isPlayerOwned = false,
                 x = 12f + Random.nextFloat() * 2f,
-                y = 1f + i * 2.5f,
+                y = 1.5f + i * enemySpacing,
                 state = SquadState.ADVANCE
             )
         }.toMutableList()
@@ -124,7 +128,7 @@ class BattleEngine {
             val reinforcement = Squad(
                 id = "reinforcement_${state.tickCount}",
                 unitType = UnitType.MILITIA_SPEAR,
-                count = 4,
+                count = 16,
                 isPlayerOwned = true,
                 x = 0f,
                 y = 5f,
@@ -163,6 +167,9 @@ class BattleEngine {
         deltaTime: Float,
         state: BattleState
     ) {
+        // Support auras: Banner/Drummer boost morale, Medic heals allies
+        applyAllyAuras(friendlySquads, deltaTime)
+
         for (squad in friendlySquads) {
             if (!squad.isAlive || squad.isRouted) continue
 
@@ -172,11 +179,14 @@ class BattleEngine {
             val dist = squad.distanceTo(target)
             val inRange = dist <= squad.unitType.range
 
+            // Compute ally support attack multiplier
+            val supportMult = computeSupportMultiplier(squad, friendlySquads)
+
             when (squad.state) {
                 SquadState.ADVANCE, SquadState.IDLE -> {
                     if (inRange) {
                         squad.state = SquadState.ENGAGE
-                        attack(squad, target, state, deltaTime)
+                        attack(squad, target, state, deltaTime, supportMult)
                     } else {
                         squad.moveToward(target.x, target.y, deltaTime)
                     }
@@ -185,12 +195,12 @@ class BattleEngine {
                     if (!inRange) {
                         squad.moveToward(target.x, target.y, deltaTime)
                     } else {
-                        attack(squad, target, state, deltaTime)
+                        attack(squad, target, state, deltaTime, supportMult)
                     }
                 }
                 SquadState.HOLD -> {
                     if (inRange) {
-                        attack(squad, target, state, deltaTime)
+                        attack(squad, target, state, deltaTime, supportMult)
                     }
                     // Don't move
                 }
@@ -203,7 +213,7 @@ class BattleEngine {
                     if (!inRange) {
                         squad.moveToward(target.x, flankY, deltaTime)
                     } else {
-                        attack(squad, target, state, deltaTime)
+                        attack(squad, target, state, deltaTime, supportMult)
                     }
                 }
                 SquadState.RALLY -> {
@@ -219,6 +229,51 @@ class BattleEngine {
         }
     }
 
+    /**
+     * Support unit auras: Banner Bearer and War Drummer boost nearby ally morale,
+     * Field Medic heals nearby allies over time.
+     */
+    private fun applyAllyAuras(squads: List<Squad>, deltaTime: Float) {
+        for (support in squads) {
+            if (!support.isAlive || support.isRouted) continue
+            if (support.unitType.category != com.warpath.model.UnitCategory.SUPPORT) continue
+            for (ally in squads) {
+                if (ally.id == support.id || !ally.isAlive) continue
+                if (support.distanceTo(ally) > support.unitType.range) continue
+                when (support.unitType.id) {
+                    "banner_bearer" -> {
+                        ally.morale = min(100f, ally.morale + 6f * deltaTime)
+                    }
+                    "war_drummer" -> {
+                        ally.morale = min(100f, ally.morale + 8f * deltaTime)
+                    }
+                    "field_medic" -> {
+                        ally.heal(0.018f * deltaTime * support.count)
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Returns an attack multiplier based on nearby allies. Each friendly squad within
+     * 3.5 field units gives +10%; support units give additional bonuses. Capped at +60%.
+     */
+    private fun computeSupportMultiplier(squad: Squad, friendlySquads: List<Squad>): Float {
+        var bonus = 0f
+        for (ally in friendlySquads) {
+            if (ally.id == squad.id || !ally.isAlive || ally.isRouted) continue
+            if (squad.distanceTo(ally) > 3.5f) continue
+            bonus += when (ally.unitType.id) {
+                "banner_bearer" -> 0.18f
+                "war_drummer"   -> 0.22f
+                "field_medic"   -> 0.08f
+                else            -> 0.10f
+            }
+        }
+        return 1f + bonus.coerceAtMost(0.60f)
+    }
+
     private fun pickTarget(squad: Squad, enemies: List<Squad>, state: BattleState): Squad? {
         val alive = enemies.filter { it.isAlive && !it.isRouted }
         if (alive.isEmpty()) return null
@@ -232,8 +287,8 @@ class BattleEngine {
         return alive.minByOrNull { squad.distanceTo(it) }
     }
 
-    private fun attack(attacker: Squad, target: Squad, state: BattleState, deltaTime: Float) {
-        var damage = attacker.effectiveAttack * deltaTime
+    private fun attack(attacker: Squad, target: Squad, state: BattleState, deltaTime: Float, supportMult: Float = 1f) {
+        var damage = attacker.effectiveAttack * deltaTime * supportMult
 
         // Power-up modifiers
         if (attacker.isPlayerOwned) {

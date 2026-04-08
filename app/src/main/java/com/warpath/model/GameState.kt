@@ -2,10 +2,10 @@ package com.warpath.model
 
 data class GameState(
     var commanderName: String = "Commander",
-    var supplies: Int = 100,
+    var supplies: Int = 180,
     var renown: Int = 0,
     var warband: MutableList<Squad> = mutableListOf(),
-    var maxWarbandSlots: Int = 3,
+    var maxWarbandSlots: Int = 5,
     var currentNodeId: String = "start",
     var playerMapX: Float = 0.1f,
     var playerMapY: Float = 0.5f,
@@ -38,7 +38,7 @@ data class GameState(
                 Squad(
                     id = "squad_spear_1",
                     unitType = UnitType.MILITIA_SPEAR,
-                    count = 8,
+                    count = 24,
                     isPlayerOwned = true
                 )
             )
@@ -46,7 +46,15 @@ data class GameState(
                 Squad(
                     id = "squad_archer_1",
                     unitType = UnitType.ARCHER,
-                    count = 5,
+                    count = 14,
+                    isPlayerOwned = true
+                )
+            )
+            state.warband.add(
+                Squad(
+                    id = "squad_skirmish_1",
+                    unitType = UnitType.JAVELIN_SKIRMISHER,
+                    count = 12,
                     isPlayerOwned = true
                 )
             )

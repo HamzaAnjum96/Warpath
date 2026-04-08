@@ -1,12 +1,11 @@
 package com.warpath.ui
 
 import android.graphics.Color
-import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.widget.*
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.warpath.model.UnitCategory
 import com.warpath.model.UnitType
@@ -15,11 +14,15 @@ class WarbandActivity : AppCompatActivity() {
 
     private lateinit var squadList: LinearLayout
     private lateinit var suppliesText: TextView
+    private lateinit var slotsText: TextView
+    private lateinit var upgradeSection: LinearLayout
+    private lateinit var feedbackBanner: TextView
     private val gameState get() = CampaignActivity.campaignManager.gameState
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         supportActionBar?.hide()
+        @Suppress("DEPRECATION")
         window.decorView.systemUiVisibility = (
             View.SYSTEM_UI_FLAG_FULLSCREEN or
             View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
@@ -28,63 +31,86 @@ class WarbandActivity : AppCompatActivity() {
 
         val canRecruit = intent.getBooleanExtra("can_recruit", false)
 
-        val scroll = ScrollView(this).apply {
-            setBackgroundColor(Color.parseColor(UiTheme.BASE_BG))
-        }
+        val frame = FrameLayout(this).apply { setBackgroundColor(Color.parseColor(UiTheme.BASE_BG)) }
 
+        val scroll = ScrollView(this)
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), dp(24), dp(24), dp(24))
+            setPadding(dp(UiTheme.SPACE_5), dp(UiTheme.SPACE_5), dp(UiTheme.SPACE_5), dp(UiTheme.SPACE_5))
         }
 
-        // Title
-        val title = TextView(this).apply {
-            text = "Your Warband"
-            textSize = 28f
-            setTextColor(Color.parseColor(UiTheme.GOLD))
-            typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
-            gravity = Gravity.CENTER
+        // Title row
+        val titleRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
         }
-        layout.addView(title, marginParams(bottom = 8))
-
-        // Supplies
-        suppliesText = TextView(this).apply {
-            textSize = 14f
-            setTextColor(Color.parseColor(UiTheme.SUCCESS))
-            gravity = Gravity.CENTER
-        }
-        layout.addView(suppliesText, marginParams(bottom = 24))
-
-        // Squad slots header
-        val slotsText = TextView(this).apply {
-            text = "Squads (${gameState.warband.size}/${gameState.maxWarbandSlots})"
-            textSize = 16f
+        val backArrow = TextView(this).apply {
+            text = "‹"
+            textSize = UiTheme.TEXT_HEADER
             setTextColor(Color.parseColor(UiTheme.TEXT_MUTED))
+            typeface = UiTheme.TYPEFACE_BODY
+            setPadding(0, 0, dp(UiTheme.SPACE_3), 0)
+            setOnClickListener { finish() }
         }
-        layout.addView(slotsText, marginParams(bottom = 12))
+        titleRow.addView(backArrow)
+        titleRow.addView(TextView(this).apply {
+            text = "YOUR WARBAND"
+            textSize = UiTheme.TEXT_SECTION
+            setTextColor(Color.parseColor(UiTheme.GOLD))
+            typeface = UiTheme.TYPEFACE_TITLE
+            letterSpacing = 0.06f
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        layout.addView(titleRow, marginParams(bottom = UiTheme.SPACE_2))
 
-        // Squad list
-        squadList = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
+        // Resource row
+        val resourceRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = UiTheme.roundedRect(UiTheme.SURFACE_ALT, UiTheme.BORDER, UiTheme.RADIUS_SM)
+            setPadding(dp(UiTheme.SPACE_3), dp(UiTheme.SPACE_2), dp(UiTheme.SPACE_3), dp(UiTheme.SPACE_2))
         }
+        suppliesText = TextView(this).apply {
+            textSize = UiTheme.TEXT_SECONDARY
+            typeface = UiTheme.TYPEFACE_LABEL
+            setTextColor(Color.parseColor(UiTheme.TEXT_PRIMARY))
+        }
+        resourceRow.addView(suppliesText)
+        layout.addView(resourceRow, marginParams(bottom = UiTheme.SPACE_4))
+
+        // Slots header
+        slotsText = TextView(this).apply {
+            textSize = UiTheme.TEXT_SECONDARY
+            setTextColor(Color.parseColor(UiTheme.TEXT_MUTED))
+            typeface = UiTheme.TYPEFACE_LABEL
+            letterSpacing = 0.04f
+        }
+        layout.addView(slotsText, marginParams(bottom = UiTheme.SPACE_3))
+
+        squadList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         layout.addView(squadList, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
         ))
 
-        // Recruit button
+        // Recruit section
         if (canRecruit) {
             val recruitSection = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                setPadding(0, 30, 0, 0)
             }
-            val recruitTitle = TextView(this).apply {
-                text = "Recruit New Troops"
-                textSize = 18f
+
+            // Divider
+            recruitSection.addView(View(this).apply {
+                setBackgroundColor(Color.parseColor(UiTheme.DIVIDER))
+            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1)).apply {
+                topMargin = dp(UiTheme.SPACE_4); bottomMargin = dp(UiTheme.SPACE_4)
+            })
+
+            recruitSection.addView(TextView(this).apply {
+                text = "RECRUIT"
+                textSize = UiTheme.TEXT_SECONDARY
                 setTextColor(Color.parseColor(UiTheme.GOLD))
-                typeface = Typeface.DEFAULT_BOLD
-            }
-            recruitSection.addView(recruitTitle, marginParams(bottom = 12))
+                typeface = UiTheme.TYPEFACE_LABEL
+                letterSpacing = 0.08f
+            }, marginParams(bottom = UiTheme.SPACE_3))
 
             val recruitableUnits = listOf(
                 Triple(UnitType.MILITIA_SPEAR, 6, 30),
@@ -97,88 +123,209 @@ class WarbandActivity : AppCompatActivity() {
             )
 
             for ((unitType, count, cost) in recruitableUnits) {
-                val btn = Button(this).apply {
-                    text = "${unitType.name} x$count - $cost supplies"
-                    textSize = 13f
-                    setPadding(dp(16), dp(10), dp(16), dp(10))
-                    applyUiButtonStyle(UiTheme.SURFACE_ALT, 16f)
-                    setOnClickListener {
-                        if (CampaignActivity.campaignManager.recruitUnit(unitType, count, cost)) {
-                            Toast.makeText(this@WarbandActivity, "Recruited ${unitType.name}!", Toast.LENGTH_SHORT).show()
-                            refreshUI()
-                        } else if (gameState.supplies < cost) {
-                            Toast.makeText(this@WarbandActivity, "Not enough supplies!", Toast.LENGTH_SHORT).show()
-                        } else {
-                            Toast.makeText(this@WarbandActivity, "Warband is full!", Toast.LENGTH_SHORT).show()
-                        }
+                val row = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    background = UiTheme.rippleDrawable(UiTheme.SURFACE_ALT, UiTheme.BORDER, UiTheme.RADIUS_SM)
+                    setPadding(dp(UiTheme.SPACE_3), dp(UiTheme.SPACE_3), dp(UiTheme.SPACE_3), dp(UiTheme.SPACE_3))
+                    setOnClickListener { attemptRecruit(unitType, count, cost) }
+                }
+                val catDot = View(this).apply {
+                    background = GradientDrawable().apply {
+                        shape = GradientDrawable.OVAL
+                        setColor(getCategoryColor(unitType.category))
                     }
                 }
-                recruitSection.addView(btn, LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply { bottomMargin = 8 })
+                row.addView(catDot, LinearLayout.LayoutParams(dp(8), dp(8)).apply { marginEnd = dp(UiTheme.SPACE_3) })
+                row.addView(TextView(this).apply {
+                    text = "${unitType.name} x$count"
+                    textSize = UiTheme.TEXT_BODY_SM
+                    typeface = UiTheme.TYPEFACE_BODY
+                    setTextColor(Color.parseColor(UiTheme.TEXT_PRIMARY))
+                }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+                row.addView(TextView(this).apply {
+                    text = "◈ $cost"
+                    textSize = UiTheme.TEXT_SECONDARY
+                    typeface = UiTheme.TYPEFACE_LABEL
+                    setTextColor(Color.parseColor(UiTheme.WARNING))
+                })
+                recruitSection.addView(row, LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { bottomMargin = dp(UiTheme.SPACE_2) })
             }
-
             layout.addView(recruitSection)
         }
 
-        // Upgrade warband slots
-        val upgradeSection = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(0, 30, 0, 0)
+        // Upgrade section
+        upgradeSection = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        layout.addView(upgradeSection)
+        rebuildUpgradeSection()
+
+        scroll.addView(layout)
+        frame.addView(scroll, FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT
+        ))
+
+        // Feedback banner (replaces Toast)
+        feedbackBanner = TextView(this).apply {
+            textSize = UiTheme.TEXT_SECONDARY
+            typeface = UiTheme.TYPEFACE_LABEL
+            setTextColor(Color.parseColor(UiTheme.TEXT_PRIMARY))
+            gravity = Gravity.CENTER
+            setPadding(dp(UiTheme.SPACE_4), dp(UiTheme.SPACE_3), dp(UiTheme.SPACE_4), dp(UiTheme.SPACE_3))
+            background = UiTheme.roundedRect(UiTheme.SURFACE_ELEVATED, UiTheme.BORDER, UiTheme.RADIUS_MD)
+            elevation = dpF(UiTheme.SHEET_ELEVATION)
+            visibility = View.GONE
         }
+        frame.addView(feedbackBanner, FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT,
+            Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+        ).apply { bottomMargin = dp(UiTheme.SPACE_6) })
+
+        setContentView(frame)
+        refreshUI()
+    }
+
+    private fun attemptRecruit(unitType: UnitType, count: Int, cost: Int) {
+        if (CampaignActivity.campaignManager.recruitUnit(unitType, count, cost)) {
+            showFeedback("Recruited ${unitType.name}")
+            refreshUI()
+        } else if (gameState.supplies < cost) {
+            showFeedback("Need $cost supplies")
+        } else {
+            showFeedback("Warband is full")
+        }
+    }
+
+    private fun rebuildUpgradeSection() {
+        upgradeSection.removeAllViews()
         if (gameState.maxWarbandSlots < 6) {
+            upgradeSection.addView(View(this).apply {
+                setBackgroundColor(Color.parseColor(UiTheme.DIVIDER))
+            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1)).apply {
+                topMargin = dp(UiTheme.SPACE_4); bottomMargin = dp(UiTheme.SPACE_4)
+            })
             val slotCost = gameState.maxWarbandSlots * 40
             val upgradeBtn = Button(this).apply {
-                text = "Expand Warband (+1 slot) - $slotCost supplies"
-                textSize = 14f
-                setPadding(dp(16), dp(12), dp(16), dp(12))
-                applyUiButtonStyle(UiTheme.PRIMARY, 16f)
+                text = "Expand Warband (+1 slot) · ◈ $slotCost"
+                applyPrimaryStyle()
+                textSize = UiTheme.TEXT_BODY_SM
+                minHeight = dp(UiTheme.BUTTON_HEIGHT)
+                minimumHeight = dp(UiTheme.BUTTON_HEIGHT)
                 setOnClickListener {
                     if (gameState.supplies >= slotCost) {
                         gameState.supplies -= slotCost
                         gameState.maxWarbandSlots++
-                        Toast.makeText(this@WarbandActivity, "Warband expanded!", Toast.LENGTH_SHORT).show()
+                        showFeedback("Warband expanded")
                         refreshUI()
+                        rebuildUpgradeSection()
                     } else {
-                        Toast.makeText(this@WarbandActivity, "Not enough supplies!", Toast.LENGTH_SHORT).show()
+                        showFeedback("Need $slotCost supplies")
                     }
                 }
             }
-            upgradeSection.addView(upgradeBtn)
+            upgradeSection.addView(upgradeBtn, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ))
         }
-        layout.addView(upgradeSection)
+    }
 
-        // Back button
-        val backBtn = Button(this).apply {
-            text = "Back"
-            textSize = 16f
-            applyUiButtonStyle(UiTheme.SURFACE, 16f)
-            setOnClickListener { finish() }
+    private fun showFeedback(message: String) {
+        feedbackBanner.text = message
+        feedbackBanner.visibility = View.VISIBLE
+        feedbackBanner.alpha = 0f
+        feedbackBanner.translationY = dp(8).toFloat()
+        feedbackBanner.animate().alpha(1f).translationY(0f).setDuration(160L).withEndAction {
+            feedbackBanner.postDelayed({
+                feedbackBanner.animate().alpha(0f).translationY(dp(8).toFloat()).setDuration(140L).withEndAction {
+                    feedbackBanner.visibility = View.GONE
+                }.start()
+            }, 1200L)
+        }.start()
+    }
+
+    private fun showDismissConfirmation(squadId: String, unitName: String) {
+        val rootFrame = window.decorView.findViewById<FrameLayout>(android.R.id.content)
+        val overlay = FrameLayout(this).apply {
+            setBackgroundColor(Color.parseColor("#CC0A0F1A"))
+            isClickable = true
         }
-        layout.addView(backBtn, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { topMargin = 30 })
+        val dismiss = {
+            overlay.animate().alpha(0f).setDuration(140L).withEndAction {
+                rootFrame.removeView(overlay)
+            }.start()
+        }
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = UiTheme.gradientSurface(
+                topHex = UiTheme.SURFACE_ELEVATED, bottomHex = UiTheme.SURFACE,
+                borderHex = UiTheme.BORDER, radius = UiTheme.RADIUS_LG
+            )
+            setPadding(dp(UiTheme.SPACE_5), dp(UiTheme.SPACE_5), dp(UiTheme.SPACE_5), dp(UiTheme.SPACE_5))
+            elevation = dpF(UiTheme.SHEET_ELEVATION)
+        }
+        panel.addView(TextView(this).apply {
+            text = "Dismiss $unitName?"
+            textSize = UiTheme.TEXT_CARD_TITLE
+            typeface = UiTheme.TYPEFACE_HEADING
+            setTextColor(Color.parseColor(UiTheme.TEXT_PRIMARY))
+        })
+        panel.addView(TextView(this).apply {
+            text = "This squad will be permanently removed from your warband."
+            textSize = UiTheme.TEXT_SECONDARY
+            typeface = UiTheme.TYPEFACE_BODY
+            setTextColor(Color.parseColor(UiTheme.TEXT_MUTED))
+            setPadding(0, dp(UiTheme.SPACE_2), 0, dp(UiTheme.SPACE_4))
+        })
+        val btnRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.END
+        }
+        btnRow.addView(Button(this).apply {
+            text = "Cancel"
+            applySecondaryStyle()
+            textSize = UiTheme.TEXT_BUTTON_SM
+            minHeight = dp(UiTheme.BUTTON_HEIGHT_SM)
+            minimumHeight = dp(UiTheme.BUTTON_HEIGHT_SM)
+            setOnClickListener { dismiss() }
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+            marginEnd = dp(UiTheme.SPACE_2)
+        })
+        btnRow.addView(Button(this).apply {
+            text = "Dismiss"
+            applyPrimaryStyle(UiTheme.HOSTILE)
+            textSize = UiTheme.TEXT_BUTTON_SM
+            minHeight = dp(UiTheme.BUTTON_HEIGHT_SM)
+            minimumHeight = dp(UiTheme.BUTTON_HEIGHT_SM)
+            setOnClickListener {
+                dismiss()
+                gameState.removeSquad(squadId)
+                refreshUI()
+            }
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        panel.addView(btnRow)
 
-        scroll.addView(layout)
-        setContentView(scroll)
-        refreshUI()
+        overlay.addView(panel, FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER
+        ).apply { marginStart = dp(UiTheme.SPACE_5); marginEnd = dp(UiTheme.SPACE_5) })
+        overlay.alpha = 0f
+        rootFrame.addView(overlay, FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT
+        ))
+        overlay.animate().alpha(1f).setDuration(160L).start()
     }
 
     private fun refreshUI() {
-        suppliesText.text = "Supplies: ${gameState.supplies} | Renown: ${gameState.renown}"
+        suppliesText.text = "◈ ${gameState.supplies}    ★ ${gameState.renown}"
+        slotsText.text = "SQUADS  ${gameState.warband.size}/${gameState.maxWarbandSlots}"
         squadList.removeAllViews()
 
         for (squad in gameState.warband) {
             val card = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                background = android.graphics.drawable.GradientDrawable().apply {
-                    cornerRadius = 16f
-                    setColor(Color.parseColor(UiTheme.SURFACE))
-                    setStroke(1, Color.parseColor(UiTheme.BORDER))
-                }
-                setPadding(dp(16), dp(12), dp(16), dp(12))
+                background = UiTheme.roundedRect(UiTheme.SURFACE, UiTheme.BORDER, UiTheme.RADIUS_MD)
+                setPadding(dp(UiTheme.SPACE_4), dp(UiTheme.SPACE_3), dp(UiTheme.SPACE_4), dp(UiTheme.SPACE_3))
+                elevation = dpF(UiTheme.CARD_ELEVATION)
             }
 
             val header = LinearLayout(this).apply {
@@ -186,104 +333,113 @@ class WarbandActivity : AppCompatActivity() {
                 gravity = Gravity.CENTER_VERTICAL
             }
 
-            // Color indicator
-            val colorDot = View(this).apply {
-                setBackgroundColor(getCategoryColor(squad.unitType.category))
-            }
-            header.addView(colorDot, LinearLayout.LayoutParams(16, 16).apply { marginEnd = 12 })
-
-            val nameTv = TextView(this).apply {
-                text = "${squad.unitType.name} x${squad.count}"
-                textSize = 16f
-                setTextColor(Color.parseColor(UiTheme.TEXT_PRIMARY))
-                typeface = Typeface.DEFAULT_BOLD
-            }
-            header.addView(nameTv, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-
-            val catTv = TextView(this).apply {
-                text = squad.unitType.category.name
-                textSize = 12f
-                setTextColor(Color.parseColor(UiTheme.TEXT_MUTED))
-            }
-            header.addView(catTv)
-
-            card.addView(header)
-
-            // Stats row
-            val stats = TextView(this).apply {
-                text = "ATK:${squad.unitType.baseAttack} DEF:${squad.unitType.baseDefense} " +
-                    "SPD:${"%.1f".format(squad.unitType.baseSpeed)} RNG:${"%.1f".format(squad.unitType.range)}"
-                textSize = 12f
-                setTextColor(Color.parseColor(UiTheme.TEXT_MUTED))
-            }
-            card.addView(stats, marginParams(top = 4))
-
-            // HP / Morale
-            val hpMorale = TextView(this).apply {
-                text = "HP: ${"%.0f".format(squad.currentHpPercent * 100)}% | Morale: ${"%.0f".format(squad.morale)}%"
-                textSize = 12f
-                setTextColor(when {
-                    squad.currentHpPercent > 0.6f -> Color.parseColor(UiTheme.SUCCESS)
-                    squad.currentHpPercent > 0.3f -> Color.parseColor(UiTheme.GOLD)
-                    else -> Color.parseColor(UiTheme.DANGER)
-                })
-            }
-            card.addView(hpMorale, marginParams(top = 2))
-
-            // Description
-            val desc = TextView(this).apply {
-                text = squad.unitType.description
-                textSize = 11f
-                setTextColor(Color.parseColor(UiTheme.TEXT_MUTED))
-            }
-            card.addView(desc, marginParams(top = 4))
-
-            // Dismiss button
-            val dismissBtn = TextView(this).apply {
-                text = "Dismiss"
-                textSize = 12f
-                setTextColor(Color.parseColor(UiTheme.DANGER))
-                gravity = Gravity.END
-                setPadding(0, 8, 0, 0)
-                setOnClickListener {
-                    AlertDialog.Builder(this@WarbandActivity)
-                        .setTitle("Dismiss ${squad.unitType.name}?")
-                        .setMessage("This squad will be permanently removed.")
-                        .setPositiveButton("Dismiss") { _, _ ->
-                            gameState.removeSquad(squad.id)
-                            refreshUI()
-                        }
-                        .setNegativeButton("Cancel", null)
-                        .show()
+            // Category dot
+            val catDot = View(this).apply {
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(getCategoryColor(squad.unitType.category))
                 }
             }
-            card.addView(dismissBtn)
+            header.addView(catDot, LinearLayout.LayoutParams(dp(10), dp(10)).apply { marginEnd = dp(UiTheme.SPACE_2) })
+
+            header.addView(TextView(this).apply {
+                text = "${squad.unitType.name} x${squad.count}"
+                textSize = UiTheme.TEXT_BODY
+                setTextColor(Color.parseColor(UiTheme.TEXT_PRIMARY))
+                typeface = UiTheme.TYPEFACE_HEADING
+            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+
+            header.addView(TextView(this).apply {
+                text = squad.unitType.category.name
+                textSize = UiTheme.TEXT_CHIP
+                setTextColor(Color.parseColor(UiTheme.TEXT_SUBTLE))
+                typeface = UiTheme.TYPEFACE_LABEL
+                letterSpacing = 0.06f
+                background = UiTheme.roundedRect(UiTheme.SURFACE_ALT, null, UiTheme.RADIUS_XS)
+                setPadding(dp(UiTheme.SPACE_2), dp(2), dp(UiTheme.SPACE_2), dp(2))
+            })
+            card.addView(header)
+
+            // Stats
+            card.addView(TextView(this).apply {
+                text = "ATK ${squad.unitType.baseAttack}  ·  DEF ${squad.unitType.baseDefense}  ·  " +
+                    "SPD ${"%.1f".format(squad.unitType.baseSpeed)}  ·  RNG ${"%.1f".format(squad.unitType.range)}"
+                textSize = UiTheme.TEXT_SECONDARY
+                setTextColor(Color.parseColor(UiTheme.TEXT_SUBTLE))
+                typeface = UiTheme.TYPEFACE_BODY
+                setPadding(0, dp(UiTheme.SPACE_2), 0, 0)
+            })
+
+            // HP / Morale bar
+            val hpColor = when {
+                squad.currentHpPercent > 0.6f -> UiTheme.POSITIVE
+                squad.currentHpPercent > 0.3f -> UiTheme.WARNING
+                else -> UiTheme.HOSTILE
+            }
+            card.addView(TextView(this).apply {
+                text = "HP ${"%.0f".format(squad.currentHpPercent * 100)}%  ·  Morale ${"%.0f".format(squad.morale)}%"
+                textSize = UiTheme.TEXT_SECONDARY
+                setTextColor(Color.parseColor(hpColor))
+                typeface = UiTheme.TYPEFACE_LABEL
+                setPadding(0, dp(UiTheme.SPACE_1), 0, 0)
+            })
+
+            // Description
+            card.addView(TextView(this).apply {
+                text = squad.unitType.description
+                textSize = UiTheme.TEXT_MICRO + 2f
+                setTextColor(Color.parseColor(UiTheme.TEXT_MUTED))
+                typeface = UiTheme.TYPEFACE_BODY
+                setPadding(0, dp(UiTheme.SPACE_1), 0, 0)
+                maxLines = 2
+            })
+
+            // Dismiss action
+            card.addView(TextView(this).apply {
+                text = "Dismiss"
+                textSize = UiTheme.TEXT_SECONDARY
+                setTextColor(Color.parseColor(UiTheme.HOSTILE_MUTED))
+                typeface = UiTheme.TYPEFACE_LABEL
+                gravity = Gravity.END
+                setPadding(0, dp(UiTheme.SPACE_2), 0, 0)
+                setOnClickListener {
+                    showDismissConfirmation(squad.id, squad.unitType.name)
+                }
+            })
 
             squadList.addView(card, LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { bottomMargin = 12 })
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = dp(UiTheme.SPACE_3) })
         }
 
         // Empty slots
         val emptySlots = gameState.maxWarbandSlots - gameState.warband.size
         for (i in 0 until emptySlots) {
-            val emptyCard = TextView(this).apply {
-                text = "[ Empty Slot ]"
-                textSize = 14f
-                setTextColor(Color.parseColor(UiTheme.TEXT_MUTED))
+            val emptyCard = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER
-                background = android.graphics.drawable.GradientDrawable().apply {
-                    cornerRadius = 16f
+                background = GradientDrawable().apply {
+                    cornerRadius = dpF(UiTheme.RADIUS_MD)
                     setColor(Color.parseColor(UiTheme.SURFACE_ALT))
-                    setStroke(1, Color.parseColor(UiTheme.BORDER))
+                    setStroke(UiTheme.STROKE_WIDTH, Color.parseColor(UiTheme.BORDER))
                 }
-                setPadding(dp(16), dp(16), dp(16), dp(16))
+                setPadding(dp(UiTheme.SPACE_4), dp(UiTheme.SPACE_4), dp(UiTheme.SPACE_4), dp(UiTheme.SPACE_4))
             }
+            emptyCard.addView(View(this).apply {
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(Color.parseColor(UiTheme.BORDER))
+                }
+            }, LinearLayout.LayoutParams(dp(8), dp(8)).apply { marginEnd = dp(UiTheme.SPACE_2) })
+            emptyCard.addView(TextView(this).apply {
+                text = "Available Slot"
+                textSize = UiTheme.TEXT_BODY_SM
+                setTextColor(Color.parseColor(UiTheme.TEXT_DISABLED))
+                typeface = UiTheme.TYPEFACE_BODY
+            })
             squadList.addView(emptyCard, LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { bottomMargin = 12 })
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = dp(UiTheme.SPACE_3) })
         }
     }
 
@@ -301,6 +457,6 @@ class WarbandActivity : AppCompatActivity() {
         return LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { bottomMargin = bottom; topMargin = top }
+        ).apply { bottomMargin = dp(bottom); topMargin = dp(top) }
     }
 }

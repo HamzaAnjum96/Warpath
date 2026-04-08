@@ -2,13 +2,14 @@ package com.warpath.ui
 
 import android.content.Intent
 import android.graphics.Color
-import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
 import android.view.View
 import android.widget.Button
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -20,6 +21,7 @@ class BattleResultActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         supportActionBar?.hide()
+        @Suppress("DEPRECATION")
         window.decorView.systemUiVisibility = (
             View.SYSTEM_UI_FLAG_FULLSCREEN or
             View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
@@ -38,101 +40,142 @@ class BattleResultActivity : AppCompatActivity() {
         val warbandStatus = intent.getStringExtra("warband_status") ?: "Unknown"
         val nodeId = intent.getStringExtra("node_id") ?: ""
 
+        val accentColor = if (playerWon) UiTheme.GOLD else UiTheme.HOSTILE
+
+        val frame = FrameLayout(this).apply { setBackgroundColor(Color.parseColor(UiTheme.BASE_BG)) }
+
+        // Atmospheric top glow
+        frame.addView(View(this).apply {
+            background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(
+                Color.parseColor(if (playerWon) "#20D4B15A" else "#20C56A5D"),
+                Color.TRANSPARENT
+            ))
+        }, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, dp(200), Gravity.TOP))
+
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setBackgroundColor(Color.parseColor(UiTheme.BASE_BG))
-            setPadding(dp(32), dp(40), dp(32), dp(40))
+            setPadding(dp(UiTheme.SPACE_6), dp(UiTheme.SPACE_7), dp(UiTheme.SPACE_6), dp(UiTheme.SPACE_6))
         }
 
-        val resultText = TextView(this).apply {
+        // Outcome header
+        layout.addView(TextView(this).apply {
+            text = if (playerWon) "BATTLE REPORT" else "BATTLE REPORT"
+            textSize = UiTheme.TEXT_CHIP
+            setTextColor(Color.parseColor(UiTheme.TEXT_SUBTLE))
+            typeface = UiTheme.TYPEFACE_LABEL
+            letterSpacing = 0.14f
+            gravity = Gravity.CENTER
+        }, marginParams(bottom = UiTheme.SPACE_2))
+
+        layout.addView(TextView(this).apply {
             text = if (playerWon) "VICTORY" else "DEFEAT"
-            textSize = 42f
-            setTextColor(if (playerWon) Color.parseColor(UiTheme.GOLD) else Color.parseColor(UiTheme.DANGER))
-            typeface = Typeface.DEFAULT_BOLD
+            textSize = UiTheme.TEXT_HERO
+            setTextColor(Color.parseColor(accentColor))
+            typeface = UiTheme.TYPEFACE_TITLE
             gravity = Gravity.CENTER
-        }
-        layout.addView(resultText, marginParams(bottom = 8))
+            letterSpacing = 0.08f
+            setShadowLayer(16f, 0f, 2f, Color.parseColor("#66000000"))
+        }, marginParams(bottom = UiTheme.SPACE_1))
 
-        if (!playerWon) {
-            layout.addView(TextView(this).apply {
-                text = "☠"
-                textSize = 44f
-                gravity = Gravity.CENTER
-                setTextColor(Color.parseColor(UiTheme.DANGER))
-            }, marginParams(bottom = 8))
-        }
+        // Decorative rule
+        layout.addView(View(this).apply {
+            setBackgroundColor(Color.parseColor(if (playerWon) "#44D4B15A" else "#44C56A5D"))
+        }, LinearLayout.LayoutParams(dp(UiTheme.SHEET_HANDLE_WIDTH), dp(2)).apply {
+            gravity = Gravity.CENTER_HORIZONTAL
+            bottomMargin = dp(UiTheme.SPACE_2)
+        })
 
         layout.addView(TextView(this).apply {
             text = nodeName
-            textSize = 18f
+            textSize = UiTheme.TEXT_BODY
             setTextColor(Color.parseColor(UiTheme.TEXT_MUTED))
+            typeface = UiTheme.TYPEFACE_BODY
             gravity = Gravity.CENTER
-        }, marginParams(bottom = 24))
+        }, marginParams(bottom = UiTheme.SPACE_5))
 
-        val statsContainer = LinearLayout(this).apply {
+        // Stats card
+        val statsCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
+            background = UiTheme.roundedRect(UiTheme.SURFACE, UiTheme.BORDER, UiTheme.RADIUS_MD)
+            setPadding(dp(UiTheme.SPACE_4), dp(UiTheme.SPACE_3), dp(UiTheme.SPACE_4), dp(UiTheme.SPACE_3))
+            elevation = dpF(UiTheme.CARD_ELEVATION)
         }
-        layout.addView(statsContainer, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        ))
 
         val rows = mutableListOf<Triple<String, String, Int>>()
-        rows.add(Triple("Enemies Defeated", "$enemiesKilled / $enemiesStarted", Color.WHITE))
-        rows.add(Triple("Morale at End", "$moraleEnd%", Color.parseColor(UiTheme.SUCCESS)))
+        rows.add(Triple("Enemies Defeated", "$enemiesKilled / $enemiesStarted", Color.parseColor(UiTheme.TEXT_PRIMARY)))
+        rows.add(Triple("Morale at End", "$moraleEnd%", Color.parseColor(UiTheme.POSITIVE)))
         casualtiesRows.forEach { row ->
-            rows.add(Triple("Casualties", row, Color.parseColor(UiTheme.GOLD)))
+            rows.add(Triple("Casualties", row, Color.parseColor(UiTheme.WARNING)))
         }
-
         if (playerWon) {
-            rows.add(Triple("Supplies", "+$suppliesReward", Color.parseColor(UiTheme.SUCCESS)))
-            rows.add(Triple("Renown", "+$renownReward", Color.parseColor(UiTheme.GOLD)))
+            rows.add(Triple("Supplies", "+$suppliesReward", Color.parseColor(UiTheme.POSITIVE)))
+            rows.add(Triple("Renown", "+$renownReward", Color.parseColor(UiTheme.WARNING)))
         } else {
-            rows.add(Triple("Supplies Lost", "-$suppliesLost", Color.parseColor(UiTheme.DANGER)))
-            rows.add(Triple("Warband Status", warbandStatus, Color.parseColor(UiTheme.DANGER)))
+            rows.add(Triple("Supplies Lost", "-$suppliesLost", Color.parseColor(UiTheme.HOSTILE)))
+            rows.add(Triple("Warband", warbandStatus, Color.parseColor(UiTheme.HOSTILE)))
         }
 
         var delay = 100L
-        for ((label, value, color) in rows) {
+        rows.forEachIndexed { index, (label, value, color) ->
+            if (index > 0) {
+                statsCard.addView(View(this).apply {
+                    setBackgroundColor(Color.parseColor(UiTheme.DIVIDER))
+                }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1)).apply {
+                    topMargin = dp(UiTheme.SPACE_1); bottomMargin = dp(UiTheme.SPACE_1)
+                })
+            }
             val rowView = buildStatRow(label, value, color).apply { alpha = 0f }
-            statsContainer.addView(rowView)
-            uiHandler.postDelayed({ rowView.animate().alpha(1f).setDuration(220).start() }, delay)
-            delay += 130L
+            statsCard.addView(rowView)
+            uiHandler.postDelayed({ rowView.animate().alpha(1f).setDuration(200).start() }, delay)
+            delay += 110L
         }
+        layout.addView(statsCard)
 
+        // Spacer
         layout.addView(View(this), LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f
         ))
 
+        // Action buttons
         if (playerWon) {
-            layout.addView(makeActionButton("Continue Campaign", UiTheme.SUCCESS) {
+            layout.addView(makeActionButton("Continue Campaign", UiTheme.POSITIVE, true) {
                 finish()
-            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+            }, marginParams(bottom = 0))
         } else {
-            layout.addView(makeActionButton("⚔ Try Again", UiTheme.DANGER) {
-                val intent = Intent(this, BattleActivity::class.java)
-                intent.putExtra("node_id", nodeId)
-                startActivity(intent)
+            layout.addView(makeActionButton("Try Again", UiTheme.HOSTILE, true) {
+                startActivity(Intent(this, BattleActivity::class.java).apply {
+                    putExtra("node_id", nodeId)
+                })
                 finish()
-            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                bottomMargin = 14
-            })
+            }, marginParams(bottom = UiTheme.SPACE_3))
 
-            layout.addView(makeActionButton("↩ Retreat", UiTheme.SURFACE_ALT) {
+            layout.addView(makeActionButton("Retreat", UiTheme.SURFACE_ALT, false) {
                 finish()
-            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+            }, marginParams(bottom = 0))
         }
 
-        setContentView(layout)
+        frame.addView(layout, FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT
+        ))
+        setContentView(frame)
     }
 
-    private fun makeActionButton(label: String, color: String, action: () -> Unit): Button {
+    private fun makeActionButton(label: String, color: String, primary: Boolean, action: () -> Unit): Button {
         return Button(this).apply {
             text = label
-            textSize = 16f
-            setPadding(dp(20), dp(14), dp(20), dp(14))
-            applyUiButtonStyle(color, 16f)
+            textSize = UiTheme.TEXT_BUTTON
+            typeface = UiTheme.TYPEFACE_HEADING
+            isAllCaps = false
+            setTextColor(Color.parseColor(UiTheme.TEXT_PRIMARY))
+            setPadding(dp(UiTheme.SPACE_5), dp(UiTheme.SPACE_3), dp(UiTheme.SPACE_5), dp(UiTheme.SPACE_3))
+            stateListAnimator = null
+            minHeight = dp(UiTheme.BUTTON_HEIGHT)
+            minimumHeight = dp(UiTheme.BUTTON_HEIGHT)
+            background = if (primary) {
+                UiTheme.rippleDrawable(color, null, UiTheme.RADIUS_MD)
+            } else {
+                UiTheme.rippleDrawable(color, UiTheme.BORDER, UiTheme.RADIUS_MD)
+            }
             setOnClickListener { action() }
         }
     }
@@ -140,19 +183,20 @@ class BattleResultActivity : AppCompatActivity() {
     private fun buildStatRow(label: String, value: String, valueColor: Int): LinearLayout {
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            setPadding(20, 8, 20, 8)
+            setPadding(dp(UiTheme.SPACE_2), dp(UiTheme.SPACE_2), dp(UiTheme.SPACE_2), dp(UiTheme.SPACE_2))
         }
         row.addView(TextView(this).apply {
             text = label
-            textSize = 16f
+            textSize = UiTheme.TEXT_BODY_SM
             setTextColor(Color.parseColor(UiTheme.TEXT_MUTED))
+            typeface = UiTheme.TYPEFACE_BODY
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
 
         row.addView(TextView(this).apply {
             text = value
-            textSize = 16f
+            textSize = UiTheme.TEXT_BODY_SM
             setTextColor(valueColor)
-            typeface = Typeface.DEFAULT_BOLD
+            typeface = UiTheme.TYPEFACE_HEADING
             gravity = Gravity.END
         })
         return row
@@ -162,6 +206,6 @@ class BattleResultActivity : AppCompatActivity() {
         return LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { bottomMargin = bottom }
+        ).apply { bottomMargin = dp(bottom) }
     }
 }

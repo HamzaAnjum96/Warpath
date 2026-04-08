@@ -1,7 +1,6 @@
 package com.warpath.ui
 
 import android.graphics.Color
-import android.graphics.Typeface
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -16,6 +15,7 @@ class HowToPlayActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         supportActionBar?.hide()
+        @Suppress("DEPRECATION")
         window.decorView.systemUiVisibility = (
             View.SYSTEM_UI_FLAG_FULLSCREEN or
                 View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
@@ -28,86 +28,119 @@ class HowToPlayActivity : AppCompatActivity() {
 
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), dp(24), dp(24), dp(24))
+            setPadding(dp(UiTheme.SPACE_5), dp(UiTheme.SPACE_5), dp(UiTheme.SPACE_5), dp(UiTheme.SPACE_5))
         }
 
-        val title = TextView(this).apply {
-            text = "How to Play"
-            textSize = 30f
-            setTextColor(Color.parseColor(UiTheme.GOLD))
-            typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
-            gravity = Gravity.CENTER
+        // Back + title row
+        val titleRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
         }
-        layout.addView(title, marginParams(bottom = 30))
+        titleRow.addView(TextView(this).apply {
+            text = "‹"
+            textSize = UiTheme.TEXT_HEADER
+            setTextColor(Color.parseColor(UiTheme.TEXT_MUTED))
+            typeface = UiTheme.TYPEFACE_BODY
+            setPadding(0, 0, dp(UiTheme.SPACE_3), 0)
+            setOnClickListener { finish() }
+        })
+        titleRow.addView(TextView(this).apply {
+            text = "HOW TO PLAY"
+            textSize = UiTheme.TEXT_SECTION
+            setTextColor(Color.parseColor(UiTheme.GOLD))
+            typeface = UiTheme.TYPEFACE_TITLE
+            letterSpacing = 0.06f
+        })
+        layout.addView(titleRow, marginParams(bottom = UiTheme.SPACE_5))
 
         addSection(
             layout,
             "Campaign Map",
-            "v1.3.0 introduces fog-of-war discovery for points of interest.\n\n" +
-                "POIs are revealed as your warband passes nearby. You can scout by dragging the map, " +
-                "then tap Recenter to lock camera focus back on your warband."
+            "Points of interest are revealed through fog-of-war as your warband passes nearby. " +
+                "Scout by dragging the map freely, then tap the recenter button to lock camera focus back on your warband."
         )
 
         addSection(
             layout,
-            "Movement Controls",
-            "TAP MAP - click-to-move the warband to any location (not only nodes).\n" +
-                "LEFT THUMB - drag joystick to move the warband marker.\n" +
-                "MAP DRAG - free-look without moving the player.\n" +
-                "RECENTER - snap camera focus back to your warband."
+            "Movement",
+            "Tap the map to mark a route and tap again to travel. " +
+                "Routes along roads are faster and safer. Off-road travel is slower and riskier near hostile territory. " +
+                "Drag the map to free-look without moving."
         )
 
         addSection(
             layout,
-            "Interaction Menus",
-            "When near a discovered point of interest, tap Open Actions to open context actions.\n\n" +
-                "Enemy nodes: Fight, Run, or Bribe.\n" +
-                "Towns/Villages: Buy, Sell, Recruit, Rest.\n" +
-                "Outposts/Camps/Caches: situational utility actions.\n\n" +
-                "Most POIs no longer require route-chain unlocks. Exception: elite fights can reveal hidden hideout intel."
+            "Interactions",
+            "When near a discovered point of interest, tap it to open context actions.\n\n" +
+                "Enemy camps: Attack, Ambush, or Bribe.\n" +
+                "Settlements: Recruit, Heal, Trade, Rest.\n" +
+                "Outposts: Recruit, Trade, Take Contracts.\n" +
+                "Caches and Camps: Situational utility actions.\n\n" +
+                "Elite engagements can reveal hidden intel about stronghold locations."
         )
 
-        val backBtn = Button(this).apply {
-            text = "Back to Menu"
-            textSize = 16f
-            setPadding(dp(24), dp(16), dp(24), dp(16))
-            applyUiButtonStyle(UiTheme.SURFACE_ALT, 16f)
-            setOnClickListener { finish() }
-        }
-        layout.addView(
-            backBtn,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { topMargin = 30 }
+        addSection(
+            layout,
+            "Battle",
+            "Issue commands to your squads during engagements. " +
+                "Focus targets, push forward, hold ground, rally retreating units, or order a tactical retreat. " +
+                "Each command has a cooldown between uses."
         )
+
+        addSection(
+            layout,
+            "Warband",
+            "Manage your squads from the warband screen. Recruit troops at towns and outposts. " +
+                "Expand your warband slots to field more squads simultaneously."
+        )
+
+        // Bottom spacer for scroll comfort
+        layout.addView(View(this), LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, dp(UiTheme.SPACE_7)
+        ))
 
         scroll.addView(layout)
         setContentView(scroll)
     }
 
     private fun addSection(parent: LinearLayout, title: String, body: String) {
-        val titleTv = TextView(this).apply {
-            text = title
-            textSize = 18f
-            setTextColor(Color.parseColor(UiTheme.TEXT_PRIMARY))
-            typeface = Typeface.DEFAULT_BOLD
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = UiTheme.roundedRect(UiTheme.SURFACE, UiTheme.BORDER, UiTheme.RADIUS_MD)
+            setPadding(dp(UiTheme.SPACE_4), dp(UiTheme.SPACE_3), dp(UiTheme.SPACE_4), dp(UiTheme.SPACE_3))
+            elevation = dpF(UiTheme.CARD_ELEVATION)
         }
-        parent.addView(titleTv, marginParams(bottom = 6))
 
-        val bodyTv = TextView(this).apply {
+        card.addView(TextView(this).apply {
+            text = title.uppercase()
+            textSize = UiTheme.TEXT_SECONDARY
+            setTextColor(Color.parseColor(UiTheme.TEXT_PRIMARY))
+            typeface = UiTheme.TYPEFACE_LABEL
+            letterSpacing = 0.06f
+        })
+
+        card.addView(View(this).apply {
+            setBackgroundColor(Color.parseColor(UiTheme.DIVIDER))
+        }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1)).apply {
+            topMargin = dp(UiTheme.SPACE_2)
+            bottomMargin = dp(UiTheme.SPACE_2)
+        })
+
+        card.addView(TextView(this).apply {
             text = body
-            textSize = 14f
+            textSize = UiTheme.TEXT_BODY_SM
             setTextColor(Color.parseColor(UiTheme.TEXT_MUTED))
+            typeface = UiTheme.TYPEFACE_BODY
             setLineSpacing(4f, 1f)
-        }
-        parent.addView(bodyTv, marginParams(bottom = 24))
+        })
+
+        parent.addView(card, marginParams(bottom = UiTheme.SPACE_3))
     }
 
     private fun marginParams(bottom: Int = 0): LinearLayout.LayoutParams {
         return LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { bottomMargin = bottom }
+        ).apply { bottomMargin = dp(bottom) }
     }
 }

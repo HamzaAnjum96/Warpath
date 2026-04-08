@@ -180,7 +180,7 @@ class CampaignMapView @JvmOverloads constructor(
         color = Color.WHITE
         textSize = 26f
         textAlign = Paint.Align.CENTER
-        typeface = Typeface.DEFAULT_BOLD
+        typeface = UiTheme.TYPEFACE_HEADING
     }
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor(Palette.HUD_TEXT)
@@ -207,7 +207,7 @@ class CampaignMapView @JvmOverloads constructor(
     private val playerIconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textSize = 20f
         textAlign = Paint.Align.CENTER
-        typeface = Typeface.DEFAULT_BOLD
+        typeface = UiTheme.TYPEFACE_HEADING
     }
     private val nearbyNodeRingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
@@ -224,7 +224,7 @@ class CampaignMapView @JvmOverloads constructor(
         color = Color.parseColor("#B8C2D1")
         textSize = 11f
         textAlign = Paint.Align.CENTER
-        typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        typeface = UiTheme.TYPEFACE_BODY
     }
     private val playerRingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
@@ -281,7 +281,7 @@ class CampaignMapView @JvmOverloads constructor(
         textSize = 34f
         color = Color.parseColor("#B8C2D1")
         textAlign = Paint.Align.CENTER
-        typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
+        typeface = UiTheme.TYPEFACE_TITLE
         letterSpacing = 0.12f
     }
     private val ambiencePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
@@ -807,6 +807,7 @@ class CampaignMapView @JvmOverloads constructor(
             BiomeType.FOREST -> Color.parseColor("#435C50")
             BiomeType.HILLS -> Color.parseColor("#6A7480")
         }
+        // Inner breakup patches for texture variation
         val patchRadius = when (biome) {
             BiomeType.DESERT -> 36f
             BiomeType.PLAINS -> 42f
@@ -819,6 +820,59 @@ class CampaignMapView @JvmOverloads constructor(
             val px = left + (right - left) * fx
             val py = top + (bottom - top) * fy
             canvas.drawOval(RectF(px - patchRadius, py - patchRadius * 0.55f, px + patchRadius, py + patchRadius * 0.55f), texturePaint)
+        }
+        // Biome-specific micro features for breakup
+        val microPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+        when (biome) {
+            BiomeType.DESERT -> {
+                // Sand dune ripples
+                microPaint.color = Color.parseColor("#7A664A")
+                microPaint.alpha = 35
+                repeat(10) { i ->
+                    val fx = (i * 0.21f + centerX * 0.37f) % 1f
+                    val fy = (i * 0.14f + centerY * 0.51f) % 1f
+                    val px = left + (right - left) * fx
+                    val py = top + (bottom - top) * fy
+                    canvas.drawOval(RectF(px - 28f, py - 5f, px + 28f, py + 5f), microPaint)
+                }
+            }
+            BiomeType.PLAINS -> {
+                // Grass tufts
+                microPaint.color = Color.parseColor("#6A7D5C")
+                microPaint.alpha = 40
+                repeat(12) { i ->
+                    val fx = (i * 0.19f + centerX * 0.42f) % 1f
+                    val fy = (i * 0.15f + centerY * 0.56f) % 1f
+                    val px = left + (right - left) * fx
+                    val py = top + (bottom - top) * fy
+                    canvas.drawCircle(px, py, 4f + (i % 3) * 2f, microPaint)
+                }
+            }
+            BiomeType.FOREST -> {
+                // Dense canopy blobs
+                microPaint.color = Color.parseColor("#2D4338")
+                microPaint.alpha = 50
+                repeat(14) { i ->
+                    val fx = (i * 0.16f + centerX * 0.45f) % 1f
+                    val fy = (i * 0.13f + centerY * 0.58f) % 1f
+                    val px = left + (right - left) * fx
+                    val py = top + (bottom - top) * fy
+                    val r = 8f + (i % 4) * 3.5f
+                    canvas.drawCircle(px, py, r, microPaint)
+                }
+            }
+            BiomeType.HILLS -> {
+                // Rocky scatter
+                microPaint.color = Color.parseColor("#505860")
+                microPaint.alpha = 40
+                repeat(8) { i ->
+                    val fx = (i * 0.23f + centerX * 0.35f) % 1f
+                    val fy = (i * 0.18f + centerY * 0.43f) % 1f
+                    val px = left + (right - left) * fx
+                    val py = top + (bottom - top) * fy
+                    canvas.drawRect(px - 4f, py - 3f, px + 4f, py + 3f, microPaint)
+                }
+            }
         }
     }
 
@@ -882,26 +936,78 @@ class CampaignMapView @JvmOverloads constructor(
     private fun drawLandmarks(canvas: Canvas) {
         val zoom = zoomState()
         val landmarkPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+
+        // Settlement surroundings - villages/towns affect nearby terrain
+        for (node in nodes) {
+            if (!node.isRevealed) continue
+            if (node.type != NodeType.TOWN && node.type != NodeType.VILLAGE && node.type != NodeType.FACTION_OUTPOST) continue
+            val sx = screenX(node.mapX)
+            val sy = screenY(node.mapY)
+            if (!inViewport(node.mapX, node.mapY, 0.3f)) continue
+            val settlementRadius = if (node.type == NodeType.TOWN) 52f else 36f
+            // Cleared ground ring
+            landmarkPaint.color = Color.parseColor(Palette.SETTLEMENT_SOIL)
+            landmarkPaint.alpha = 65
+            canvas.drawOval(RectF(sx - settlementRadius, sy - settlementRadius * 0.6f, sx + settlementRadius, sy + settlementRadius * 0.6f), landmarkPaint)
+            // Tiny buildings / field patches
+            landmarkPaint.alpha = 80
+            landmarkPaint.color = Color.parseColor("#6B6150")
+            val fieldCount = if (node.type == NodeType.TOWN) 6 else 3
+            repeat(fieldCount) { i ->
+                val angle = i * (6.28f / fieldCount) + node.mapX * 10f
+                val dist = settlementRadius * (0.55f + (i % 3) * 0.12f)
+                val fx = sx + cos(angle) * dist
+                val fy = sy + sin(angle) * dist * 0.6f
+                canvas.drawRect(fx - 3f, fy - 2f, fx + 3f, fy + 2f, landmarkPaint)
+            }
+            // Palisade dots for outposts
+            if (node.type == NodeType.FACTION_OUTPOST) {
+                landmarkPaint.color = Color.parseColor("#8A7A5A")
+                landmarkPaint.alpha = 90
+                repeat(8) { i ->
+                    val angle = i * (6.28f / 8)
+                    canvas.drawCircle(sx + cos(angle) * 28f, sy + sin(angle) * 20f, 2f, landmarkPaint)
+                }
+            }
+            landmarkPaint.alpha = 255
+        }
+
+        // Ruins
         val ruins = listOf(0.32f to 0.28f, 0.72f to 0.76f, 0.15f to 0.57f)
         landmarkPaint.color = Color.parseColor("#707985")
         ruins.forEach { (nx, ny) ->
+            if (!inViewport(nx, ny, 0.2f)) return@forEach
             val sx = screenX(nx)
             val sy = screenY(ny)
             canvas.drawRect(sx - 8f, sy - 7f, sx + 8f, sy + 7f, landmarkPaint)
+            // Broken wall fragment
+            landmarkPaint.alpha = 120
+            canvas.drawRect(sx - 12f, sy - 4f, sx - 8f, sy + 3f, landmarkPaint)
+            canvas.drawRect(sx + 8f, sy - 2f, sx + 11f, sy + 5f, landmarkPaint)
+            landmarkPaint.alpha = 255
         }
 
+        // Groves
         val groves = listOf(0.48f to 0.67f, 0.64f to 0.62f, 0.57f to 0.81f)
         landmarkPaint.color = Color.parseColor("#3D5A49")
         groves.forEach { (nx, ny) ->
+            if (!inViewport(nx, ny, 0.2f)) return@forEach
             val sx = screenX(nx)
             val sy = screenY(ny)
             canvas.drawCircle(sx, sy, 9f, landmarkPaint)
             canvas.drawCircle(sx + 8f, sy - 4f, 7f, landmarkPaint)
+            canvas.drawCircle(sx - 5f, sy + 6f, 6f, landmarkPaint)
+            // Undergrowth
+            landmarkPaint.alpha = 60
+            canvas.drawOval(RectF(sx - 18f, sy - 6f, sx + 18f, sy + 10f), landmarkPaint)
+            landmarkPaint.alpha = 255
         }
 
+        // Watch posts
         val watchPosts = listOf(0.84f to 0.34f, 0.26f to 0.46f)
         landmarkPaint.color = Color.parseColor("#A48A63")
         watchPosts.forEach { (nx, ny) ->
+            if (!inViewport(nx, ny, 0.2f)) return@forEach
             val sx = screenX(nx)
             val sy = screenY(ny)
             val p = Path().apply {
@@ -911,9 +1017,14 @@ class CampaignMapView @JvmOverloads constructor(
                 close()
             }
             canvas.drawPath(p, landmarkPaint)
+            // Flag pole
+            landmarkPaint.alpha = 140
+            canvas.drawLine(sx, sy - 8f, sx, sy - 16f, landmarkPaint.apply { style = Paint.Style.STROKE; strokeWidth = 1.5f })
+            landmarkPaint.style = Paint.Style.FILL
+            landmarkPaint.alpha = 255
         }
 
-        // Low-density authored details near travel corridors.
+        // Scattered props along travel corridors
         landmarkPaint.color = Color.parseColor(Palette.ROAD)
         canvas.drawRect(screenX(0.76f) - 9f, screenY(0.28f) - 4f, screenX(0.76f) + 9f, screenY(0.28f) + 4f, landmarkPaint)
         landmarkPaint.color = Color.parseColor(Palette.FOREST)
@@ -922,23 +1033,31 @@ class CampaignMapView @JvmOverloads constructor(
         canvas.drawRect(screenX(0.24f) - 7f, screenY(0.24f) - 7f, screenX(0.24f) + 7f, screenY(0.24f) + 7f, landmarkPaint)
         landmarkPaint.color = Color.parseColor(Palette.SETTLEMENT_SOIL)
         canvas.drawRect(screenX(0.29f) - 10f, screenY(0.78f) - 3f, screenX(0.29f) + 10f, screenY(0.78f) + 3f, landmarkPaint)
+
+        // Scattered stones along road corridor
+        landmarkPaint.color = Color.parseColor("#58606A")
+        landmarkPaint.alpha = 80
         repeat(8) { i ->
             val nx = 0.20f + i * 0.08f
             val ny = 0.52f + sin(i.toFloat() * 0.9f) * 0.03f
             canvas.drawCircle(screenX(nx), screenY(ny), 2.2f, landmarkPaint)
         }
+        landmarkPaint.alpha = 255
 
+        // Chokepoint labels at mid/close zoom
         if (zoom != ZoomState.FAR) {
             val chokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                textSize = if (zoom == ZoomState.CLOSE) 14f else 11f
-            color = Color.parseColor("#F2F0EA")
+                textSize = if (zoom == ZoomState.CLOSE) 13f else 10f
+                color = Color.parseColor("#B8C2D1")
+                alpha = if (zoom == ZoomState.CLOSE) 200 else 140
                 textAlign = Paint.Align.CENTER
-                typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+                typeface = UiTheme.TYPEFACE_BODY
+                letterSpacing = 0.06f
             }
             canvas.drawText("MOUNTAIN PASS", screenX(0.40f), screenY(0.24f), chokePaint)
             canvas.drawText("RIVER CROSSING", screenX(0.64f), screenY(0.37f), chokePaint)
             canvas.drawText("CANYON PATH", screenX(0.39f), screenY(0.57f), chokePaint)
-            canvas.drawText("FOREST EDGE ROUTE", screenX(0.47f), screenY(0.60f), chokePaint)
+            canvas.drawText("FOREST EDGE", screenX(0.47f), screenY(0.60f), chokePaint)
         }
     }
 
@@ -1545,9 +1664,9 @@ class CampaignMapView @JvmOverloads constructor(
             else -> 16f
         }
         labelPaint.typeface = if (state == LabelState.SELECTED || state == LabelState.ROUTE_TARGET) {
-            Typeface.create("sans-serif-medium", Typeface.BOLD)
+            UiTheme.TYPEFACE_LABEL
         } else {
-            Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            UiTheme.TYPEFACE_BODY
         }
         labelBgPaint.color = Color.parseColor(fillColor)
         val fm = labelPaint.fontMetrics
@@ -1613,13 +1732,13 @@ class CampaignMapView @JvmOverloads constructor(
             textSize = 13f
             textAlign = Paint.Align.CENTER
             color = Color.parseColor("#F2F0EA")
-            typeface = Typeface.DEFAULT_BOLD
+            typeface = UiTheme.TYPEFACE_LABEL
         }
         val statePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             textSize = 11f
             textAlign = Paint.Align.CENTER
             color = Color.parseColor("#B8C2D1")
-            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            typeface = UiTheme.TYPEFACE_BODY
         }
         val threatPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
@@ -1754,21 +1873,41 @@ class CampaignMapView @JvmOverloads constructor(
         paint: Paint
     ) {
         if (faction == PartyFaction.FRIENDLY) {
-            canvas.drawLine(x, y - 7f, x, y + 7f, paint)
-            canvas.drawLine(x - 7f, y, x + 7f, y, paint)
+            // Shield + banner
+            canvas.drawLine(x, y - 8f, x, y + 8f, paint)
+            canvas.drawLine(x - 5f, y - 3f, x + 5f, y - 3f, paint)
+            canvas.drawLine(x - 5f, y + 3f, x + 5f, y + 3f, paint)
+            canvas.drawLine(x - 5f, y - 3f, x - 5f, y + 3f, paint)
+            canvas.drawLine(x + 5f, y - 3f, x + 5f, y + 3f, paint)
             return
         }
         when (biome) {
-            BiomeType.DESERT -> canvas.drawRect(x - 6f, y - 4f, x + 6f, y + 4f, paint)
-            BiomeType.PLAINS -> canvas.drawCircle(x, y, 5f, paint)
+            BiomeType.DESERT -> {
+                // Curved scimitar
+                canvas.drawArc(RectF(x - 8f, y - 6f, x + 4f, y + 6f), -30f, 200f, false, paint)
+                canvas.drawLine(x + 2f, y - 4f, x + 6f, y - 7f, paint)
+            }
+            BiomeType.PLAINS -> {
+                // Crossed spears
+                canvas.drawLine(x - 6f, y - 6f, x + 6f, y + 6f, paint)
+                canvas.drawLine(x + 6f, y - 6f, x - 6f, y + 6f, paint)
+                canvas.drawCircle(x, y, 2.5f, paint)
+            }
             BiomeType.FOREST -> {
-                canvas.drawLine(x - 6f, y + 5f, x, y - 6f, paint)
-                canvas.drawLine(x, y - 6f, x + 6f, y + 5f, paint)
-                canvas.drawLine(x - 4f, y + 1f, x + 4f, y + 1f, paint)
+                // Wolf fang / claw marks
+                canvas.drawLine(x - 5f, y - 6f, x - 2f, y + 6f, paint)
+                canvas.drawLine(x, y - 6f, x, y + 6f, paint)
+                canvas.drawLine(x + 5f, y - 6f, x + 2f, y + 6f, paint)
             }
             BiomeType.HILLS -> {
-                canvas.drawLine(x - 7f, y + 4f, x, y - 4f, paint)
-                canvas.drawLine(x, y - 4f, x + 7f, y + 4f, paint)
+                // Axe head
+                canvas.drawLine(x, y - 8f, x, y + 6f, paint)
+                val axePath = Path().apply {
+                    moveTo(x, y - 5f)
+                    lineTo(x + 7f, y - 1f)
+                    lineTo(x, y + 3f)
+                }
+                canvas.drawPath(axePath, paint)
             }
         }
     }

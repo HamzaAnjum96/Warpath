@@ -2,7 +2,7 @@ package com.warpath.ui
 
 import android.content.Intent
 import android.graphics.Color
-import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -25,7 +25,7 @@ class BattleActivity : AppCompatActivity() {
     private lateinit var startBattleButton: Button
     private val handler = Handler(Looper.getMainLooper())
     private var isRunning = false
-    private val tickInterval = 50L // 20 fps
+    private val tickInterval = 50L
     private var node: CampaignNode? = null
     private val startingPlayerCounts = mutableMapOf<String, Int>()
     private var startingEnemyCount: Int = 0
@@ -35,6 +35,7 @@ class BattleActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         supportActionBar?.hide()
+        @Suppress("DEPRECATION")
         window.decorView.systemUiVisibility = (
             View.SYSTEM_UI_FLAG_FULLSCREEN or
             View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
@@ -45,7 +46,6 @@ class BattleActivity : AppCompatActivity() {
         node = CampaignActivity.campaignManager.campaignMap.find { it.id == nodeId }
         val currentNode = node ?: return
 
-        // Set up battle
         battleEngine = BattleEngine()
         battleState = battleEngine.createBattle(
             CampaignActivity.campaignManager.gameState.warband,
@@ -61,48 +61,66 @@ class BattleActivity : AppCompatActivity() {
             setBackgroundColor(Color.parseColor(UiTheme.BASE_BG))
         }
 
-        // Battle view (takes most of the screen)
         battleView = BattleView(this).apply {
             battleState = this@BattleActivity.battleState
             onEnemyTapped = { enemy ->
                 battleEngine.issueCommand(BattleCommand.FOCUS_TARGET, this@BattleActivity.battleState, enemy.id)
             }
         }
-        // Main container
-        val mainLayout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-        }
 
-        // Title bar
+        val mainLayout = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+
+        // Title bar with gradient
         val titleBar = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            setBackgroundColor(Color.parseColor(UiTheme.SURFACE))
-            setPadding(dp(16), dp(12), dp(16), dp(12))
+            background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, intArrayOf(
+                Color.parseColor(UiTheme.SURFACE),
+                Color.parseColor(UiTheme.SURFACE_ALT)
+            ))
+            setPadding(dp(UiTheme.SPACE_4), dp(UiTheme.SPACE_3), dp(UiTheme.SPACE_4), dp(UiTheme.SPACE_3))
             gravity = Gravity.CENTER_VERTICAL
+            elevation = dpF(UiTheme.HUD_ELEVATION)
         }
-        val titleText = TextView(this).apply {
-            text = "Battle: ${currentNode.name}"
-            textSize = 16f
+        // Accent bar
+        titleBar.addView(View(this).apply {
+            setBackgroundColor(Color.parseColor(UiTheme.HOSTILE))
+        }, LinearLayout.LayoutParams(dp(3), LinearLayout.LayoutParams.MATCH_PARENT).apply {
+            marginEnd = dp(UiTheme.SPACE_3)
+        })
+        val titleCol = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        titleCol.addView(TextView(this).apply {
+            text = "ENGAGEMENT"
+            textSize = UiTheme.TEXT_CHIP
+            setTextColor(Color.parseColor(UiTheme.TEXT_SUBTLE))
+            typeface = UiTheme.TYPEFACE_LABEL
+            letterSpacing = 0.1f
+        })
+        titleCol.addView(TextView(this).apply {
+            text = currentNode.name
+            textSize = UiTheme.TEXT_BODY
             setTextColor(Color.parseColor(UiTheme.GOLD))
-            typeface = Typeface.DEFAULT_BOLD
-        }
-        titleBar.addView(titleText)
+            typeface = UiTheme.TYPEFACE_HEADING
+        })
+        titleBar.addView(titleCol)
         mainLayout.addView(titleBar, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
         ))
 
-        // Battle view gets weight
+        // Battle view
         val battleContainer = FrameLayout(this)
         battleContainer.addView(battleView, FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.MATCH_PARENT,
-            FrameLayout.LayoutParams.MATCH_PARENT
+            FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT
         ))
         startBattleButton = Button(this).apply {
-            text = "Start Battle"
-            textSize = 14f
-            setPadding(dp(18), dp(10), dp(18), dp(10))
-            applyUiButtonStyle(UiTheme.GOLD, 12f)
+            text = "Begin Engagement"
+            textSize = UiTheme.TEXT_BUTTON
+            typeface = UiTheme.TYPEFACE_HEADING
+            isAllCaps = false
+            setTextColor(Color.parseColor(UiTheme.TEXT_PRIMARY))
+            setPadding(dp(UiTheme.SPACE_5), dp(UiTheme.SPACE_3), dp(UiTheme.SPACE_5), dp(UiTheme.SPACE_3))
+            stateListAnimator = null
+            background = UiTheme.rippleDrawable(UiTheme.WARNING, null, UiTheme.RADIUS_MD)
+            elevation = dpF(UiTheme.SHEET_ELEVATION)
             setOnClickListener {
                 visibility = View.GONE
                 if (!isRunning) {
@@ -112,65 +130,81 @@ class BattleActivity : AppCompatActivity() {
             }
         }
         battleContainer.addView(startBattleButton, FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.WRAP_CONTENT,
-            FrameLayout.LayoutParams.WRAP_CONTENT,
-            Gravity.CENTER
+            FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER
         ))
         mainLayout.addView(battleContainer, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f
         ))
 
         // Battle log
-        val logScroll = HorizontalScrollView(this).apply {
-            setBackgroundColor(Color.parseColor(UiTheme.SURFACE_ALT))
-            setPadding(dp(12), dp(8), dp(12), dp(8))
+        val logContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(
+                Color.parseColor(UiTheme.SURFACE_ALT),
+                Color.parseColor(UiTheme.SURFACE)
+            ))
+            setPadding(dp(UiTheme.SPACE_4), dp(UiTheme.SPACE_2), dp(UiTheme.SPACE_4), dp(UiTheme.SPACE_2))
+            gravity = Gravity.CENTER_VERTICAL
         }
+        logContainer.addView(TextView(this).apply {
+            text = "◈"
+            textSize = UiTheme.TEXT_SECONDARY
+            setTextColor(Color.parseColor(UiTheme.TEXT_SUBTLE))
+            setPadding(0, 0, dp(UiTheme.SPACE_2), 0)
+        })
         logText = TextView(this).apply {
-            textSize = 12f
+            textSize = UiTheme.TEXT_SECONDARY
             setTextColor(Color.parseColor(UiTheme.TEXT_MUTED))
+            typeface = UiTheme.TYPEFACE_BODY
             maxLines = 2
-            text = "Ready. Tap Start Battle."
+            text = "Awaiting orders."
         }
-        logScroll.addView(logText)
-        mainLayout.addView(logScroll, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
+        logContainer.addView(logText, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        mainLayout.addView(logContainer, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
         ))
+
+        // Divider
+        mainLayout.addView(View(this).apply {
+            setBackgroundColor(Color.parseColor(UiTheme.DIVIDER))
+        }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1)))
 
         // Command bar
         commandBar = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setBackgroundColor(Color.parseColor(UiTheme.SURFACE))
-            setPadding(dp(8), dp(12), dp(8), dp(12))
+            setPadding(dp(UiTheme.SPACE_2), dp(UiTheme.SPACE_3), dp(UiTheme.SPACE_2), dp(UiTheme.SPACE_3))
             gravity = Gravity.CENTER
         }
 
         for (cmd in BattleCommand.values()) {
             val btn = Button(this).apply {
                 text = cmd.displayName
-                textSize = 12f
-                setPadding(dp(12), dp(8), dp(12), dp(8))
-                applyUiButtonStyle(getCommandColor(cmd), 10f)
+                textSize = UiTheme.TEXT_BUTTON_SM
+                typeface = UiTheme.TYPEFACE_HEADING
+                isAllCaps = false
+                setTextColor(Color.parseColor(UiTheme.TEXT_PRIMARY))
+                setPadding(dp(UiTheme.SPACE_2), dp(UiTheme.SPACE_2), dp(UiTheme.SPACE_2), dp(UiTheme.SPACE_2))
+                stateListAnimator = null
+                minHeight = dp(UiTheme.BUTTON_HEIGHT_SM)
+                minimumHeight = dp(UiTheme.BUTTON_HEIGHT_SM)
+                background = UiTheme.rippleDrawable(getCommandColor(cmd), UiTheme.BORDER, UiTheme.RADIUS_SM)
                 setOnClickListener { onCommand(cmd) }
             }
             commandButtons[cmd] = btn
             commandBar.addView(btn, LinearLayout.LayoutParams(
                 0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
-            ).apply { marginStart = 4; marginEnd = 4 })
+            ).apply { marginStart = dp(2); marginEnd = dp(2) })
         }
         mainLayout.addView(commandBar, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
         ))
 
         root.addView(mainLayout, FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.MATCH_PARENT,
-            FrameLayout.LayoutParams.MATCH_PARENT
+            FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT
         ))
 
         setContentView(root)
-
-        // Wait for player to start battle loop
     }
 
     private fun getCommandColor(cmd: BattleCommand): String {

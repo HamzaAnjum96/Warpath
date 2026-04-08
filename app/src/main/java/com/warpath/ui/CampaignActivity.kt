@@ -2,7 +2,6 @@ package com.warpath.ui
 
 import android.content.Intent
 import android.graphics.Color
-import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.os.Handler
@@ -14,9 +13,7 @@ import android.view.Gravity
 import android.view.View
 import android.util.TypedValue
 import android.widget.*
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.warpath.engine.CampaignManager
 import com.warpath.model.CampaignNode
 import com.warpath.model.NodeType
@@ -209,7 +206,7 @@ class CampaignActivity : AppCompatActivity() {
         statusText = TextView(this).apply {
             textSize = if (compactUi) 12f else 13f
             setTextColor(Color.parseColor(Palette.GOLD))
-            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+            typeface = UiTheme.TYPEFACE_LABEL
             gravity = Gravity.CENTER
             setPadding(dp(16), dp(8), dp(16), dp(8))
             setBackgroundColor(Color.parseColor(Palette.HUD_SURFACE))
@@ -228,7 +225,7 @@ class CampaignActivity : AppCompatActivity() {
             text = "⌖"
             contentDescription = "Recenter map on warband"
             textSize = if (compactUi) 10f else 11f
-            typeface = Typeface.DEFAULT_BOLD
+            typeface = UiTheme.TYPEFACE_HEADING
             isAllCaps = false
             minWidth = dp(40)
             minimumWidth = dp(40)
@@ -247,7 +244,7 @@ class CampaignActivity : AppCompatActivity() {
 
         mapStateText = TextView(this).apply {
             textSize = if (compactUi) 9f else 10f
-            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+            typeface = UiTheme.TYPEFACE_LABEL
             setTextColor(Color.parseColor(Palette.HUD_TEXT))
             setPadding(dp(10), dp(6), dp(10), dp(6))
             letterSpacing = 0.08f
@@ -290,7 +287,7 @@ class CampaignActivity : AppCompatActivity() {
             text = "Stop"
             contentDescription = "Stop current movement"
             textSize = if (compactUi) 10f else 11f
-            typeface = Typeface.DEFAULT_BOLD
+            typeface = UiTheme.TYPEFACE_HEADING
             isAllCaps = false
             setTextColor(Color.parseColor(Palette.HUD_TEXT))
             minHeight = dp(34)
@@ -316,7 +313,7 @@ class CampaignActivity : AppCompatActivity() {
         travelHintText = TextView(this).apply {
             textSize = if (compactUi) 11f else 12f
             setTextColor(Color.parseColor(Palette.HUD_TEXT_MUTED))
-            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+            typeface = UiTheme.TYPEFACE_LABEL
             setPadding(dp(12), dp(8), dp(12), dp(8))
             text = "◉ Scouting mode  ·  Drag to survey. Tap terrain to mark route."
             background = GradientDrawable().apply {
@@ -348,28 +345,30 @@ class CampaignActivity : AppCompatActivity() {
     private fun buildTopHud(): View {
         val bar = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = 0f
-                setColor(Color.parseColor(Palette.HUD_SURFACE))
-            }
+            background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(
+                Color.parseColor(Palette.HUD_SURFACE),
+                Color.parseColor("#DD0E1726")
+            )).apply { cornerRadius = 0f }
             setPadding(dp(UiTheme.SPACE_4), dp(UiTheme.SPACE_3), dp(UiTheme.SPACE_4), dp(UiTheme.SPACE_3))
             gravity = Gravity.CENTER_VERTICAL
-            minimumHeight = dp(92)
+            minimumHeight = dp(UiTheme.TOP_BAR_HEIGHT + 36)
         }
 
-        val title = TextView(this).apply {
+        val titleCol = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        titleCol.addView(TextView(this).apply {
             text = "WARPATH"
             textSize = if (compactUi) 14f else 16f
             setTextColor(Color.parseColor(Palette.GOLD))
-            typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
+            typeface = UiTheme.TYPEFACE_TITLE
             letterSpacing = 0.12f
-        }
-        bar.addView(title, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 0.85f))
+        })
+        bar.addView(titleCol, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 0.85f))
 
-        suppliesText = hudStatText()
-        renownText = hudStatText()
-        warbandText = hudStatText()
+        suppliesText = hudStatChip()
+        renownText = hudStatChip()
+        warbandText = hudStatChip()
 
         val resourceRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -385,16 +384,16 @@ class CampaignActivity : AppCompatActivity() {
         val warbandBtn = Button(this).apply {
             text = "⚑"
             textSize = if (compactUi) 10f else 11f
-            minWidth = dp(40)
-            minimumWidth = dp(40)
-            minHeight = dp(40)
-            minimumHeight = dp(40)
+            minWidth = dp(UiTheme.ICON_BUTTON_SIZE)
+            minimumWidth = dp(UiTheme.ICON_BUTTON_SIZE)
+            minHeight = dp(UiTheme.ICON_BUTTON_SIZE)
+            minimumHeight = dp(UiTheme.ICON_BUTTON_SIZE)
             setTextColor(Color.parseColor(Palette.HUD_TEXT))
             isAllCaps = false
-            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+            typeface = UiTheme.TYPEFACE_HEADING
             setPadding(0, 0, 0, 0)
             stateListAnimator = null
-            applyHudButtonStyle(cornerRadius = 10f)
+            applyHudButtonStyle(cornerRadius = UiTheme.RADIUS_SM)
             setOnClickListener { startActivity(Intent(this@CampaignActivity, WarbandActivity::class.java)) }
         }
         bar.addView(warbandBtn)
@@ -406,10 +405,12 @@ class CampaignActivity : AppCompatActivity() {
         return shell
     }
 
-    private fun hudStatText() = TextView(this).apply {
-        textSize = if (compactUi) 11f else 12f
+    private fun hudStatChip() = TextView(this).apply {
+        textSize = if (compactUi) UiTheme.TEXT_MICRO + 2f else UiTheme.TEXT_SECONDARY
         setTextColor(Color.parseColor(Palette.HUD_TEXT))
-        typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+        typeface = UiTheme.TYPEFACE_LABEL
+        background = UiTheme.roundedRect(Palette.HUD_SURFACE_ALT, null, UiTheme.RADIUS_XS)
+        setPadding(dp(UiTheme.SPACE_2), dp(2), dp(UiTheme.SPACE_2), dp(2))
     }
 
     private fun hudSpacer(): View = View(this).also {
@@ -447,7 +448,7 @@ class CampaignActivity : AppCompatActivity() {
         alertIconText = TextView(this).apply {
             text = AlertCategory.EVENT.icon
             textSize = if (compactUi) 11f else 12f
-            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+            typeface = UiTheme.TYPEFACE_LABEL
             setTextColor(Color.parseColor(Palette.HUD_TEXT))
             setPadding(0, 0, dp(8), 0)
         }
@@ -455,7 +456,7 @@ class CampaignActivity : AppCompatActivity() {
 
         alertMessageText = TextView(this).apply {
             textSize = if (compactUi) 11f else 12f
-            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+            typeface = UiTheme.TYPEFACE_LABEL
             setTextColor(Color.parseColor(Palette.HUD_TEXT))
             letterSpacing = 0.02f
         }
@@ -468,7 +469,7 @@ class CampaignActivity : AppCompatActivity() {
     private fun buildModeStrip(): View {
         modeStripText = TextView(this).apply {
             textSize = if (compactUi) 9f else 10f
-            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+            typeface = UiTheme.TYPEFACE_LABEL
             setTextColor(Color.parseColor(Palette.HUD_TEXT))
             setPadding(dp(12), dp(5), dp(12), dp(5))
             letterSpacing = 0.08f
@@ -487,7 +488,7 @@ class CampaignActivity : AppCompatActivity() {
         textSize = if (compactUi) 10f else 11f
         setTextColor(Color.parseColor(Palette.HUD_TEXT_MUTED))
         setPadding(0, dp(1), 0, dp(1))
-        typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+        typeface = UiTheme.TYPEFACE_LABEL
     }
 
     private fun styledStat(label: String, value: String): CharSequence {
@@ -645,7 +646,7 @@ class CampaignActivity : AppCompatActivity() {
         nodeTypeChip = TextView(this).apply {
             textSize = if (compactUi) 9f else 10f
             setTextColor(Color.parseColor(Palette.HUD_TEXT))
-            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+            typeface = UiTheme.TYPEFACE_LABEL
             setPadding(dp(8), dp(4), dp(8), dp(4))
             letterSpacing = 0.08f
         }
@@ -660,7 +661,7 @@ class CampaignActivity : AppCompatActivity() {
         nodeNameText = TextView(this).apply {
             textSize = if (compactUi) 18f else 20f
             setTextColor(Color.parseColor(Palette.HUD_TEXT))
-            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+            typeface = UiTheme.TYPEFACE_LABEL
             letterSpacing = 0.02f
         }
         headerRow.addView(nodeNameText, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
@@ -687,7 +688,7 @@ class CampaignActivity : AppCompatActivity() {
 
         nodeRangeTagText = TextView(this).apply {
             textSize = if (compactUi) 9f else 10f
-            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+            typeface = UiTheme.TYPEFACE_LABEL
             setTextColor(Color.parseColor(Palette.HUD_TEXT))
             setPadding(dp(8), dp(4), dp(8), dp(4))
             letterSpacing = 0.06f
@@ -698,7 +699,7 @@ class CampaignActivity : AppCompatActivity() {
 
         distanceText = TextView(this).apply {
             textSize = if (compactUi) 10f else 11f
-            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            typeface = UiTheme.TYPEFACE_BODY
             setTextColor(Color.parseColor(Palette.HUD_TEXT_MUTED))
             setPadding(dp(8), dp(8), dp(8), dp(0))
         }
@@ -710,7 +711,7 @@ class CampaignActivity : AppCompatActivity() {
         nodeDescText = TextView(this).apply {
             textSize = if (compactUi) 11f else 12f
             setTextColor(Color.parseColor(Palette.HUD_TEXT_MUTED))
-            typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+            typeface = UiTheme.TYPEFACE_BODY
             setLineSpacing(3f, 1f)
             maxLines = 2
             setOnClickListener {
@@ -752,7 +753,7 @@ class CampaignActivity : AppCompatActivity() {
         nodeStatsText = TextView(this).apply {
             textSize = if (compactUi) 11f else 12f
             setTextColor(Color.parseColor(Palette.HUD_TEXT_MUTED))
-            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            typeface = UiTheme.TYPEFACE_BODY
             background = GradientDrawable().apply {
                 cornerRadius = dpF(10f)
                 setColor(Color.parseColor(Palette.HUD_SURFACE_ALT))
@@ -771,7 +772,7 @@ class CampaignActivity : AppCompatActivity() {
             textSize = if (compactUi) 13f else 14f
             setTextColor(Color.parseColor(Palette.HUD_TEXT))
             isAllCaps = false
-            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+            typeface = UiTheme.TYPEFACE_LABEL
             setPadding(dp(16), dp(12), dp(16), dp(12))
             stateListAnimator = null
             applyPrimaryButtonStyle()
@@ -1183,55 +1184,9 @@ class CampaignActivity : AppCompatActivity() {
                 arrayOf("Reorganize Warband", "Scout Routes")
         }
 
-        val dialog = BottomSheetDialog(this)
-        val container = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(22), dp(18), dp(22), dp(26))
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadii = floatArrayOf(dpF(20f), dpF(20f), dpF(20f), dpF(20f), 0f, 0f, 0f, 0f)
-                setColor(Color.parseColor("#111C2D"))
-                setStroke(dp(1), Color.parseColor("#27415E"))
-            }
+        showThemedSheet(node.name, "Choose an action", options) { label ->
+            handlePoiAction(node, label)
         }
-        val title = TextView(this).apply {
-            text = "${node.name} · Actions"
-            textSize = 18f
-            typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
-            setTextColor(Color.parseColor("#F2F0EA"))
-        }
-        container.addView(title)
-        val subtitle = TextView(this).apply {
-            text = "Choose a contextual option"
-            textSize = 12f
-            setTextColor(Color.parseColor("#8694A8"))
-            setPadding(0, dp(4), 0, dp(12))
-        }
-        container.addView(subtitle)
-
-        options.forEach { label ->
-            val row = TextView(this).apply {
-                text = label
-                textSize = 13f
-                typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-                setTextColor(Color.parseColor("#F2F0EA"))
-                setPadding(dp(12), dp(9), dp(12), dp(9))
-                background = GradientDrawable().apply {
-                    cornerRadius = dpF(9f)
-                    setColor(Color.parseColor("#132033"))
-                    setStroke(dp(1), Color.parseColor("#27415E"))
-                }
-                setOnClickListener {
-                    dialog.dismiss()
-                    handlePoiAction(node, label)
-                }
-            }
-            container.addView(row, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                topMargin = dp(8)
-            })
-        }
-        dialog.setContentView(container)
-        dialog.show()
     }
 
     private fun handlePoiAction(node: CampaignNode, action: String) {
@@ -1363,13 +1318,12 @@ class CampaignActivity : AppCompatActivity() {
     }
 
     private fun showOutcomeSheet(title: String, summary: String, details: List<String>) {
-        val dialog = BottomSheetDialog(this)
         val isDefeatTone = title.contains("Failed", ignoreCase = true) || title.contains("Retreat", ignoreCase = true)
         val isDiscoveryTone = title.contains("Intel", ignoreCase = true) || title.contains("Discovered", ignoreCase = true)
-        val background = when {
-            isDefeatTone -> "#24191A"
-            isDiscoveryTone -> "#2A201F"
-            else -> "#2A1D1D"
+        val accentHex = when {
+            isDefeatTone -> Palette.DANGER
+            isDiscoveryTone -> Palette.GOLD
+            else -> Palette.SUCCESS
         }
         val header = when {
             isDefeatTone -> "RESOLUTION"
@@ -1377,52 +1331,200 @@ class CampaignActivity : AppCompatActivity() {
             else -> "VICTORY"
         }
 
-        val content = LinearLayout(this).apply {
+        showThemedOverlay { dismiss ->
+            LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                background = UiTheme.gradientSurface(
+                    topHex = UiTheme.SURFACE_ELEVATED,
+                    bottomHex = UiTheme.SURFACE,
+                    borderHex = UiTheme.BORDER,
+                    radius = UiTheme.RADIUS_LG
+                )
+                setPadding(dp(UiTheme.SPACE_5), dp(UiTheme.SPACE_4), dp(UiTheme.SPACE_5), dp(UiTheme.SPACE_5))
+                elevation = dpF(UiTheme.SHEET_ELEVATION)
+
+                // Accent bar
+                addView(View(this@CampaignActivity).apply {
+                    setBackgroundColor(Color.parseColor(accentHex))
+                }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(3)).apply {
+                    bottomMargin = dp(UiTheme.SPACE_4)
+                })
+
+                addView(TextView(this@CampaignActivity).apply {
+                    text = header
+                    textSize = UiTheme.TEXT_CHIP
+                    letterSpacing = 0.12f
+                    typeface = UiTheme.TYPEFACE_LABEL
+                    setTextColor(Color.parseColor(UiTheme.TEXT_SUBTLE))
+                })
+                addView(TextView(this@CampaignActivity).apply {
+                    text = title
+                    textSize = UiTheme.TEXT_CARD_TITLE
+                    typeface = UiTheme.TYPEFACE_HEADING
+                    setTextColor(Color.parseColor(Palette.HUD_TEXT))
+                    setPadding(0, dp(UiTheme.SPACE_1), 0, dp(UiTheme.SPACE_1))
+                })
+                addView(TextView(this@CampaignActivity).apply {
+                    text = summary
+                    textSize = UiTheme.TEXT_SECONDARY
+                    typeface = UiTheme.TYPEFACE_BODY
+                    setTextColor(Color.parseColor(UiTheme.TEXT_MUTED))
+                    setPadding(0, 0, 0, dp(UiTheme.SPACE_3))
+                })
+
+                // Detail rows
+                val detailBlock = LinearLayout(this@CampaignActivity).apply {
+                    orientation = LinearLayout.VERTICAL
+                    background = UiTheme.roundedRect(Palette.HUD_SURFACE_ALT, Palette.HUD_BORDER, UiTheme.RADIUS_SM)
+                    setPadding(dp(UiTheme.SPACE_3), dp(UiTheme.SPACE_2), dp(UiTheme.SPACE_3), dp(UiTheme.SPACE_2))
+                }
+                details.forEach { line ->
+                    detailBlock.addView(TextView(this@CampaignActivity).apply {
+                        text = line
+                        textSize = UiTheme.TEXT_SECONDARY
+                        typeface = UiTheme.TYPEFACE_BODY
+                        setTextColor(Color.parseColor(Palette.HUD_TEXT))
+                        setPadding(0, dp(UiTheme.SPACE_1), 0, dp(UiTheme.SPACE_1))
+                    })
+                }
+                addView(detailBlock, LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+                ))
+
+                addView(Button(this@CampaignActivity).apply {
+                    text = "Continue"
+                    applyPrimaryButtonStyle()
+                    textSize = UiTheme.TEXT_BUTTON
+                    minHeight = dp(UiTheme.BUTTON_HEIGHT)
+                    minimumHeight = dp(UiTheme.BUTTON_HEIGHT)
+                    setOnClickListener { dismiss() }
+                }, LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { topMargin = dp(UiTheme.SPACE_4) })
+            }
+        }
+    }
+
+    /** Full-screen themed overlay with a centered panel. Returns dismiss callback. */
+    private fun showThemedOverlay(buildContent: (dismiss: () -> Unit) -> View) {
+        val rootFrame = window.decorView.findViewById<FrameLayout>(android.R.id.content)
+        val overlay = FrameLayout(this).apply {
+            setBackgroundColor(Color.parseColor("#CC0A0F1A"))
+            isClickable = true
+            isFocusable = true
+        }
+        val dismiss = {
+            overlay.animate().alpha(0f).setDuration(150L).withEndAction {
+                rootFrame.removeView(overlay)
+            }.start()
+        }
+        val panel = buildContent(dismiss)
+        val panelLp = FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.WRAP_CONTENT,
+            Gravity.CENTER
+        ).apply {
+            marginStart = dp(UiTheme.SPACE_5)
+            marginEnd = dp(UiTheme.SPACE_5)
+        }
+        overlay.addView(panel, panelLp)
+        overlay.alpha = 0f
+        rootFrame.addView(overlay, FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT
+        ))
+        overlay.animate().alpha(1f).setDuration(180L).start()
+    }
+
+    /** Themed bottom-anchored action sheet (replaces BottomSheetDialog). */
+    private fun showThemedSheet(
+        title: String,
+        subtitle: String,
+        options: Array<String>,
+        onSelected: (String) -> Unit
+    ) {
+        val rootFrame = window.decorView.findViewById<FrameLayout>(android.R.id.content)
+        val scrim = FrameLayout(this).apply {
+            setBackgroundColor(Color.parseColor("#AA0A0F1A"))
+            isClickable = true
+        }
+        val dismiss = {
+            scrim.animate().alpha(0f).setDuration(140L).withEndAction {
+                rootFrame.removeView(scrim)
+            }.start()
+        }
+        scrim.setOnClickListener { dismiss() }
+
+        val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(14), dp(18), dp(20))
-            setBackgroundColor(Color.parseColor(background))
+            setPadding(dp(UiTheme.SPACE_5), dp(UiTheme.SPACE_4), dp(UiTheme.SPACE_5), dp(UiTheme.SPACE_6))
+            background = UiTheme.gradientSurface(
+                topHex = UiTheme.SURFACE_ELEVATED,
+                bottomHex = UiTheme.SURFACE,
+                borderHex = UiTheme.BORDER,
+                radius = UiTheme.RADIUS_XL
+            ).apply {
+                cornerRadii = floatArrayOf(
+                    dpF(UiTheme.RADIUS_XL), dpF(UiTheme.RADIUS_XL),
+                    dpF(UiTheme.RADIUS_XL), dpF(UiTheme.RADIUS_XL),
+                    0f, 0f, 0f, 0f
+                )
+            }
+            elevation = dpF(UiTheme.SHEET_ELEVATION)
+            isClickable = true
         }
-        content.addView(TextView(this).apply {
-            text = header
-            textSize = 10f
-            letterSpacing = 0.1f
-            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
-            setTextColor(Color.parseColor("#8694A8"))
-        })
-        content.addView(TextView(this).apply {
-            text = title
-            textSize = 18f
-            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
-            setTextColor(Color.parseColor("#F2F0EA"))
-            setPadding(0, dp(4), 0, dp(4))
-        })
-        content.addView(TextView(this).apply {
-            text = summary
-            textSize = 12f
-            setTextColor(Color.parseColor("#B8C2D1"))
-            setPadding(0, 0, 0, dp(10))
-        })
-        details.forEach { line ->
-            content.addView(TextView(this).apply {
-                text = line
-                textSize = 12f
-                setTextColor(Color.parseColor("#F2F0EA"))
-                setPadding(0, dp(2), 0, dp(2))
-            })
+
+        // Handle bar
+        val handle = View(this).apply {
+            background = UiTheme.roundedRect(UiTheme.BORDER_LIGHT, null, 3f)
         }
-        content.addView(Button(this).apply {
-            text = "Next Action"
-            isAllCaps = false
-            minHeight = dp(38)
-            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
-            setTextColor(Color.parseColor("#F2F0EA"))
-            applyPrimaryButtonStyle()
-            setOnClickListener { dialog.dismiss() }
-        }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-            topMargin = dp(12)
+        container.addView(handle, LinearLayout.LayoutParams(dp(UiTheme.SHEET_HANDLE_WIDTH), dp(4)).apply {
+            gravity = Gravity.CENTER_HORIZONTAL
+            bottomMargin = dp(UiTheme.SPACE_4)
         })
-        dialog.setContentView(content)
-        dialog.show()
+
+        container.addView(TextView(this).apply {
+            text = "$title · Actions"
+            textSize = UiTheme.TEXT_CARD_TITLE
+            typeface = UiTheme.TYPEFACE_TITLE
+            setTextColor(Color.parseColor(UiTheme.TEXT_PRIMARY))
+        })
+        container.addView(TextView(this).apply {
+            text = subtitle
+            textSize = UiTheme.TEXT_SECONDARY
+            setTextColor(Color.parseColor(UiTheme.TEXT_SUBTLE))
+            setPadding(0, dp(UiTheme.SPACE_1), 0, dp(UiTheme.SPACE_3))
+        })
+
+        options.forEach { label ->
+            val row = TextView(this).apply {
+                text = label
+                textSize = UiTheme.TEXT_BODY_SM
+                typeface = UiTheme.TYPEFACE_BODY
+                setTextColor(Color.parseColor(UiTheme.TEXT_PRIMARY))
+                setPadding(dp(UiTheme.SPACE_4), dp(UiTheme.SPACE_3), dp(UiTheme.SPACE_4), dp(UiTheme.SPACE_3))
+                background = UiTheme.rippleDrawable(UiTheme.SURFACE_ALT, UiTheme.BORDER, UiTheme.RADIUS_SM)
+                setOnClickListener {
+                    dismiss()
+                    onSelected(label)
+                }
+            }
+            container.addView(row, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp(UiTheme.SPACE_2) })
+        }
+
+        scrim.addView(container, FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.WRAP_CONTENT,
+            Gravity.BOTTOM
+        ))
+        scrim.alpha = 0f
+        rootFrame.addView(scrim, FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT
+        ))
+        scrim.animate().alpha(1f).setDuration(180L).start()
+        container.translationY = dp(60).toFloat()
+        container.animate().translationY(0f).setDuration(220L).start()
     }
 
     private fun moveWarbandTo(normX: Float, normY: Float) {
@@ -1702,20 +1804,76 @@ class CampaignActivity : AppCompatActivity() {
     }
 
     private fun showRunOverDialog() {
-        AlertDialog.Builder(this)
-            .setTitle("Campaign Over")
-            .setMessage(campaignManager.getRunSummary())
-            .setPositiveButton("New Campaign") { _, _ ->
-                campaignManager.startNewCampaign()
-                mapView.nodes = campaignManager.campaignMap
-                mapView.currentNodeId = campaignManager.gameState.currentNodeId
-                mapView.recenterOnPlayer()
-                mapView.invalidate()
-                infoPanel.visibility = View.GONE
-                updateHud()
+        showThemedOverlay { dismiss ->
+            LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                background = UiTheme.gradientSurface(
+                    topHex = UiTheme.SURFACE_ELEVATED,
+                    bottomHex = UiTheme.SURFACE,
+                    borderHex = UiTheme.BORDER,
+                    radius = UiTheme.RADIUS_LG
+                )
+                setPadding(dp(UiTheme.SPACE_5), dp(UiTheme.SPACE_5), dp(UiTheme.SPACE_5), dp(UiTheme.SPACE_5))
+                elevation = dpF(UiTheme.SHEET_ELEVATION)
+
+                addView(View(this@CampaignActivity).apply {
+                    setBackgroundColor(Color.parseColor(Palette.GOLD))
+                }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(3)).apply {
+                    bottomMargin = dp(UiTheme.SPACE_4)
+                })
+
+                addView(TextView(this@CampaignActivity).apply {
+                    text = "CAMPAIGN OVER"
+                    textSize = UiTheme.TEXT_CHIP
+                    letterSpacing = 0.12f
+                    typeface = UiTheme.TYPEFACE_LABEL
+                    setTextColor(Color.parseColor(UiTheme.TEXT_SUBTLE))
+                })
+                addView(TextView(this@CampaignActivity).apply {
+                    text = "Final Report"
+                    textSize = UiTheme.TEXT_SECTION
+                    typeface = UiTheme.TYPEFACE_HEADING
+                    setTextColor(Color.parseColor(Palette.HUD_TEXT))
+                    setPadding(0, dp(UiTheme.SPACE_1), 0, dp(UiTheme.SPACE_3))
+                })
+                addView(TextView(this@CampaignActivity).apply {
+                    text = campaignManager.getRunSummary()
+                    textSize = UiTheme.TEXT_SECONDARY
+                    typeface = UiTheme.TYPEFACE_BODY
+                    setTextColor(Color.parseColor(UiTheme.TEXT_MUTED))
+                    setLineSpacing(4f, 1f)
+                    setPadding(0, 0, 0, dp(UiTheme.SPACE_4))
+                })
+
+                addView(Button(this@CampaignActivity).apply {
+                    text = "New Campaign"
+                    applyPrimaryButtonStyle()
+                    textSize = UiTheme.TEXT_BUTTON
+                    minHeight = dp(UiTheme.BUTTON_HEIGHT)
+                    minimumHeight = dp(UiTheme.BUTTON_HEIGHT)
+                    setOnClickListener {
+                        dismiss()
+                        campaignManager.startNewCampaign()
+                        mapView.nodes = campaignManager.campaignMap
+                        mapView.currentNodeId = campaignManager.gameState.currentNodeId
+                        mapView.recenterOnPlayer()
+                        mapView.invalidate()
+                        infoPanel.visibility = View.GONE
+                        updateHud()
+                    }
+                }, LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+                ))
+                addView(Button(this@CampaignActivity).apply {
+                    text = "Main Menu"
+                    applySecondaryStyle()
+                    minHeight = dp(UiTheme.BUTTON_HEIGHT)
+                    minimumHeight = dp(UiTheme.BUTTON_HEIGHT)
+                    setOnClickListener { dismiss(); finish() }
+                }, LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { topMargin = dp(UiTheme.SPACE_2) })
             }
-            .setNegativeButton("Main Menu") { _, _ -> finish() }
-            .setCancelable(false)
-            .show()
+        }
     }
 }

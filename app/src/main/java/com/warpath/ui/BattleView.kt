@@ -36,7 +36,7 @@ class BattleView @JvmOverloads constructor(
         color = Color.WHITE
         textSize = 22f
         textAlign = Paint.Align.CENTER
-        typeface = Typeface.DEFAULT_BOLD
+        typeface = UiTheme.TYPEFACE_HEADING
     }
     private val smallText = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#cccccc")

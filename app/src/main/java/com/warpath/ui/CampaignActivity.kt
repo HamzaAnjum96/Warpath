@@ -52,6 +52,10 @@ class CampaignActivity : AppCompatActivity() {
     private lateinit var travelHintText: TextView
     private lateinit var recenterButton: Button
     private lateinit var stopMovementButton: Button
+    private lateinit var movementPanel: LinearLayout
+    private lateinit var movementPanelInfoText: TextView
+    private lateinit var pauseButton: Button
+    private lateinit var movementStopButton: Button
     private lateinit var mapStateText: TextView
     private lateinit var modeStripText: TextView
     private lateinit var controlCluster: LinearLayout
@@ -69,7 +73,9 @@ class CampaignActivity : AppCompatActivity() {
     private val playerMetersPerMoveAction = 50f
     private var selectedNode: CampaignNode? = null
     private var suppressAutoPoiSelection = false
-    private var pendingTravelTarget: Pair<Float, Float>? = null
+    private var pendingRedirectTarget: Pair<Float, Float>? = null
+    private var activeEnemySnapshot: com.warpath.engine.CampaignManager.EnemyMovementSnapshot? = null
+    private var activeTravelDistanceNorm: Float = 0f
     private var detailsExpanded: Boolean = false
     private var activeWorldAlert: WorldAlert? = null
     private var isAlertShowing: Boolean = false
@@ -287,31 +293,92 @@ class CampaignActivity : AppCompatActivity() {
             )
         )
 
-        stopMovementButton = Button(this).apply {
-            text = "Stop"
-            contentDescription = "Stop current movement"
+        stopMovementButton = Button(this).apply { visibility = View.GONE }
+
+        movementPanel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(12), dp(16), dp(14))
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadii = floatArrayOf(dpF(16f), dpF(16f), dpF(16f), dpF(16f), 0f, 0f, 0f, 0f)
+                setColor(Color.parseColor("#F116263A"))
+                setStroke(1, Color.parseColor(Palette.HUD_BORDER))
+            }
+            elevation = UiTheme.HUD_ELEVATION
+            visibility = View.GONE
+        }
+
+        movementPanelInfoText = TextView(this).apply {
+            textSize = if (compactUi) 10f else 12f
+            typeface = UiTheme.TYPEFACE_LABEL
+            setTextColor(Color.parseColor(Palette.GOLD))
+            text = "➤ ROUTE · 0m · 0%"
+            setPadding(0, 0, 0, dp(10))
+        }
+        movementPanel.addView(movementPanelInfoText)
+
+        val buttonRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+        }
+
+        pauseButton = Button(this).apply {
+            text = "⏸ Pause"
+            contentDescription = "Pause movement"
             textSize = if (compactUi) 10f else 11f
             typeface = UiTheme.TYPEFACE_HEADING
             isAllCaps = false
             setTextColor(Color.parseColor(Palette.HUD_TEXT))
-            minHeight = dp(34)
-            minimumHeight = dp(34)
-            minWidth = dp(76)
-            minimumWidth = dp(76)
+            minHeight = dp(38)
+            minimumHeight = dp(38)
             applyHudButtonStyle(cornerRadius = 10f)
-            visibility = View.GONE
-            setOnClickListener { mapView.cancelMovement() }
-        }
-        root.addView(
-            stopMovementButton,
-            FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-                Gravity.END or Gravity.TOP
-            ).apply {
-                rightMargin = dp(16)
-                topMargin = dp(170)
+            setOnClickListener {
+                if (mapView.isPaused) {
+                    val redirect = pendingRedirectTarget
+                    if (redirect != null) {
+                        pendingRedirectTarget = null
+                        redirectMovement(redirect.first, redirect.second)
+                    } else {
+                        mapView.resumeMovement()
+                    }
+                    text = "⏸ Pause"
+                    enqueueWorldAlert("March Resumed", AlertCategory.TRAVEL, AlertPriority.MINOR, "movement_resumed")
+                } else {
+                    mapView.pauseMovement()
+                    text = "▶ Resume"
+                    enqueueWorldAlert("March Paused", AlertCategory.TRAVEL, AlertPriority.MINOR, "movement_paused")
+                }
+                updateMapStateText()
             }
+        }
+        buttonRow.addView(pauseButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+            marginEnd = dp(8)
+        })
+
+        movementStopButton = Button(this).apply {
+            text = "■ Stop"
+            contentDescription = "Stop and cancel movement"
+            textSize = if (compactUi) 10f else 11f
+            typeface = UiTheme.TYPEFACE_HEADING
+            isAllCaps = false
+            setTextColor(Color.parseColor(Palette.DANGER))
+            minHeight = dp(38)
+            minimumHeight = dp(38)
+            applyHudButtonStyle(cornerRadius = 10f)
+            setOnClickListener {
+                mapView.stopMovement()
+            }
+        }
+        buttonRow.addView(movementStopButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+
+        movementPanel.addView(buttonRow)
+
+        root.addView(
+            movementPanel,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM
+            )
         )
 
         travelHintText = TextView(this).apply {
@@ -683,6 +750,9 @@ class CampaignActivity : AppCompatActivity() {
                 selectedNode = null
                 mapView.selectedNodeId = null
                 updateMapStateText()
+                if (mapView.isMovementActive() || mapView.isPaused) {
+                    showMovementPanel()
+                }
             }
         }
         headerRow.addView(dismissX)
@@ -828,6 +898,34 @@ class CampaignActivity : AppCompatActivity() {
         }
     }
 
+    private fun showMovementPanel() {
+        if (!::movementPanel.isInitialized) return
+        infoPanel.visibility = View.GONE
+        pauseButton.text = "⏸ Pause"
+        updateMovementPanel()
+        movementPanel.visibility = View.VISIBLE
+        movementPanel.alpha = 0f
+        movementPanel.translationY = dpF(60f)
+        movementPanel.animate().alpha(1f).translationY(0f).setDuration(220L).start()
+        statusText.visibility = View.GONE
+    }
+
+    private fun hideMovementPanel() {
+        if (!::movementPanel.isInitialized) return
+        movementPanel.animate().alpha(0f).translationY(dpF(60f)).setDuration(180L)
+            .withEndAction { movementPanel.visibility = View.GONE }
+            .start()
+        statusText.visibility = View.GONE
+    }
+
+    private fun updateMovementPanel() {
+        if (!::movementPanelInfoText.isInitialized) return
+        val routeLabel = mapView.currentPreviewRouteTypeLabel()
+        val progress = (mapView.currentTravelProgress() * 100f).toInt()
+        val distMeters = (mapView.currentRouteLength() * 1000f).toInt()
+        movementPanelInfoText.text = "➤ $routeLabel · ${distMeters}m · $progress%"
+    }
+
     private fun Button.applyHudButtonStyle(cornerRadius: Float = 11f) {
         applyRoundedStyle(
             backgroundColor = Palette.HUD_SURFACE_ALT,
@@ -864,12 +962,12 @@ class CampaignActivity : AppCompatActivity() {
     private fun updateMapStateText() {
         if (!::mapStateText.isInitialized) return
         val moving = mapView.isMovementActive()
+        val paused = mapView.isPaused
         val hasTarget = selectedNode != null
-        val hasPreview = pendingTravelTarget != null
         val centered = mapView.isCenteredOnPlayer()
         val (label, color) = when {
+            moving && paused -> "PAUSED" to Palette.GOLD
             moving -> "TRAVELLING" to Palette.SUCCESS
-            hasPreview -> mapView.currentPreviewRouteTypeLabel() to Palette.HUD_SURFACE_ALT
             hasTarget -> "TARGET LOCKED" to Palette.PRIMARY
             !centered -> "SCOUTING" to Palette.HUD_SURFACE_ALT
             else -> "FOLLOW WARBAND" to Palette.HUD_SURFACE_ALT
@@ -965,24 +1063,26 @@ class CampaignActivity : AppCompatActivity() {
     private fun handleMapTap(normX: Float, normY: Float) {
         val tappedNode = findNodeNear(normX, normY)
         if (tappedNode != null) {
-            pendingTravelTarget = null
-            mapView.clearRoutePreview()
             onNodeSelected(tappedNode)
             return
         }
         selectedNode = null
         mapView.selectedNodeId = null
         infoPanel.visibility = View.GONE
-        val pending = pendingTravelTarget
-        if (pending != null && hypot(pending.first - normX, pending.second - normY) < 0.03f) {
-            pendingTravelTarget = null
+        if ((mapView.isMovementActive() || mapView.isPaused) && ::movementPanel.isInitialized && movementPanel.visibility != View.VISIBLE) {
+            showMovementPanel()
+        }
+        if (mapView.isMovementActive() && !mapView.isPaused) {
+            redirectMovement(normX, normY)
+        } else if (mapView.isPaused) {
+            pendingRedirectTarget = Pair(normX, normY)
+            mapView.previewRouteTo(normX, normY, committed = true)
+            updateMovementPanel()
+            enqueueWorldAlert("Route Updated", AlertCategory.TRAVEL, AlertPriority.MINOR, "route_redirect_paused")
+            updateMapStateText()
+        } else {
             mapView.previewRouteTo(normX, normY, committed = true)
             moveWarbandTo(normX, normY)
-        } else {
-            pendingTravelTarget = Pair(normX, normY)
-            mapView.previewRouteTo(normX, normY, committed = false)
-            enqueueWorldAlert("Route Marked", AlertCategory.TRAVEL, AlertPriority.MINOR, "route_preview")
-            updateMapStateText()
         }
     }
 
@@ -1005,6 +1105,7 @@ class CampaignActivity : AppCompatActivity() {
         selectedNode = node
         detailsExpanded = false
         mapView.selectedNodeId = node.id
+        if (::movementPanel.isInitialized) movementPanel.visibility = View.GONE
         infoPanel.visibility = View.VISIBLE
         updateMapStateText()
 
@@ -1105,9 +1206,22 @@ class CampaignActivity : AppCompatActivity() {
             }
         } else {
             nodeDescText.text = node.description
-            nodeStatsText.text = "⚠ Not accessible — scout closer to discover this POI"
-            nodeStatsText.setTextColor(Color.parseColor(Palette.DANGER))
-            actionButton.visibility = View.GONE
+            nodeStatsText.text = "Out of range — travel closer to interact."
+            nodeStatsText.setTextColor(Color.parseColor(Palette.GOLD))
+            actionButton.text = "➤ Travel To"
+            actionButton.visibility = View.VISIBLE
+            actionButton.applyPrimaryButtonStyle()
+            actionButton.setOnClickListener {
+                infoPanel.visibility = View.GONE
+                selectedNode = null
+                mapView.selectedNodeId = null
+                if (mapView.isMovementActive()) {
+                    redirectMovement(node.mapX, node.mapY)
+                } else {
+                    mapView.previewRouteTo(node.mapX, node.mapY, committed = true)
+                    moveWarbandTo(node.mapX, node.mapY)
+                }
+            }
         }
     }
 
@@ -1559,69 +1673,129 @@ class CampaignActivity : AppCompatActivity() {
     }
 
     private fun moveWarbandTo(normX: Float, normY: Float) {
-        pendingTravelTarget = null
+        pendingRedirectTarget = null
+        infoPanel.visibility = View.GONE
         val startX = campaignManager.gameState.playerMapX
         val startY = campaignManager.gameState.playerMapY
         val totalDistanceNorm = hypot(normX - startX, normY - startY)
         if (totalDistanceNorm < 0.00002f) return
         val enemySnapshot = campaignManager.createEnemyMovementSnapshot()
-        var latestProgressNorm = 0f
-        var latestPlayerX = startX
-        var latestPlayerY = startY
-        mapView.inputEnabled = false
+        activeEnemySnapshot = enemySnapshot
+        activeTravelDistanceNorm = totalDistanceNorm
         val routeLabel = mapView.currentPreviewRouteTypeLabel()
-        statusText.text = "▶ $routeLabel · 0%"
         when (routeLabel) {
             "THREATENED ROUTE" -> enqueueWorldAlert("Intercept Risk Active", AlertCategory.DANGER, AlertPriority.HIGH, "route_risky")
             "OFF-ROAD ROUTE" -> enqueueWorldAlert("Off-road march speed reduced", AlertCategory.TRAVEL, AlertPriority.STANDARD, "route_offroad")
             else -> enqueueWorldAlert("Road route secured", AlertCategory.TRAVEL, AlertPriority.MINOR, "route_road")
         }
-        statusText.visibility = View.VISIBLE
-        stopMovementButton.visibility = View.VISIBLE
+        showMovementPanel()
         updateMapStateText()
         mapView.animatePlayerTo(
             normX,
             normY,
             onProgress = { t, x, y ->
-                latestProgressNorm = totalDistanceNorm * t
-                latestPlayerX = x
-                latestPlayerY = y
+                val progressNorm = totalDistanceNorm * t
                 mapView.enemyDisplayPositions = campaignManager.enemyPreviewPositions(
                     snapshot = enemySnapshot,
-                    playerMovedNorm = latestProgressNorm,
+                    playerMovedNorm = progressNorm,
                     totalPlayerTravelNorm = totalDistanceNorm,
                     playerMetersPerAction = playerMetersPerMoveAction
                 )
-                val meters = (latestProgressNorm * 1000f).toInt()
-                statusText.text = "▶ Travelling · ${(t * 100f).toInt()}% · ${meters}m"
+                updateMovementPanel()
             }
         ) { cancelled ->
-            val movedNorm = latestProgressNorm
-            campaignManager.setPlayerPosition(latestPlayerX, latestPlayerY)
+            handleMovementComplete(enemySnapshot, totalDistanceNorm, cancelled)
+        }
+    }
+
+    private fun redirectMovement(normX: Float, normY: Float) {
+        val currentSnapshot = activeEnemySnapshot
+        val currentTravelDist = activeTravelDistanceNorm
+        if (currentSnapshot != null && currentTravelDist > 0f) {
+            val partialProgress = mapView.currentTravelProgress()
+            val movedNorm = currentTravelDist * partialProgress
+            campaignManager.setPlayerPosition(mapView.currentPlayerNormX, mapView.currentPlayerNormY)
             val playerHit = campaignManager.applyReactiveEnemyMovement(
-                snapshot = enemySnapshot,
+                snapshot = currentSnapshot,
                 playerMovedNorm = movedNorm,
-                totalPlayerTravelNorm = totalDistanceNorm,
+                totalPlayerTravelNorm = currentTravelDist,
                 playerMetersPerAction = playerMetersPerMoveAction
             )
             mapView.enemyParties = campaignManager.gameState.enemyParties
             mapView.enemyDisplayPositions = campaignManager.gameState.enemyParties.associate { party ->
                 party.id to campaignManager.getEnemyPartyPosition(party)
             }
-            checkFogDiscovery()
-            mapView.inputEnabled = true
-            statusText.visibility = View.GONE
-            stopMovementButton.visibility = View.GONE
-            updateMapStateText()
-            if (cancelled) {
-                enqueueWorldAlert("Movement Halted", AlertCategory.TRAVEL, AlertPriority.MINOR, "movement_abort")
-            }
             if (playerHit) {
+                mapView.stopMovement()
+                handleMovementComplete(currentSnapshot, currentTravelDist, cancelled = true)
                 forceEnemyEngagement()
-                return@animatePlayerTo
+                return
             }
-            showNearbyPoiIfAny()
+        } else {
+            campaignManager.setPlayerPosition(mapView.currentPlayerNormX, mapView.currentPlayerNormY)
         }
+
+        val startX = mapView.currentPlayerNormX
+        val startY = mapView.currentPlayerNormY
+        val totalDistanceNorm = hypot(normX - startX, normY - startY)
+        if (totalDistanceNorm < 0.00002f) return
+        val enemySnapshot = campaignManager.createEnemyMovementSnapshot()
+        activeEnemySnapshot = enemySnapshot
+        activeTravelDistanceNorm = totalDistanceNorm
+
+        mapView.redirectMovement(
+            normX,
+            normY,
+            onProgress = { t, x, y ->
+                val progressNorm = totalDistanceNorm * t
+                mapView.enemyDisplayPositions = campaignManager.enemyPreviewPositions(
+                    snapshot = enemySnapshot,
+                    playerMovedNorm = progressNorm,
+                    totalPlayerTravelNorm = totalDistanceNorm,
+                    playerMetersPerAction = playerMetersPerMoveAction
+                )
+                updateMovementPanel()
+            }
+        ) { cancelled ->
+            handleMovementComplete(enemySnapshot, totalDistanceNorm, cancelled)
+        }
+
+        enqueueWorldAlert("Route Changed", AlertCategory.TRAVEL, AlertPriority.STANDARD, "route_redirect")
+        updateMovementPanel()
+        updateMapStateText()
+    }
+
+    private fun handleMovementComplete(
+        enemySnapshot: com.warpath.engine.CampaignManager.EnemyMovementSnapshot,
+        totalDistanceNorm: Float,
+        cancelled: Boolean
+    ) {
+        val movedNorm = totalDistanceNorm * mapView.currentTravelProgress()
+        campaignManager.setPlayerPosition(mapView.currentPlayerNormX, mapView.currentPlayerNormY)
+        val playerHit = campaignManager.applyReactiveEnemyMovement(
+            snapshot = enemySnapshot,
+            playerMovedNorm = movedNorm,
+            totalPlayerTravelNorm = totalDistanceNorm,
+            playerMetersPerAction = playerMetersPerMoveAction
+        )
+        mapView.enemyParties = campaignManager.gameState.enemyParties
+        mapView.enemyDisplayPositions = campaignManager.gameState.enemyParties.associate { party ->
+            party.id to campaignManager.getEnemyPartyPosition(party)
+        }
+        checkFogDiscovery()
+        activeEnemySnapshot = null
+        activeTravelDistanceNorm = 0f
+        pendingRedirectTarget = null
+        hideMovementPanel()
+        updateMapStateText()
+        if (cancelled) {
+            enqueueWorldAlert("Movement Halted", AlertCategory.TRAVEL, AlertPriority.MINOR, "movement_abort")
+        }
+        if (playerHit) {
+            forceEnemyEngagement()
+            return
+        }
+        showNearbyPoiIfAny()
     }
 
     private fun scoutFromNode(node: CampaignNode, revealHideoutIntel: Boolean = false) {

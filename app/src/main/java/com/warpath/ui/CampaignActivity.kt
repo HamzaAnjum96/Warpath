@@ -16,6 +16,7 @@ import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import com.warpath.engine.CampaignManager
 import com.warpath.model.CampaignNode
+import com.warpath.model.EnemyParty
 import com.warpath.model.NodeType
 import com.warpath.model.PartyFaction
 import java.util.ArrayDeque
@@ -76,6 +77,8 @@ class CampaignActivity : AppCompatActivity() {
     private var pendingRedirectTarget: Pair<Float, Float>? = null
     private var activeEnemySnapshot: com.warpath.engine.CampaignManager.EnemyMovementSnapshot? = null
     private var activeTravelDistanceNorm: Float = 0f
+    private var activeTravelStartX: Float = 0f
+    private var activeTravelStartY: Float = 0f
     private var detailsExpanded: Boolean = false
     private var activeWorldAlert: WorldAlert? = null
     private var isAlertShowing: Boolean = false
@@ -152,6 +155,9 @@ class CampaignActivity : AppCompatActivity() {
             setPlayerPosition(campaignManager.gameState.playerMapX, campaignManager.gameState.playerMapY)
             onMapTapped = { normX, normY ->
                 handleMapTap(normX, normY)
+            }
+            onEnemyPartyTapped = { party ->
+                handleEnemyPartyTap(party)
             }
             onFocusChanged = { focused ->
                 updateControlClusterVisibility()
@@ -1682,6 +1688,8 @@ class CampaignActivity : AppCompatActivity() {
         val enemySnapshot = campaignManager.createEnemyMovementSnapshot()
         activeEnemySnapshot = enemySnapshot
         activeTravelDistanceNorm = totalDistanceNorm
+        activeTravelStartX = startX
+        activeTravelStartY = startY
         val routeLabel = mapView.currentPreviewRouteTypeLabel()
         when (routeLabel) {
             "THREATENED ROUTE" -> enqueueWorldAlert("Intercept Risk Active", AlertCategory.DANGER, AlertPriority.HIGH, "route_risky")
@@ -1742,6 +1750,8 @@ class CampaignActivity : AppCompatActivity() {
         val enemySnapshot = campaignManager.createEnemyMovementSnapshot()
         activeEnemySnapshot = enemySnapshot
         activeTravelDistanceNorm = totalDistanceNorm
+        activeTravelStartX = startX
+        activeTravelStartY = startY
 
         mapView.redirectMovement(
             normX,
@@ -1770,7 +1780,16 @@ class CampaignActivity : AppCompatActivity() {
         totalDistanceNorm: Float,
         cancelled: Boolean
     ) {
-        val movedNorm = totalDistanceNorm * mapView.currentTravelProgress()
+        // travelProgress is reset to 0 in finishMove() before onComplete fires, so we
+        // compute the actual moved distance from the start position we recorded.
+        val movedNorm = if (!cancelled) {
+            totalDistanceNorm
+        } else {
+            hypot(
+                mapView.currentPlayerNormX - activeTravelStartX,
+                mapView.currentPlayerNormY - activeTravelStartY
+            ).coerceIn(0f, totalDistanceNorm)
+        }
         campaignManager.setPlayerPosition(mapView.currentPlayerNormX, mapView.currentPlayerNormY)
         val playerHit = campaignManager.applyReactiveEnemyMovement(
             snapshot = enemySnapshot,
@@ -1995,6 +2014,68 @@ class CampaignActivity : AppCompatActivity() {
         infoPanel.visibility = View.GONE
         mapView.selectedNodeId = null
     }
+
+    // ── Tap-to-chase / intercept traveling enemy parties ────────────────────────
+
+    private fun handleEnemyPartyTap(party: EnemyParty) {
+        val pos = campaignManager.getEnemyPartyPosition(party)
+        val px = campaignManager.gameState.playerMapX
+        val py = campaignManager.gameState.playerMapY
+        val dist = hypot(pos.first - px, pos.second - py)
+        val canIntercept = dist <= 0.09f  // within intercept radius
+
+        val options = if (canIntercept) {
+            arrayOf("⚔ Attack Now", "↝ Chase", "✕ Cancel")
+        } else {
+            arrayOf("↝ Chase", "✕ Cancel")
+        }
+
+        showThemedSheet(
+            title = "Hostile Party Spotted",
+            subtitle = if (canIntercept) "Enemy within striking range!" else "Enemy is moving — intercept them?",
+            options = options
+        ) { label ->
+            when {
+                label.startsWith("⚔") -> interceptEnemyParty(party)
+                label.startsWith("↝") -> chaseEnemyParty(party)
+            }
+        }
+    }
+
+    /**
+     * Launch an immediate battle against a roaming party using its unit templates.
+     * On win, the party is removed from the campaign.
+     */
+    private fun interceptEnemyParty(party: EnemyParty) {
+        // Store the party's position as the player's current position so onBattleEnd works correctly
+        val pos = campaignManager.getEnemyPartyPosition(party)
+        campaignManager.setPlayerPosition(pos.first, pos.second)
+        mapView.setPlayerPosition(pos.first, pos.second)
+        infoPanel.visibility = View.GONE
+        mapView.selectedNodeId = null
+        val intent = Intent(this, BattleActivity::class.java).apply {
+            putExtra("party_id", party.id)
+        }
+        startActivity(intent)
+    }
+
+    /**
+     * Move the warband toward the enemy party's current position to catch them.
+     */
+    private fun chaseEnemyParty(party: EnemyParty) {
+        val pos = campaignManager.getEnemyPartyPosition(party)
+        infoPanel.visibility = View.GONE
+        mapView.selectedNodeId = null
+        if (mapView.isMovementActive()) {
+            redirectMovement(pos.first, pos.second)
+        } else {
+            mapView.previewRouteTo(pos.first, pos.second, committed = true)
+            moveWarbandTo(pos.first, pos.second)
+        }
+        enqueueWorldAlert("Chasing enemy!", AlertCategory.DANGER, AlertPriority.STANDARD, "chase_enemy_${party.id}")
+    }
+
+    // ────────────────────────────────────────────────────────────────────────────
 
     private fun forceEnemyEngagement() {
         val enemyNodeIds = campaignManager.gameState.enemyParties

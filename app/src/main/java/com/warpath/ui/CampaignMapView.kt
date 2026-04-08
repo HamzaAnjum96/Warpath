@@ -56,6 +56,7 @@ class CampaignMapView @JvmOverloads constructor(
     var showPaths: Boolean = false
     var onFocusChanged: ((Boolean) -> Unit)? = null
     var onMapTapped: ((Float, Float) -> Unit)? = null
+    var onEnemyPartyTapped: ((EnemyParty) -> Unit)? = null
     var selectedNodeId: String? = null
         set(value) {
             field = value
@@ -2153,6 +2154,27 @@ class CampaignMapView @JvmOverloads constructor(
         return Color.argb(Color.alpha(color), r, g, b)
     }
 
+    /**
+     * Returns the hostile [EnemyParty] whose screen icon was tapped, or null.
+     * Uses a generous hit radius (nodeRadius + 14dp) for easy finger targeting.
+     */
+    private fun findTappedEnemyParty(screenTapX: Float, screenTapY: Float): EnemyParty? {
+        val hitRadius = nodeRadius + 14f
+        val hitRadiusSq = hitRadius * hitRadius
+        for (party in enemyParties) {
+            if (party.faction != PartyFaction.HOSTILE) continue
+            val node = nodes.find { it.id == party.nodeId } ?: continue
+            if (!node.isRevealed) continue
+            val pos = enemyDisplayPositions[party.id] ?: Pair(node.mapX, node.mapY)
+            val sx = screenX(pos.first)
+            val sy = screenY(pos.second)
+            val dx = screenTapX - sx
+            val dy = screenTapY - sy
+            if (dx * dx + dy * dy <= hitRadiusSq) return party
+        }
+        return null
+    }
+
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (!inputEnabled) return false
         scaleDetector.onTouchEvent(event)
@@ -2204,7 +2226,13 @@ class CampaignMapView @JvmOverloads constructor(
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 if (event.actionMasked == MotionEvent.ACTION_UP && !isPanning) {
-                    onMapTapped?.invoke(normXFromScreen(event.x), normYFromScreen(event.y))
+                    // Check if a hostile party was tapped before routing to generic map tap
+                    val tappedParty = findTappedEnemyParty(event.x, event.y)
+                    if (tappedParty != null) {
+                        onEnemyPartyTapped?.invoke(tappedParty)
+                    } else {
+                        onMapTapped?.invoke(normXFromScreen(event.x), normYFromScreen(event.y))
+                    }
                 }
                 isPanning = false
                 return true

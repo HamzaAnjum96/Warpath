@@ -14,6 +14,7 @@ import com.warpath.engine.BattleEngine
 import com.warpath.engine.BattleState
 import com.warpath.model.BattleCommand
 import com.warpath.model.CampaignNode
+import com.warpath.model.EnemyParty
 
 class BattleActivity : AppCompatActivity() {
 
@@ -27,6 +28,7 @@ class BattleActivity : AppCompatActivity() {
     private var isRunning = false
     private val tickInterval = 50L
     private var node: CampaignNode? = null
+    private var roamingParty: EnemyParty? = null
     private val startingPlayerCounts = mutableMapOf<String, Int>()
     private var startingEnemyCount: Int = 0
 
@@ -42,14 +44,32 @@ class BattleActivity : AppCompatActivity() {
             View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
         )
 
-        val nodeId = intent.getStringExtra("node_id") ?: return
-        node = CampaignActivity.campaignManager.campaignMap.find { it.id == nodeId }
-        val currentNode = node ?: return
+        val nodeId = intent.getStringExtra("node_id")
+        val partyId = intent.getStringExtra("party_id")
 
         battleEngine = BattleEngine()
+
+        val battleTitle: String
+        val enemyTemplates: List<com.warpath.model.EnemyTemplate>
+
+        if (partyId != null) {
+            // Intercept battle against a roaming party
+            roamingParty = CampaignActivity.campaignManager.gameState.enemyParties.find { it.id == partyId }
+            val party = roamingParty ?: run { finish(); return }
+            battleTitle = "Intercept"
+            enemyTemplates = party.unitTemplates
+        } else {
+            // Node-based battle
+            if (nodeId == null) { finish(); return }
+            node = CampaignActivity.campaignManager.campaignMap.find { it.id == nodeId }
+            val currentNode = node ?: run { finish(); return }
+            battleTitle = currentNode.name
+            enemyTemplates = currentNode.enemySquads
+        }
+
         battleState = battleEngine.createBattle(
             CampaignActivity.campaignManager.gameState.warband,
-            currentNode.enemySquads
+            enemyTemplates
         )
         startingPlayerCounts.clear()
         CampaignActivity.campaignManager.gameState.warband.forEach { squad ->
@@ -96,7 +116,7 @@ class BattleActivity : AppCompatActivity() {
             letterSpacing = 0.1f
         })
         titleCol.addView(TextView(this).apply {
-            text = currentNode.name
+            text = battleTitle
             textSize = UiTheme.TEXT_BODY
             setTextColor(Color.parseColor(UiTheme.GOLD))
             typeface = UiTheme.TYPEFACE_HEADING
@@ -258,8 +278,8 @@ class BattleActivity : AppCompatActivity() {
     }
 
     private fun onBattleEnd() {
-        val currentNode = node ?: return
-        CampaignActivity.campaignManager.resolveNodeRewards(currentNode, battleState.playerWon)
+        val party = roamingParty
+        val currentNode = node
 
         // Apply surviving squad state back to warband
         if (battleState.playerWon) {
@@ -274,11 +294,39 @@ class BattleActivity : AppCompatActivity() {
             }
         }
 
+        val battleName: String
+        val suppliesReward: Int
+        val renownReward: Int
+
+        if (party != null) {
+            // Roaming party battle
+            battleName = "Intercept"
+            suppliesReward = if (battleState.playerWon) 20 else 0
+            renownReward = if (battleState.playerWon) 8 else 0
+            if (battleState.playerWon) {
+                CampaignActivity.campaignManager.gameState.supplies += suppliesReward
+                CampaignActivity.campaignManager.gameState.renown += renownReward
+                CampaignActivity.campaignManager.gameState.enemyParties.removeAll { it.id == party.id }
+                CampaignActivity.campaignManager.gameState.battlesWon++
+            } else {
+                CampaignActivity.campaignManager.gameState.battlesLost++
+                CampaignActivity.campaignManager.gameState.supplies =
+                    (CampaignActivity.campaignManager.gameState.supplies * 0.7f).toInt()
+            }
+        } else if (currentNode != null) {
+            battleName = currentNode.name
+            suppliesReward = if (battleState.playerWon) currentNode.suppliesReward else 0
+            renownReward = if (battleState.playerWon) currentNode.renownReward else 0
+            CampaignActivity.campaignManager.resolveNodeRewards(currentNode, battleState.playerWon)
+        } else {
+            finish(); return
+        }
+
         val intent = Intent(this, BattleResultActivity::class.java)
         intent.putExtra("player_won", battleState.playerWon)
-        intent.putExtra("node_name", currentNode.name)
-        intent.putExtra("supplies_reward", if (battleState.playerWon) currentNode.suppliesReward else 0)
-        intent.putExtra("renown_reward", if (battleState.playerWon) currentNode.renownReward else 0)
+        intent.putExtra("node_name", battleName)
+        intent.putExtra("supplies_reward", suppliesReward)
+        intent.putExtra("renown_reward", renownReward)
         intent.putExtra("enemies_killed",
             startingEnemyCount - battleState.enemySquads.sumOf { it.count })
         intent.putExtra("enemies_started", startingEnemyCount)
@@ -296,7 +344,7 @@ class BattleActivity : AppCompatActivity() {
         intent.putExtra("morale_end", avgMorale)
         intent.putExtra("supplies_lost", if (battleState.playerWon) 0 else (CampaignActivity.campaignManager.gameState.supplies * 0.3f).toInt())
         intent.putExtra("warband_status", "${battleState.playerSquads.count { it.isAlive }}/${battleState.playerSquads.size} squads standing")
-        intent.putExtra("node_id", currentNode.id)
+        intent.putExtra("node_id", currentNode?.id ?: "")
         startActivity(intent)
         finish()
     }

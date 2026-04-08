@@ -437,10 +437,10 @@ class CampaignManager {
         // Layer 1 (3 nodes)
         nodes.add(CampaignNode(
             id = "patrol_1", type = NodeType.ENEMY_PATROL, name = "Bandit Roadblock",
-            description = "A small group of bandits blocking the road.",
+            description = "A group of bandits blocking the road.",
             mapX = 0.25f, mapY = 0.2f,
-            enemySquads = listOf(EnemyTemplate("bandit_thug", 6), EnemyTemplate("bandit_archer", 3)),
-            suppliesReward = 30, renownReward = 10
+            enemySquads = listOf(EnemyTemplate("bandit_thug", 16), EnemyTemplate("bandit_archer", 10)),
+            suppliesReward = 40, renownReward = 12
         ))
         nodes.add(CampaignNode(
             id = "resource_1", type = NodeType.RESOURCE_CACHE, name = "Abandoned Supply Wagon",
@@ -452,8 +452,8 @@ class CampaignManager {
             id = "patrol_2", type = NodeType.ENEMY_PATROL, name = "Wolf Den",
             description = "Wild wolves have made a den near the path.",
             mapX = 0.25f, mapY = 0.8f,
-            enemySquads = listOf(EnemyTemplate("wolf_pack", 5)),
-            suppliesReward = 15, renownReward = 15
+            enemySquads = listOf(EnemyTemplate("wolf_pack", 14), EnemyTemplate("wolf_pack", 10)),
+            suppliesReward = 20, renownReward = 18
         ))
 
         // Layer 2 (3 nodes)
@@ -474,10 +474,11 @@ class CampaignManager {
             description = "Local militia demands a toll... or a fight.",
             mapX = 0.45f, mapY = 0.85f,
             enemySquads = listOf(
-                EnemyTemplate("militia_guard", 6),
-                EnemyTemplate("militia_spear", 4)
+                EnemyTemplate("militia_guard", 18),
+                EnemyTemplate("militia_spear", 14),
+                EnemyTemplate("bandit_archer", 8)
             ),
-            suppliesReward = 40, renownReward = 20
+            suppliesReward = 50, renownReward = 24
         ))
 
         nodes.add(CampaignNode(
@@ -500,10 +501,11 @@ class CampaignManager {
             description = "Elite soldiers lie in wait. High risk, high reward.",
             mapX = 0.65f, mapY = 0.3f,
             enemySquads = listOf(
-                EnemyTemplate("elite_retainer", 4),
-                EnemyTemplate("bandit_archer", 5)
+                EnemyTemplate("elite_retainer", 16),
+                EnemyTemplate("bandit_archer", 14),
+                EnemyTemplate("militia_guard", 10)
             ),
-            suppliesReward = 60, renownReward = 30
+            suppliesReward = 70, renownReward = 35
         ))
         nodes.add(CampaignNode(
             id = "camp_2", type = NodeType.RECOVERY_CAMP, name = "Forest Clearing",
@@ -518,12 +520,13 @@ class CampaignManager {
             description = "The regional warlord awaits. Defeat him to conquer the region.",
             mapX = 0.85f, mapY = 0.5f,
             enemySquads = listOf(
-                EnemyTemplate("elite_retainer", 5),
-                EnemyTemplate("militia_guard", 6),
-                EnemyTemplate("bandit_archer", 4),
-                EnemyTemplate("bandit_thug", 4)
+                EnemyTemplate("elite_retainer", 22),
+                EnemyTemplate("militia_guard", 20),
+                EnemyTemplate("bandit_archer", 16),
+                EnemyTemplate("bandit_thug", 18),
+                EnemyTemplate("wolf_pack", 12)
             ),
-            suppliesReward = 100, renownReward = 50
+            suppliesReward = 120, renownReward = 60
         ))
 
         // Connect nodes
@@ -585,18 +588,18 @@ class CampaignManager {
             if (node.isCleared && isTemporarySpawnHome(node)) continue
             when (node.type) {
                 NodeType.ENEMY_PATROL -> {
-                    val max = if (node.enemySquads.any { it.unitTypeId == "wolf_pack" }) 3 else 2
-                    val templates = listOf(node.enemySquads.ifEmpty { listOf(EnemyTemplate("bandit_thug", 3)) })
+                    val max = if (node.enemySquads.any { it.unitTypeId == "wolf_pack" }) 4 else 3
+                    val templates = listOf(node.enemySquads.ifEmpty { listOf(EnemyTemplate("bandit_thug", 10)) })
                     homes.add(PartySpawnHome(node.id, PartyFaction.HOSTILE, max, templates))
                 }
                 NodeType.ELITE_CHALLENGE -> {
-                    val templates = listOf(node.enemySquads.ifEmpty { listOf(EnemyTemplate("elite_retainer", 2)) })
-                    homes.add(PartySpawnHome(node.id, PartyFaction.HOSTILE, 1, templates))
+                    val templates = listOf(node.enemySquads.ifEmpty { listOf(EnemyTemplate("elite_retainer", 8)) })
+                    homes.add(PartySpawnHome(node.id, PartyFaction.HOSTILE, 2, templates))
                 }
                 NodeType.BOSS -> {
                     val templates = listOf(
-                        listOf(EnemyTemplate("elite_retainer", 3), EnemyTemplate("militia_guard", 2)),
-                        listOf(EnemyTemplate("bandit_archer", 3), EnemyTemplate("militia_guard", 2))
+                        listOf(EnemyTemplate("elite_retainer", 10), EnemyTemplate("militia_guard", 8)),
+                        listOf(EnemyTemplate("bandit_archer", 10), EnemyTemplate("militia_guard", 8))
                     )
                     homes.add(PartySpawnHome(node.id, PartyFaction.HOSTILE, 2, templates))
                 }
@@ -621,10 +624,10 @@ class CampaignManager {
         val mapped = gameState.warband
             .filter { it.count > 0 }
             .map { squad ->
-                val roamingCount = (squad.count / 2).coerceIn(2, 6)
+                val roamingCount = (squad.count / 2).coerceIn(5, 16)
                 listOf(EnemyTemplate(squad.unitType.id, roamingCount))
             }
-        return if (mapped.isNotEmpty()) mapped else listOf(listOf(EnemyTemplate("militia_spear", 3)))
+        return if (mapped.isNotEmpty()) mapped else listOf(listOf(EnemyTemplate("militia_spear", 8)))
     }
 
     private fun resolveFriendlyHostileCollisions() {

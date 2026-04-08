@@ -60,6 +60,9 @@ class CampaignActivity : AppCompatActivity() {
     private lateinit var alertIconText: TextView
     private lateinit var alertMessageText: TextView
     private lateinit var alertEdgeTint: View
+    private var controlClusterTopMarginPx: Int = 0
+    private var hasShownScoutingHint: Boolean = false
+    private var hintHideRunnable: Runnable? = null
 
     private val phaseOnePocMode = false
     private val poiInteractionDistance = 0.07f
@@ -104,9 +107,9 @@ class CampaignActivity : AppCompatActivity() {
     private enum class AlertCategory(val accentHex: String, val icon: String) {
         DANGER("#C65A5A", "⚠"),
         DISCOVERY("#B89C6B", "◈"),
-        TRAVEL("#8E9BB0", "➤"),
+        TRAVEL("#A86973", "➤"),
         GAIN("#5FAF7A", "✦"),
-        EVENT("#5C6BC0", "✧")
+        EVENT("#7B1E2B", "✧")
     }
 
     private data class WorldAlert(
@@ -224,18 +227,18 @@ class CampaignActivity : AppCompatActivity() {
         recenterButton = Button(this).apply {
             text = "⌖"
             contentDescription = "Recenter map on warband"
-            textSize = if (compactUi) 10f else 11f
+            textSize = if (compactUi) 9f else 10f
             typeface = UiTheme.TYPEFACE_HEADING
             isAllCaps = false
-            minWidth = dp(40)
-            minimumWidth = dp(40)
-            minHeight = dp(40)
-            minimumHeight = dp(40)
+            minWidth = dp(32)
+            minimumWidth = dp(32)
+            minHeight = dp(32)
+            minimumHeight = dp(32)
             setTextColor(Color.parseColor(Palette.HUD_TEXT))
             setPadding(0, 0, 0, 0)
             stateListAnimator = null
             visibility = View.GONE
-            applyHudButtonStyle(10f)
+            applyHudButtonStyle(cornerRadius = 16f)
             setOnClickListener {
                 mapView.recenterOnPlayer()
                 enqueueWorldAlert("Warband Focus Restored", AlertCategory.TRAVEL, AlertPriority.MINOR, "camera_recentered")
@@ -262,6 +265,7 @@ class CampaignActivity : AppCompatActivity() {
                 topMargin = dp(8)
             }
         )
+        controlClusterTopMarginPx = dp(142)
         root.addView(
             controlCluster,
             FrameLayout.LayoutParams(
@@ -269,7 +273,7 @@ class CampaignActivity : AppCompatActivity() {
                 FrameLayout.LayoutParams.WRAP_CONTENT,
                 Gravity.TOP or Gravity.END
             ).apply {
-                topMargin = dp(106)
+                topMargin = controlClusterTopMarginPx
                 rightMargin = dp(UiTheme.SPACE_4)
             }
         )
@@ -321,6 +325,8 @@ class CampaignActivity : AppCompatActivity() {
                 setColor(Color.parseColor(Palette.HUD_SURFACE))
                 setStroke(dp(1), Color.parseColor(Palette.HUD_BORDER))
             }
+            visibility = View.GONE
+            alpha = 0f
         }
         root.addView(
             travelHintText,
@@ -570,12 +576,16 @@ class CampaignActivity : AppCompatActivity() {
     private fun forceDismissCurrentAlert() {
         alertHideRunnable?.let { uiHandler.removeCallbacks(it) }
         alertHideRunnable = null
+        hintHideRunnable?.let { uiHandler.removeCallbacks(it) }
+        hintHideRunnable = null
         hideCurrentWorldAlert(durationMs = 90L)
     }
 
     private fun hideCurrentWorldAlert(durationMs: Long = 170L) {
         alertHideRunnable?.let { uiHandler.removeCallbacks(it) }
         alertHideRunnable = null
+        hintHideRunnable?.let { uiHandler.removeCallbacks(it) }
+        hintHideRunnable = null
         alertBanner.animate()
             .alpha(0f)
             .translationY(-dp(8).toFloat())
@@ -593,7 +603,7 @@ class CampaignActivity : AppCompatActivity() {
         val tint = when (category) {
             AlertCategory.DANGER -> "#30C65A5A"
             AlertCategory.DISCOVERY -> "#30B89C6B"
-            AlertCategory.TRAVEL -> "#255E8FD6"
+            AlertCategory.TRAVEL -> "#287B1E2B"
             AlertCategory.GAIN -> "#205FAF7A"
             AlertCategory.EVENT -> "#2527415E"
         }
@@ -624,14 +634,7 @@ class CampaignActivity : AppCompatActivity() {
             elevation = dpF(UiTheme.HUD_ELEVATION)
         }
 
-        panelAccentBar = View(this)
-        infoPanel.addView(
-            panelAccentBar,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                3
-            )
-        )
+        panelAccentBar = View(this).apply { visibility = View.GONE }
 
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -877,8 +880,33 @@ class CampaignActivity : AppCompatActivity() {
             modeStripText.text = "MODE · $label"
             styleChip(modeStripText, color, 10f)
         }
+        maybeShowScoutingHint(centered = centered, moving = moving)
     }
 
+
+    private fun maybeShowScoutingHint(centered: Boolean, moving: Boolean) {
+        if (!::travelHintText.isInitialized) return
+        if (centered || moving) {
+            hasShownScoutingHint = false
+            hideTravelHint()
+            return
+        }
+        if (hasShownScoutingHint) return
+        hasShownScoutingHint = true
+        hintHideRunnable?.let { uiHandler.removeCallbacks(it) }
+        travelHintText.visibility = View.VISIBLE
+        travelHintText.alpha = 0f
+        travelHintText.animate().alpha(1f).setDuration(140L).start()
+        hintHideRunnable = Runnable { hideTravelHint() }
+        uiHandler.postDelayed(hintHideRunnable!!, 3200L)
+    }
+
+    private fun hideTravelHint() {
+        if (!::travelHintText.isInitialized || travelHintText.visibility != View.VISIBLE) return
+        travelHintText.animate().alpha(0f).setDuration(120L).withEndAction {
+            travelHintText.visibility = View.GONE
+        }.start()
+    }
 
     private fun dp(value: Int): Int = (value * density).toInt()
     private fun dpF(value: Float): Float = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value, resources.displayMetrics)
@@ -913,6 +941,7 @@ class CampaignActivity : AppCompatActivity() {
     override fun onDestroy() {
         uiHandler.removeCallbacksAndMessages(null)
         alertHideRunnable = null
+        hintHideRunnable = null
         alertQueue.clear()
         super.onDestroy()
     }
@@ -921,6 +950,8 @@ class CampaignActivity : AppCompatActivity() {
         super.onPause()
         alertHideRunnable?.let { uiHandler.removeCallbacks(it) }
         alertHideRunnable = null
+        hintHideRunnable?.let { uiHandler.removeCallbacks(it) }
+        hintHideRunnable = null
     }
 
     private fun updateHud() {
@@ -977,7 +1008,7 @@ class CampaignActivity : AppCompatActivity() {
         infoPanel.visibility = View.VISIBLE
         updateMapStateText()
 
-        panelAccentBar.setBackgroundColor(node.type.color.toInt())
+        panelAccentBar.setBackgroundColor(Color.parseColor(Palette.PRIMARY))
 
         nodeTypeChip.text = node.type.displayName.uppercase()
         styleChip(nodeTypeChip, Palette.HUD_SURFACE_ALT, 10f)

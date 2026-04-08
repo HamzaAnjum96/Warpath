@@ -28,9 +28,9 @@ object UiTheme {
     const val TEXT_DISABLED = "#566880"
 
     // ── State palette ──
-    const val PRIMARY = "#6C83C8"
-    const val PRIMARY_MUTED = "#4A5E8F"
-    const val ALLY = "#5E8FD6"
+    const val PRIMARY = "#7B1E2B"
+    const val PRIMARY_MUTED = "#5C1822"
+    const val ALLY = "#8E2A38"
     const val HOSTILE = "#C56A5D"
     const val HOSTILE_MUTED = "#8C4A42"
     const val NEUTRAL = "#8FA0B4"

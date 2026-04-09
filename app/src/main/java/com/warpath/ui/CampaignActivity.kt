@@ -392,7 +392,7 @@ class CampaignActivity : AppCompatActivity() {
             setTextColor(Color.parseColor(Palette.HUD_TEXT_MUTED))
             typeface = UiTheme.TYPEFACE_LABEL
             setPadding(dp(12), dp(8), dp(12), dp(8))
-            text = "◉ RECON MODE  ·  Drag to survey. Tap terrain to mark vector."
+            text = "◉ SENSOR MODE  ·  Drag to survey. Tap to mark vector."
             background = GradientDrawable().apply {
                 cornerRadius = dpF(16f)
                 setColor(Color.parseColor(Palette.HUD_SURFACE))
@@ -973,7 +973,7 @@ class CampaignActivity : AppCompatActivity() {
         val centered = mapView.isCenteredOnPlayer()
         val (label, color) = when {
             moving && paused -> "PAUSED" to Palette.GOLD
-            moving -> "TRAVELLING" to Palette.SUCCESS
+            moving -> "TRANSIT" to Palette.SUCCESS
             hasTarget -> "TARGET LOCKED" to Palette.PRIMARY
             !centered -> "RECON" to Palette.HUD_SURFACE_ALT
             else -> "FOLLOW SQUADRON" to Palette.HUD_SURFACE_ALT
@@ -1691,10 +1691,10 @@ class CampaignActivity : AppCompatActivity() {
         activeTravelStartX = startX
         activeTravelStartY = startY
         val routeLabel = mapView.currentPreviewRouteTypeLabel()
-        when (routeLabel) {
-            "INTERCEPT RISK VECTOR" -> enqueueWorldAlert("Intercept Risk Active", AlertCategory.DANGER, AlertPriority.HIGH, "route_risky")
-            "CROSS-TERRAIN ROUTE" -> enqueueWorldAlert("Cross-terrain flight, speed reduced", AlertCategory.TRAVEL, AlertPriority.STANDARD, "route_offroad")
-            else -> enqueueWorldAlert("Clear flight path", AlertCategory.TRAVEL, AlertPriority.MINOR, "route_road")
+        when {
+            routeLabel.contains("INTERCEPT") -> enqueueWorldAlert("INTERCEPT RISK ACTIVE", AlertCategory.DANGER, AlertPriority.HIGH, "route_risky")
+            routeLabel.contains("THREATENED") -> enqueueWorldAlert("THREAT ENVELOPE AHEAD", AlertCategory.DANGER, AlertPriority.STANDARD, "route_threatened")
+            else -> enqueueWorldAlert("FLIGHT PATH CLEAR", AlertCategory.TRAVEL, AlertPriority.MINOR, "route_clear")
         }
         showMovementPanel()
         updateMapStateText()
@@ -1899,7 +1899,7 @@ class CampaignActivity : AppCompatActivity() {
 
         mapView.inputEnabled = false
         showPreEventState(targetNode)
-        actionButton.text = "  Traveling…"
+        actionButton.text = "  Vectoring…"
         actionButton.isEnabled = false
         actionButton.alpha = 0.5f
         statusText.text = "▶ Vectoring to ${targetNode.name}…"
@@ -2072,7 +2072,7 @@ class CampaignActivity : AppCompatActivity() {
             mapView.previewRouteTo(pos.first, pos.second, committed = true)
             moveWarbandTo(pos.first, pos.second)
         }
-        enqueueWorldAlert("Chasing enemy!", AlertCategory.DANGER, AlertPriority.STANDARD, "chase_enemy_${party.id}")
+        enqueueWorldAlert("INTERCEPT VECTOR ACTIVE", AlertCategory.DANGER, AlertPriority.STANDARD, "chase_enemy_${party.id}")
     }
 
     // ────────────────────────────────────────────────────────────────────────────

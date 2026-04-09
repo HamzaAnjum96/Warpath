@@ -59,7 +59,6 @@ class CampaignActivity : AppCompatActivity() {
     private lateinit var pauseButton: Button
     private lateinit var movementStopButton: Button
     private lateinit var mapStateText: TextView
-    private lateinit var modeStripText: TextView
     private lateinit var controlCluster: LinearLayout
     private lateinit var alertBanner: LinearLayout
     private lateinit var alertAccent: View
@@ -72,7 +71,8 @@ class CampaignActivity : AppCompatActivity() {
 
     private val phaseOnePocMode = false
     private val poiInteractionDistance = 0.07f
-    private val playerMetersPerMoveAction = 50f
+    private val playerMetersPerMoveAction = 50f  // legacy: only used for enemy ratio calc
+    private val playerSpeedNorm get() = campaignManager.gameState.playerSpeed
     private var selectedNode: CampaignNode? = null
     private var suppressAutoPoiSelection = false
     private var pendingRedirectTarget: Pair<Float, Float>? = null
@@ -184,15 +184,6 @@ class CampaignActivity : AppCompatActivity() {
                 Gravity.TOP
             )
         )
-        root.addView(
-            buildModeStrip(),
-            FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-                Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            ).apply { topMargin = dp(92) }
-        )
-
         root.addView(
             buildAlertBanner(),
             FrameLayout.LayoutParams(
@@ -544,19 +535,6 @@ class CampaignActivity : AppCompatActivity() {
         row.addView(alertBanner, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         row.addView(Space(this), LinearLayout.LayoutParams(dp(8), 1))
         return row
-    }
-
-    private fun buildModeStrip(): View {
-        modeStripText = TextView(this).apply {
-            textSize = if (compactUi) 9f else 10f
-            typeface = UiTheme.TYPEFACE_LABEL
-            setTextColor(Color.parseColor(Palette.HUD_TEXT))
-            setPadding(dp(12), dp(5), dp(12), dp(5))
-            letterSpacing = 0.08f
-            alpha = 0.95f
-        }
-        styleChip(modeStripText, Palette.HUD_SURFACE_ALT, 10f)
-        return modeStripText
     }
 
     private fun updateControlClusterVisibility() {
@@ -990,12 +968,8 @@ class CampaignActivity : AppCompatActivity() {
             AirPlayerState.RTB -> "RTB" to Palette.HUD_SURFACE_ALT
             AirPlayerState.DAMAGED_EMERGENCY -> "DAMAGED / EMERGENCY" to Palette.DANGER
         }
-        mapStateText.text = label
+        mapStateText.text = "MODE · $label"
         styleChip(mapStateText, color, 10f)
-        if (::modeStripText.isInitialized) {
-            modeStripText.text = "MODE · $label"
-            styleChip(modeStripText, color, 10f)
-        }
         maybeShowScoutingHint(centered = centered, moving = moving)
     }
 
@@ -1031,6 +1005,7 @@ class CampaignActivity : AppCompatActivity() {
         super.onResume()
         mapView.nodes = campaignManager.campaignMap
         mapView.currentNodeId = campaignManager.gameState.currentNodeId
+        mapView.playerSpeed = campaignManager.gameState.playerSpeed
         mapView.enemyParties = campaignManager.gameState.enemyParties
         mapView.enemyDisplayPositions = campaignManager.gameState.enemyParties.associate { party ->
             party.id to campaignManager.getEnemyPartyPosition(party)
@@ -1719,9 +1694,10 @@ class CampaignActivity : AppCompatActivity() {
                     snapshot = enemySnapshot,
                     playerMovedNorm = progressNorm,
                     totalPlayerTravelNorm = totalDistanceNorm,
-                    playerMetersPerAction = playerMetersPerMoveAction
+                    playerMetersPerAction = playerSpeedNorm
                 )
                 updateMovementPanel()
+                updateMapStateText()
             }
         ) { cancelled ->
             handleMovementComplete(enemySnapshot, totalDistanceNorm, cancelled)
@@ -1739,7 +1715,7 @@ class CampaignActivity : AppCompatActivity() {
                 snapshot = currentSnapshot,
                 playerMovedNorm = movedNorm,
                 totalPlayerTravelNorm = currentTravelDist,
-                playerMetersPerAction = playerMetersPerMoveAction
+                playerMetersPerAction = playerSpeedNorm
             )
             mapView.enemyParties = campaignManager.gameState.enemyParties
             mapView.enemyDisplayPositions = campaignManager.gameState.enemyParties.associate { party ->
@@ -1774,9 +1750,10 @@ class CampaignActivity : AppCompatActivity() {
                     snapshot = enemySnapshot,
                     playerMovedNorm = progressNorm,
                     totalPlayerTravelNorm = totalDistanceNorm,
-                    playerMetersPerAction = playerMetersPerMoveAction
+                    playerMetersPerAction = playerSpeedNorm
                 )
                 updateMovementPanel()
+                updateMapStateText()
             }
         ) { cancelled ->
             handleMovementComplete(enemySnapshot, totalDistanceNorm, cancelled)
@@ -1807,7 +1784,7 @@ class CampaignActivity : AppCompatActivity() {
             snapshot = enemySnapshot,
             playerMovedNorm = movedNorm,
             totalPlayerTravelNorm = totalDistanceNorm,
-            playerMetersPerAction = playerMetersPerMoveAction
+            playerMetersPerAction = playerSpeedNorm
         )
         mapView.enemyParties = campaignManager.gameState.enemyParties
         mapView.enemyDisplayPositions = campaignManager.gameState.enemyParties.associate { party ->

@@ -50,7 +50,20 @@ class CampaignMapView @JvmOverloads constructor(
     var enemyParties: List<EnemyParty> = emptyList()
         set(value) { field = value; invalidate() }
     var enemyDisplayPositions: Map<String, Pair<Float, Float>> = emptyMap()
-        set(value) { field = value; invalidate() }
+        set(value) {
+            val old = field
+            field = value
+            for ((id, pos) in value) {
+                val prev = old[id] ?: continue
+                val dx = pos.first - prev.first
+                val dy = pos.second - prev.second
+                if (dx * dx + dy * dy > 0.00001f) {
+                    enemyHeadings[id] = atan2(dy, dx)
+                }
+            }
+            invalidate()
+        }
+    private val enemyHeadings: MutableMap<String, Float> = mutableMapOf()
 
     var inputEnabled: Boolean = true
     var showPaths: Boolean = false
@@ -104,6 +117,8 @@ class CampaignMapView @JvmOverloads constructor(
     private val trail = mutableListOf<Pair<Float, Float>>()
     private var lastTrailNX = playerNormX
     private var lastTrailNY = playerNormY
+
+    var playerSpeed: Float = 0.12f
 
     private var moveAnimator: ValueAnimator? = null
     private var cameraAnimator: ValueAnimator? = null
@@ -408,15 +423,29 @@ class CampaignMapView @JvmOverloads constructor(
         lastTrailNY = startY
 
         moveAnimator?.cancel()
+        val dist = hypot(dx, dy).coerceAtLeast(0.01f)
         moveAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = 850
-            interpolator = AccelerateDecelerateInterpolator()
+            duration = (dist / playerSpeed * 1000f).roundToInt().toLong().coerceIn(200L, 12000L)
+            interpolator = LinearInterpolator()
 
+            var prevX = startX
+            var prevY = startY
             addUpdateListener { anim ->
                 val t = anim.animatedValue as Float
                 playerNormX = startX + (endX - startX) * t
                 playerNormY = startY + (endY - startY) * t
                 travelProgress = t
+                val mdx = playerNormX - prevX
+                val mdy = playerNormY - prevY
+                if (mdx * mdx + mdy * mdy > 0.00001f) {
+                    playerLookDirX = mdx
+                    playerLookDirY = mdy
+                    val len = hypot(playerLookDirX, playerLookDirY)
+                    playerLookDirX /= len
+                    playerLookDirY /= len
+                }
+                prevX = playerNormX
+                prevY = playerNormY
                 onProgress?.invoke(t, playerNormX, playerNormY)
                 if (followPlayerFocus) {
                     cameraNormX = playerNormX
@@ -489,19 +518,26 @@ class CampaignMapView @JvmOverloads constructor(
         lastTrailNY = startY
 
         moveAnimator?.cancel()
-        val durationFactor = when (route.type) {
-            RouteType.THREAT_AVOIDANCE -> 1.06f
-            RouteType.DIRECT -> 0.98f
-        }
         moveAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = (800f + routeLength * 4400f * durationFactor).roundToInt().toLong()
+            duration = (routeLength / playerSpeed * 1000f).roundToInt().toLong().coerceIn(200L, 12000L)
             interpolator = LinearInterpolator()
+            var prevX = startX
+            var prevY = startY
             addUpdateListener { anim ->
                 val t = anim.animatedValue as Float
                 val routePoint = pointOnRoute(movementRoutePoints, t)
                 playerNormX = routePoint.first
                 playerNormY = routePoint.second
                 travelProgress = t
+                val mdx = playerNormX - prevX
+                val mdy = playerNormY - prevY
+                if (mdx * mdx + mdy * mdy > 0.00001f) {
+                    val len = hypot(mdx, mdy)
+                    playerLookDirX = mdx / len
+                    playerLookDirY = mdy / len
+                }
+                prevX = playerNormX
+                prevY = playerNormY
                 onProgress?.invoke(t, playerNormX, playerNormY)
                 if (followPlayerFocus) {
                     cameraNormX = playerNormX
@@ -624,19 +660,26 @@ class CampaignMapView @JvmOverloads constructor(
         routePreviewTargetNorm = Pair(endX, endY)
         previewRoutePoints = movementRoutePoints
 
-        val durationFactor = when (route.type) {
-            RouteType.THREAT_AVOIDANCE -> 1.06f
-            RouteType.DIRECT -> 0.98f
-        }
         moveAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = (800f + routeLength * 4400f * durationFactor).roundToInt().toLong()
+            duration = (routeLength / playerSpeed * 1000f).roundToInt().toLong().coerceIn(200L, 12000L)
             interpolator = LinearInterpolator()
+            var prevX = startX
+            var prevY = startY
             addUpdateListener { anim ->
                 val t = anim.animatedValue as Float
                 val routePoint = pointOnRoute(movementRoutePoints, t)
                 playerNormX = routePoint.first
                 playerNormY = routePoint.second
                 travelProgress = t
+                val mdx = playerNormX - prevX
+                val mdy = playerNormY - prevY
+                if (mdx * mdx + mdy * mdy > 0.00001f) {
+                    val len = hypot(mdx, mdy)
+                    playerLookDirX = mdx / len
+                    playerLookDirY = mdy / len
+                }
+                prevX = playerNormX
+                prevY = playerNormY
                 onProgress?.invoke(t, playerNormX, playerNormY)
                 if (followPlayerFocus) {
                     cameraNormX = playerNormX
@@ -960,9 +1003,20 @@ class CampaignMapView @JvmOverloads constructor(
         val radius = (width.coerceAtLeast(height) * 0.42f)
         val sweepAngle = ambientValue * 360f
         radarSweepRect.set(cx - radius, cy - radius, cx + radius, cy + radius)
-        val alphaBase = (28 + pulseValue * 20f).toInt().coerceIn(20, 52)
-        sweepOverlayPaint.alpha = alphaBase
+        val alphaBase = (16 + pulseValue * 12f).toInt().coerceIn(12, 32)
+        sweepOverlayPaint.shader = RadialGradient(
+            cx, cy, radius,
+            intArrayOf(
+                Color.argb(alphaBase, 78, 199, 217),
+                Color.argb(alphaBase / 2, 78, 199, 217),
+                Color.argb(0, 78, 199, 217)
+            ),
+            floatArrayOf(0f, 0.4f, 1f),
+            Shader.TileMode.CLAMP
+        )
+        sweepOverlayPaint.alpha = 255
         canvas.drawArc(radarSweepRect, sweepAngle - 18f, 36f, true, sweepOverlayPaint)
+        sweepOverlayPaint.shader = null
     }
 
     private fun drawScanlines(canvas: Canvas) {
@@ -1797,23 +1851,43 @@ class CampaignMapView @JvmOverloads constructor(
             canvas.drawText(currentPreviewRouteTypeLabel(), screenX(origin.first), screenY(origin.second) - 16f, playerRouteLabelPaint)
         }
 
-        canvas.drawCircle(px, py, 15f, playerRingPaint)
-        playerPaint.color = Color.parseColor(Palette.GOLD)
-        canvas.drawCircle(px, py, 9f, playerPaint)
-        playerPaint.color = Color.parseColor("#0F1A2A")
-        canvas.drawCircle(px, py, 4f, playerPaint)
-
         val heading = atan2(playerLookDirY, playerLookDirX)
-        val pointer = Path().apply {
-            moveTo(px + cos(heading) * 22f, py + sin(heading) * 22f)
-            lineTo(px + cos(heading + 2.7f) * 9f, py + sin(heading + 2.7f) * 9f)
-            lineTo(px + cos(heading - 2.7f) * 9f, py + sin(heading - 2.7f) * 9f)
+        val size = 18f
+
+        canvas.save()
+        canvas.translate(px, py)
+        canvas.rotate(Math.toDegrees(heading.toDouble()).toFloat() + 90f)
+
+        // Arrow body (dark maroon outline)
+        val arrowBody = Path().apply {
+            moveTo(0f, -size * 1.2f)           // tip
+            lineTo(size * 0.85f, size * 0.8f)   // right wing
+            lineTo(0f, size * 0.3f)              // notch center
+            lineTo(-size * 0.85f, size * 0.8f)  // left wing
             close()
         }
-        canvas.drawPath(pointer, playerLookPaint)
+        playerRingPaint.style = Paint.Style.FILL_AND_STROKE
+        playerRingPaint.strokeWidth = 3f
+        playerPaint.color = Color.parseColor("#5A1018")
+        canvas.drawPath(arrowBody, playerPaint)
+        playerRingPaint.color = Color.parseColor("#7A1A24")
+        playerRingPaint.style = Paint.Style.STROKE
+        playerRingPaint.strokeWidth = 3.5f
+        canvas.drawPath(arrowBody, playerRingPaint)
+        // Reset ring paint
+        playerRingPaint.color = Color.parseColor(Palette.GOLD)
+        playerRingPaint.strokeWidth = 4f
 
-        playerIconPaint.color = Color.parseColor("#0E1726")
-        canvas.drawText("✦", px, py + 6f, playerIconPaint)
+        // Center line (red accent)
+        val linePaintLocal = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.parseColor("#E03030")
+            strokeWidth = 3f
+            strokeCap = Paint.Cap.ROUND
+            style = Paint.Style.STROKE
+        }
+        canvas.drawLine(0f, -size * 1.0f, 0f, size * 0.2f, linePaintLocal)
+
+        canvas.restore()
     }
 
     private fun drawEnemyParties(canvas: Canvas) {
@@ -1885,12 +1959,10 @@ class CampaignMapView @JvmOverloads constructor(
                 pulseRingPaint.pathEffect = null
             }
 
+            val partyHeading = enemyHeadings[party.id] ?: (-Math.PI / 2).toFloat()
             pulseRingPaint.strokeWidth = 1.6f
             pulseRingPaint.alpha = 180
-            canvas.drawCircle(x, y, iconRadius + 2f, pulseRingPaint)
-            drawPartyMarker(canvas, party.faction, x, y, iconRadius, markerPaint, pulseRingPaint)
-            val biome = biomeAt(partyPos.first, partyPos.second)
-            drawPartyGlyph(canvas, party.faction, biome, x, y, symbolPaint)
+            drawPartyMarker(canvas, party.faction, x, y, iconRadius, markerPaint, pulseRingPaint, partyHeading)
             if (zoom != ZoomState.FAR) {
                 canvas.drawText(
                     if (party.faction == PartyFaction.FRIENDLY) "ALLY L${profile.level}" else "${enemyFamilyForBiome(biome)} L${profile.level}",
@@ -1922,23 +1994,38 @@ class CampaignMapView @JvmOverloads constructor(
         y: Float,
         radius: Float,
         fillPaint: Paint,
-        outlinePaint: Paint
+        outlinePaint: Paint,
+        heading: Float = (-Math.PI / 2).toFloat()
     ) {
-        val path = Path()
-        if (faction == PartyFaction.FRIENDLY) {
-            path.moveTo(x, y - radius)
-            path.lineTo(x + radius * 0.88f, y + radius * 0.66f)
-            path.lineTo(x - radius * 0.88f, y + radius * 0.66f)
-            path.close()
-        } else {
-            path.moveTo(x, y - radius)
-            path.lineTo(x + radius * 0.76f, y)
-            path.lineTo(x, y + radius)
-            path.lineTo(x - radius * 0.76f, y)
-            path.close()
+        canvas.save()
+        canvas.translate(x, y)
+        canvas.rotate(Math.toDegrees(heading.toDouble()).toFloat() + 90f)
+
+        val r = radius
+        val path = Path().apply {
+            moveTo(0f, -r * 1.2f)           // tip
+            lineTo(r * 0.85f, r * 0.8f)     // right wing
+            lineTo(0f, r * 0.3f)             // notch center
+            lineTo(-r * 0.85f, r * 0.8f)    // left wing
+            close()
         }
         canvas.drawPath(path, fillPaint)
+        val prevStyle = outlinePaint.style
+        outlinePaint.style = Paint.Style.STROKE
         canvas.drawPath(path, outlinePaint)
+        outlinePaint.style = prevStyle
+
+        // Center line accent
+        val accentColor = if (faction == PartyFaction.FRIENDLY) "#40C8E8" else "#E05050"
+        val accent = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.parseColor(accentColor)
+            strokeWidth = 2f
+            strokeCap = Paint.Cap.ROUND
+            style = Paint.Style.STROKE
+        }
+        canvas.drawLine(0f, -r * 0.9f, 0f, r * 0.15f, accent)
+
+        canvas.restore()
     }
 
     private fun partyMovementState(party: EnemyParty): String {

@@ -13,7 +13,8 @@ data class GameState(
     var nodesCleared: Int = 0,
     var battlesWon: Int = 0,
     var battlesLost: Int = 0,
-    var isRunActive: Boolean = true
+    var isRunActive: Boolean = true,
+    var playerSpeed: Float = 0.12f
 ) {
     fun addSquad(squad: Squad): Boolean {
         if (warband.size >= maxWarbandSlots) return false

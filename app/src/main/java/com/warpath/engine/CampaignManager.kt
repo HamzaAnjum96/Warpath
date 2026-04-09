@@ -229,9 +229,8 @@ class CampaignManager {
         return hitPlayer
     }
 
-    private fun enemyMovementSpeedRatio(party: EnemyParty, playerMetersPerAction: Float): Float {
-        val speedMeters = if (party.faction == PartyFaction.FRIENDLY) 40f else 30f
-        return speedMeters / playerMetersPerAction
+    private fun enemyMovementSpeedRatio(party: EnemyParty, playerSpeed: Float): Float {
+        return party.speed / playerSpeed
     }
 
     private fun simulatePartyMovement(

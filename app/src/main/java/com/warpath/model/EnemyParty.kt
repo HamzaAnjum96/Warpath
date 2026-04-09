@@ -20,5 +20,6 @@ data class EnemyParty(
     var patrolForward: Boolean = true,
     var travelFromNodeId: String? = null,
     var travelToNodeId: String? = null,
-    var travelProgress: Float = 0f
+    var travelProgress: Float = 0f,
+    val speed: Float = if (faction == PartyFaction.FRIENDLY) 0.08f else 0.06f
 )

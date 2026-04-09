@@ -1965,7 +1965,7 @@ class CampaignMapView @JvmOverloads constructor(
             drawPartyMarker(canvas, party.faction, x, y, iconRadius, markerPaint, pulseRingPaint, partyHeading)
             if (zoom != ZoomState.FAR) {
                 canvas.drawText(
-                    if (party.faction == PartyFaction.FRIENDLY) "ALLY L${profile.level}" else "${enemyFamilyForBiome(biome)} L${profile.level}",
+                    if (party.faction == PartyFaction.FRIENDLY) "ALLY L${profile.level}" else "${enemyFamilyForBiome(biomeAt(node.mapX, node.mapY))} L${profile.level}",
                     x,
                     y - (iconRadius + 9f),
                     labelPaint

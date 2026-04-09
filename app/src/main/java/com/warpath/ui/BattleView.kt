@@ -127,12 +127,12 @@ class BattleView @JvmOverloads constructor(
 
         // Draw squad shape
         when (squad.unitType.category) {
-            UnitCategory.FRONTLINE -> {
-                // Square for frontline
+            UnitCategory.FIGHTER -> {
+                // Square for fighter
                 canvas.drawRect(cx - size, cy - size, cx + size, cy + size, paint)
             }
-            UnitCategory.RANGED, UnitCategory.SKIRMISH -> {
-                // Triangle for ranged
+            UnitCategory.BOMBER, UnitCategory.INTERCEPTOR -> {
+                // Triangle for bomber/interceptor
                 val path = Path()
                 path.moveTo(cx, cy - size)
                 path.lineTo(cx + size, cy + size)
@@ -140,8 +140,8 @@ class BattleView @JvmOverloads constructor(
                 path.close()
                 canvas.drawPath(path, paint)
             }
-            UnitCategory.CAVALRY -> {
-                // Diamond for cavalry
+            UnitCategory.RECON -> {
+                // Diamond for recon
                 val path = Path()
                 path.moveTo(cx, cy - size * 1.2f)
                 path.lineTo(cx + size, cy)
@@ -199,18 +199,18 @@ class BattleView @JvmOverloads constructor(
     private fun getCategoryColor(category: UnitCategory, isPlayer: Boolean): Int {
         if (isPlayer) {
             return when (category) {
-                UnitCategory.FRONTLINE -> Color.parseColor("#3366aa")
-                UnitCategory.SKIRMISH -> Color.parseColor("#6699cc")
-                UnitCategory.RANGED -> Color.parseColor("#339966")
-                UnitCategory.CAVALRY -> Color.parseColor("#6633aa")
+                UnitCategory.FIGHTER -> Color.parseColor("#3366aa")
+                UnitCategory.INTERCEPTOR -> Color.parseColor("#6699cc")
+                UnitCategory.BOMBER -> Color.parseColor("#339966")
+                UnitCategory.RECON -> Color.parseColor("#6633aa")
                 UnitCategory.SUPPORT -> Color.parseColor("#3399aa")
             }
         } else {
             return when (category) {
-                UnitCategory.FRONTLINE -> Color.parseColor("#aa3333")
-                UnitCategory.SKIRMISH -> Color.parseColor("#cc6633")
-                UnitCategory.RANGED -> Color.parseColor("#993333")
-                UnitCategory.CAVALRY -> Color.parseColor("#aa3366")
+                UnitCategory.FIGHTER -> Color.parseColor("#aa3333")
+                UnitCategory.INTERCEPTOR -> Color.parseColor("#cc6633")
+                UnitCategory.BOMBER -> Color.parseColor("#993333")
+                UnitCategory.RECON -> Color.parseColor("#aa3366")
                 UnitCategory.SUPPORT -> Color.parseColor("#996633")
             }
         }

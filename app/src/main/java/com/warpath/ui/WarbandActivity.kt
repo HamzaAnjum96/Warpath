@@ -445,10 +445,10 @@ class WarbandActivity : AppCompatActivity() {
 
     private fun getCategoryColor(category: UnitCategory): Int {
         return when (category) {
-            UnitCategory.FRONTLINE -> Color.parseColor("#5A79B8")
-            UnitCategory.SKIRMISH -> Color.parseColor("#7D92C2")
-            UnitCategory.RANGED -> Color.parseColor("#5B9B78")
-            UnitCategory.CAVALRY -> Color.parseColor(UiTheme.PRIMARY)
+            UnitCategory.FIGHTER -> Color.parseColor("#5A79B8")
+            UnitCategory.INTERCEPTOR -> Color.parseColor("#7D92C2")
+            UnitCategory.BOMBER -> Color.parseColor("#5B9B78")
+            UnitCategory.RECON -> Color.parseColor(UiTheme.PRIMARY)
             UnitCategory.SUPPORT -> Color.parseColor("#5A94A8")
         }
     }

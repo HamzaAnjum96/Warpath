@@ -12,38 +12,50 @@ import android.widget.Button
 import android.widget.TextView
 
 object UiTheme {
+    // ── Air Ops design tokens ──
+    const val BG_PRIMARY = "#060B14"
+    const val BG_PANEL = "#0B1524"
+    const val TERRAIN_LAND = "#253241"
+    const val TERRAIN_WATER = "#101C2F"
+    const val GRID_LINE = "#21354B"
+    const val RADAR_CYAN = "#4EC7D9"
+    const val WARNING_RED = "#C45A5A"
+    const val HIGHLIGHT_AMBER = "#C9A45E"
+    const val FRIENDLY_BLUE = "#5F9DD6"
+    const val NEUTRAL_GRAY = "#8894A3"
+
     // ── Core surfaces ──
-    const val BASE_BG = "#0E1726"
-    const val SURFACE = "#111C2D"
-    const val SURFACE_ALT = "#16263A"
-    const val SURFACE_ELEVATED = "#1A2D45"
-    const val BORDER = "#2C3F57"
-    const val BORDER_LIGHT = "#3A5470"
-    const val DIVIDER = "#1E3248"
+    const val BASE_BG = BG_PRIMARY
+    const val SURFACE = BG_PANEL
+    const val SURFACE_ALT = "#122033"
+    const val SURFACE_ELEVATED = "#16293F"
+    const val BORDER = "#2A4258"
+    const val BORDER_LIGHT = "#375874"
+    const val DIVIDER = GRID_LINE
 
     // ── Text ──
-    const val TEXT_PRIMARY = "#F2F0EA"
-    const val TEXT_MUTED = "#9AA9BC"
-    const val TEXT_SUBTLE = "#7F90A6"
-    const val TEXT_DISABLED = "#566880"
+    const val TEXT_PRIMARY = "#D9E4EE"
+    const val TEXT_MUTED = "#8FA2B6"
+    const val TEXT_SUBTLE = "#76889E"
+    const val TEXT_DISABLED = "#506279"
 
     // ── State palette ──
-    const val PRIMARY = "#0A4055"
-    const val PRIMARY_MUTED = "#082F3E"
-    const val ALLY = "#0D5060"
-    const val HOSTILE = "#C56A5D"
+    const val PRIMARY = RADAR_CYAN
+    const val PRIMARY_MUTED = "#1F5F72"
+    const val ALLY = FRIENDLY_BLUE
+    const val HOSTILE = WARNING_RED
     const val HOSTILE_MUTED = "#8C4A42"
-    const val NEUTRAL = "#8FA0B4"
+    const val NEUTRAL = NEUTRAL_GRAY
     const val POSITIVE = "#5FAF7A"
-    const val WARNING = "#D4B15A"
+    const val WARNING = HIGHLIGHT_AMBER
 
     // ── Terrain palette by biome ──
-    const val BIOME_PLAINS = "#3A4A40"
-    const val BIOME_FOREST = "#1C3530"
-    const val BIOME_DESERT = "#3E4038"
-    const val BIOME_HILLS = "#2E3840"
-    const val BIOME_SETTLEMENT = "#1E3040"
-    const val BIOME_WATER = "#1A3248"
+    const val BIOME_PLAINS = TERRAIN_LAND
+    const val BIOME_FOREST = "#1D2A35"
+    const val BIOME_DESERT = "#2E3540"
+    const val BIOME_HILLS = "#2A3443"
+    const val BIOME_SETTLEMENT = "#202C3B"
+    const val BIOME_WATER = TERRAIN_WATER
 
     // Legacy aliases
     const val GOLD = WARNING
@@ -102,9 +114,9 @@ object UiTheme {
 
     // ── Typefaces ──
     val TYPEFACE_TITLE: Typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
-    val TYPEFACE_HEADING: Typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
-    val TYPEFACE_BODY: Typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-    val TYPEFACE_LABEL: Typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+    val TYPEFACE_HEADING: Typeface = Typeface.create("monospace", Typeface.BOLD)
+    val TYPEFACE_BODY: Typeface = Typeface.create("monospace", Typeface.NORMAL)
+    val TYPEFACE_LABEL: Typeface = Typeface.create("monospace", Typeface.BOLD)
 
     /** Create a themed rounded-rect drawable */
     fun roundedRect(

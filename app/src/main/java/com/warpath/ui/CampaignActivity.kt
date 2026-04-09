@@ -15,6 +15,7 @@ import android.util.TypedValue
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import com.warpath.engine.CampaignManager
+import com.warpath.model.AirPlayerState
 import com.warpath.model.CampaignNode
 import com.warpath.model.EnemyParty
 import com.warpath.model.NodeType
@@ -238,7 +239,7 @@ class CampaignActivity : AppCompatActivity() {
 
         recenterButton = Button(this).apply {
             text = "⌖"
-            contentDescription = "Recenter map on squadron"
+            contentDescription = "Recenter map on flight"
             textSize = if (compactUi) 9f else 10f
             typeface = UiTheme.TYPEFACE_HEADING
             isAllCaps = false
@@ -392,7 +393,7 @@ class CampaignActivity : AppCompatActivity() {
             setTextColor(Color.parseColor(Palette.HUD_TEXT_MUTED))
             typeface = UiTheme.TYPEFACE_LABEL
             setPadding(dp(12), dp(8), dp(12), dp(8))
-            text = "◉ SENSOR MODE  ·  Drag to survey. Tap to mark vector."
+            text = "◉ RECON MODE  ·  Drag to survey. Tap airspace to set flight path."
             background = GradientDrawable().apply {
                 cornerRadius = dpF(16f)
                 setColor(Color.parseColor(Palette.HUD_SURFACE))
@@ -971,12 +972,23 @@ class CampaignActivity : AppCompatActivity() {
         val paused = mapView.isPaused
         val hasTarget = selectedNode != null
         val centered = mapView.isCenteredOnPlayer()
-        val (label, color) = when {
-            moving && paused -> "PAUSED" to Palette.GOLD
-            moving -> "TRANSIT" to Palette.SUCCESS
-            hasTarget -> "TARGET LOCKED" to Palette.PRIMARY
-            !centered -> "RECON" to Palette.HUD_SURFACE_ALT
-            else -> "FOLLOW SQUADRON" to Palette.HUD_SURFACE_ALT
+        val airState = when {
+            moving && paused -> AirPlayerState.HOLDING
+            moving -> AirPlayerState.TRANSIT
+            hasTarget -> AirPlayerState.ROUTE_PLANNING
+            !centered -> AirPlayerState.RECON
+            else -> AirPlayerState.IDLE
+        }
+        val (label, color) = when (airState) {
+            AirPlayerState.HOLDING -> "HOLDING" to Palette.GOLD
+            AirPlayerState.TRANSIT -> "TRANSIT" to Palette.SUCCESS
+            AirPlayerState.ROUTE_PLANNING -> "ROUTE PLANNING" to Palette.PRIMARY
+            AirPlayerState.RECON -> "RECON" to Palette.HUD_SURFACE_ALT
+            AirPlayerState.IDLE -> "IDLE" to Palette.HUD_SURFACE_ALT
+            AirPlayerState.INTERCEPT -> "INTERCEPT" to Palette.HUD_SURFACE_ALT
+            AirPlayerState.STRIKE -> "STRIKE" to Palette.HUD_SURFACE_ALT
+            AirPlayerState.RTB -> "RTB" to Palette.HUD_SURFACE_ALT
+            AirPlayerState.DAMAGED_EMERGENCY -> "DAMAGED / EMERGENCY" to Palette.DANGER
         }
         mapStateText.text = label
         styleChip(mapStateText, color, 10f)
@@ -1212,9 +1224,9 @@ class CampaignActivity : AppCompatActivity() {
             }
         } else {
             nodeDescText.text = node.description
-            nodeStatsText.text = "Out of range — travel closer to interact."
+            nodeStatsText.text = "Out of range — move closer to interact."
             nodeStatsText.setTextColor(Color.parseColor(Palette.GOLD))
-            actionButton.text = "➤ Travel To"
+            actionButton.text = "➤ Transit To"
             actionButton.visibility = View.VISIBLE
             actionButton.applyPrimaryButtonStyle()
             actionButton.setOnClickListener {
@@ -1259,8 +1271,8 @@ class CampaignActivity : AppCompatActivity() {
             return
         }
 
-        nodeStatsText.text = "Out of range. Travel to this location."
-        actionButton.text = "Travel"
+        nodeStatsText.text = "Out of range. Move to this location."
+        actionButton.text = "Transit"
         actionButton.visibility = View.VISIBLE
         actionButton.applyPrimaryButtonStyle()
         actionButton.setOnClickListener { moveWarbandTo(node.mapX, node.mapY) }
@@ -1849,9 +1861,9 @@ class CampaignActivity : AppCompatActivity() {
         if (!phaseOnePocMode || suppressAutoPoiSelection) return
         val nearbyNode = campaignManager.findNearbyRevealedNode(poiInteractionDistance)
         travelHintText.text = if (mapView.isCenteredOnPlayer()) {
-            "RECON  ·  Tap POIs to inspect. Tap terrain to mark vector."
+            "RECON  ·  Tap POIs to inspect. Tap airspace to set flight path."
         } else {
-            "SURVEY MODE  ·  Drag to scout. Tap ⌖ to follow squadron."
+            "SURVEY MODE  ·  Drag to scout. Tap ⌖ to follow flight."
         }
         val filteredNearbyNode = nearbyNode?.takeUnless { it.isCleared && isTemporaryNode(it) }
         if (filteredNearbyNode == null) {

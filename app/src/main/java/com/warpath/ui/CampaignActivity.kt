@@ -162,7 +162,7 @@ class CampaignActivity : AppCompatActivity() {
             onFocusChanged = { focused ->
                 updateControlClusterVisibility()
                 if (!focused) {
-                    enqueueWorldAlert("Scouting View", AlertCategory.TRAVEL, AlertPriority.MINOR, "map_unfocused")
+                    enqueueWorldAlert("Recon View", AlertCategory.TRAVEL, AlertPriority.MINOR, "map_unfocused")
                 }
                 updateMapStateText()
             }
@@ -238,7 +238,7 @@ class CampaignActivity : AppCompatActivity() {
 
         recenterButton = Button(this).apply {
             text = "⌖"
-            contentDescription = "Recenter map on warband"
+            contentDescription = "Recenter map on squadron"
             textSize = if (compactUi) 9f else 10f
             typeface = UiTheme.TYPEFACE_HEADING
             isAllCaps = false
@@ -253,7 +253,7 @@ class CampaignActivity : AppCompatActivity() {
             applyHudButtonStyle(cornerRadius = 16f)
             setOnClickListener {
                 mapView.recenterOnPlayer()
-                enqueueWorldAlert("Warband Focus Restored", AlertCategory.TRAVEL, AlertPriority.MINOR, "camera_recentered")
+                enqueueWorldAlert("Squadron Radar Restored", AlertCategory.TRAVEL, AlertPriority.MINOR, "camera_recentered")
             }
         }
 
@@ -347,11 +347,11 @@ class CampaignActivity : AppCompatActivity() {
                         mapView.resumeMovement()
                     }
                     text = "⏸ Pause"
-                    enqueueWorldAlert("March Resumed", AlertCategory.TRAVEL, AlertPriority.MINOR, "movement_resumed")
+                    enqueueWorldAlert("Sortie Resumed", AlertCategory.TRAVEL, AlertPriority.MINOR, "movement_resumed")
                 } else {
                     mapView.pauseMovement()
                     text = "▶ Resume"
-                    enqueueWorldAlert("March Paused", AlertCategory.TRAVEL, AlertPriority.MINOR, "movement_paused")
+                    enqueueWorldAlert("Sortie Paused", AlertCategory.TRAVEL, AlertPriority.MINOR, "movement_paused")
                 }
                 updateMapStateText()
             }
@@ -392,7 +392,7 @@ class CampaignActivity : AppCompatActivity() {
             setTextColor(Color.parseColor(Palette.HUD_TEXT_MUTED))
             typeface = UiTheme.TYPEFACE_LABEL
             setPadding(dp(12), dp(8), dp(12), dp(8))
-            text = "◉ Scouting mode  ·  Drag to survey. Tap terrain to mark route."
+            text = "◉ RECON MODE  ·  Drag to survey. Tap terrain to mark vector."
             background = GradientDrawable().apply {
                 cornerRadius = dpF(16f)
                 setColor(Color.parseColor(Palette.HUD_SURFACE))
@@ -437,7 +437,7 @@ class CampaignActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
         }
         titleCol.addView(TextView(this).apply {
-            text = "WARPATH"
+            text = "AIR OPS"
             textSize = if (compactUi) 14f else 16f
             setTextColor(Color.parseColor(Palette.GOLD))
             typeface = UiTheme.TYPEFACE_TITLE
@@ -975,8 +975,8 @@ class CampaignActivity : AppCompatActivity() {
             moving && paused -> "PAUSED" to Palette.GOLD
             moving -> "TRAVELLING" to Palette.SUCCESS
             hasTarget -> "TARGET LOCKED" to Palette.PRIMARY
-            !centered -> "SCOUTING" to Palette.HUD_SURFACE_ALT
-            else -> "FOLLOW WARBAND" to Palette.HUD_SURFACE_ALT
+            !centered -> "RECON" to Palette.HUD_SURFACE_ALT
+            else -> "FOLLOW SQUADRON" to Palette.HUD_SURFACE_ALT
         }
         mapStateText.text = label
         styleChip(mapStateText, color, 10f)
@@ -1060,10 +1060,10 @@ class CampaignActivity : AppCompatActivity() {
 
     private fun updateHud() {
         val gs = campaignManager.gameState
-        suppliesText.text = "◈ ${gs.supplies}"
-        renownText.text = "★ ${gs.renown}"
+        suppliesText.text = "FUEL  ${gs.supplies}"
+        renownText.text = "RDNS  ${gs.renown}"
         val livingTroops = gs.warband.sumOf { it.count.coerceAtLeast(0) }
-        warbandText.text = "⚔ $livingTroops"
+        warbandText.text = "SQDN  $livingTroops"
     }
 
     private fun handleMapTap(normX: Float, normY: Float) {
@@ -1142,7 +1142,7 @@ class CampaignActivity : AppCompatActivity() {
 
         if (node.isCleared) {
             nodeDescText.text = node.description
-            nodeStatsText.text = "✓ Location cleared"
+            nodeStatsText.text = "✓ Objective cleared"
             nodeStatsText.setTextColor(Color.parseColor("#5FAF7A"))
             actionButton.visibility = View.GONE
 
@@ -1152,8 +1152,8 @@ class CampaignActivity : AppCompatActivity() {
                 NodeType.ENEMY_PATROL, NodeType.ELITE_CHALLENGE, NodeType.BOSS -> {
                     val enemyCount = node.enemySquads.sumOf { it.count }
                     nodeDescText.text = node.description
-                    nodeStatsText.text = "Enemies: $enemyCount  |  ⚔ +${node.suppliesReward}  ★ +${node.renownReward}"
-                    actionButton.text = if (node.type == NodeType.BOSS) "⚔ Storm the Stronghold!" else "⚔ Attack!"
+                    nodeStatsText.text = "Hostiles: $enemyCount  |  FUEL +${node.suppliesReward}  RDNS +${node.renownReward}"
+                    actionButton.text = if (node.type == NodeType.BOSS) "✈ Strike the Target!" else "✈ Engage!"
                     actionButton.applyPrimaryButtonStyle()
                     actionButton.visibility = View.VISIBLE
                     actionButton.setOnClickListener { animateAndThen(node) { engageBattle(node) } }
@@ -1161,8 +1161,8 @@ class CampaignActivity : AppCompatActivity() {
 
                 NodeType.RECOVERY_CAMP -> {
                     nodeDescText.text = node.description
-                    nodeStatsText.text = "Cost: 20 supplies  |  Heal 40% HP"
-                    actionButton.text = "♥ Rest & Heal"
+                    nodeStatsText.text = "Cost: 20 fuel  |  Repair 40% hull"
+                    actionButton.text = "⚙ Refuel & Repair"
                     actionButton.applyPrimaryButtonStyle()
                     actionButton.visibility = View.VISIBLE
                     actionButton.setOnClickListener { animateAndThen(node) { restAtCamp(node) } }
@@ -1170,8 +1170,8 @@ class CampaignActivity : AppCompatActivity() {
 
                 NodeType.RESOURCE_CACHE -> {
                     nodeDescText.text = node.description
-                    nodeStatsText.text = "Reward: ⚔ +${node.suppliesReward}  ★ +${node.renownReward}"
-                    actionButton.text = "◈ Collect Supplies"
+                    nodeStatsText.text = "Reward: FUEL +${node.suppliesReward}  RDNS +${node.renownReward}"
+                    actionButton.text = "⛽ Collect Fuel"
                     actionButton.applyPrimaryButtonStyle()
                     actionButton.visibility = View.VISIBLE
                     actionButton.setOnClickListener { animateAndThen(node) { collectResources(node) } }
@@ -1179,8 +1179,8 @@ class CampaignActivity : AppCompatActivity() {
 
                 NodeType.FACTION_OUTPOST -> {
                     nodeDescText.text = node.description
-                    nodeStatsText.text = "Recruit troops and resupply"
-                    actionButton.text = "⚑ Visit Outpost"
+                    nodeStatsText.text = "Scramble new flights and resupply"
+                    actionButton.text = "✈ Land at FOB"
                     actionButton.applyPrimaryButtonStyle()
                     actionButton.visibility = View.VISIBLE
                     actionButton.setOnClickListener { animateAndThen(node) { visitOutpost(node) } }
@@ -1188,8 +1188,8 @@ class CampaignActivity : AppCompatActivity() {
 
                 NodeType.TOWN -> {
                     nodeDescText.text = node.description
-                    nodeStatsText.text = "Cost: 35 supplies  |  Full heal + recruit support"
-                    actionButton.text = "♜ Rest in Town"
+                    nodeStatsText.text = "Cost: 35 fuel  |  Full repair + scramble support"
+                    actionButton.text = "⚙ Dock at Airbase"
                     actionButton.applyPrimaryButtonStyle()
                     actionButton.visibility = View.VISIBLE
                     actionButton.setOnClickListener { animateAndThen(node) { restAtSettlement(node, true) } }
@@ -1197,8 +1197,8 @@ class CampaignActivity : AppCompatActivity() {
 
                 NodeType.VILLAGE -> {
                     nodeDescText.text = node.description
-                    nodeStatsText.text = "Cost: 15 supplies  |  Heal 50%"
-                    actionButton.text = "⌂ Rest in Village"
+                    nodeStatsText.text = "Cost: 15 fuel  |  Repair 50%"
+                    actionButton.text = "⚙ Land at FOB"
                     actionButton.applyPrimaryButtonStyle()
                     actionButton.visibility = View.VISIBLE
                     actionButton.setOnClickListener { animateAndThen(node) { restAtSettlement(node, false) } }
@@ -1206,7 +1206,7 @@ class CampaignActivity : AppCompatActivity() {
 
                 NodeType.START -> {
                     nodeDescText.text = node.description
-                    nodeStatsText.text = "Your staging ground"
+                    nodeStatsText.text = "Your staging airbase"
                     actionButton.visibility = View.GONE
                 }
             }
@@ -1290,8 +1290,8 @@ class CampaignActivity : AppCompatActivity() {
         val reputation = node.renownReward.coerceAtLeast(0)
         threatRowText.text = styledStat("THREAT", threatText)
         strengthRowText.text = styledStat("STRENGTH", enemyStrength.coerceAtLeast(0).toString())
-        suppliesRowText.text = styledStat("SUPPLIES", if (supplies == 0) "—" else supplies.toString())
-        reputationRowText.text = styledStat("REPUTATION", if (reputation == 0) "—" else "+$reputation")
+        suppliesRowText.text = styledStat("FUEL", if (supplies == 0) "—" else supplies.toString())
+        reputationRowText.text = styledStat("RDNS", if (reputation == 0) "—" else "+$reputation")
     }
 
     private fun applyPanelType(type: PanelType) {
@@ -1320,19 +1320,19 @@ class CampaignActivity : AppCompatActivity() {
                 arrayOf("Attack", "Ambush", "Bribe", "Observe")
 
             NodeType.TOWN, NodeType.VILLAGE ->
-                arrayOf("Recruit", "Heal", "Trade Supplies", "Rest", "Gather Rumours")
+                arrayOf("Recruit", "Heal", "Trade Fuel", "Rest", "Gather Intel")
 
             NodeType.FACTION_OUTPOST ->
-                arrayOf("Recruit", "Trade Supplies", "Take Contract")
+                arrayOf("Recruit", "Trade Fuel", "Take Contract")
 
             NodeType.RESOURCE_CACHE ->
-                arrayOf("Investigate", "Spend Supplies", "Ignore")
+                arrayOf("Investigate", "Spend Fuel", "Ignore")
 
             NodeType.RECOVERY_CAMP ->
                 arrayOf("Heal", "Rest", "Ignore")
 
             NodeType.START ->
-                arrayOf("Reorganize Warband", "Scout Routes")
+                arrayOf("Reorganize Squadron", "Scout Routes")
         }
 
         showThemedSheet(node.name, "Choose an action", options) { label ->
@@ -1346,11 +1346,11 @@ class CampaignActivity : AppCompatActivity() {
                 scoutFromNode(node, revealHideoutIntel = node.type == NodeType.ELITE_CHALLENGE)
                 showOutcomeSheet(
                     title = "Victory at ${node.name}",
-                    summary = "Your warband forced the enemy line to break.",
+                    summary = "Your squadron broke the enemy formation.",
                     details = listOf(
-                        "+${node.suppliesReward.coerceAtLeast(4)} supplies secured",
-                        "Renown +${node.renownReward.coerceAtLeast(1)}",
-                        "Nearby route pressure reduced"
+                        "+${node.suppliesReward.coerceAtLeast(4)} fuel secured",
+                        "RDNS +${node.renownReward.coerceAtLeast(1)}",
+                        "Nearby airspace pressure reduced"
                     )
                 )
             }
@@ -1363,30 +1363,30 @@ class CampaignActivity : AppCompatActivity() {
                 handleBribe(node)
             }
 
-            action == "Ignore" || action == "Observe" || action == "Gather Rumours" -> {
-                enqueueWorldAlert("Route Maintained", AlertCategory.TRAVEL, AlertPriority.MINOR, "avoid_trouble")
+            action == "Ignore" || action == "Observe" || action == "Gather Intel" -> {
+                enqueueWorldAlert("Vector Maintained", AlertCategory.TRAVEL, AlertPriority.MINOR, "avoid_trouble")
             }
 
-            action == "Trade Supplies" -> {
+            action == "Trade Fuel" -> {
                 campaignManager.gameState.supplies += if (node.type == NodeType.TOWN || node.type == NodeType.VILLAGE) 20 else 14
                 scoutFromNode(node)
                 updateHud()
-                enqueueWorldAlert("Supplies Gained", AlertCategory.GAIN, AlertPriority.MINOR, "supplies_stocked")
+                enqueueWorldAlert("Fuel Acquired", AlertCategory.GAIN, AlertPriority.MINOR, "supplies_stocked")
             }
 
-            action == "Spend Supplies" -> {
+            action == "Spend Fuel" -> {
                 if (campaignManager.gameState.supplies < 8) {
-                    enqueueWorldAlert("Need 8 Supplies", AlertCategory.EVENT, AlertPriority.MINOR, "need_8_supplies")
+                    enqueueWorldAlert("Need 8 Fuel", AlertCategory.EVENT, AlertPriority.MINOR, "need_8_supplies")
                     return
                 }
                 campaignManager.gameState.supplies -= 8
                 campaignManager.gameState.renown += 3
                 scoutFromNode(node)
                 updateHud()
-                enqueueWorldAlert("Reputation Gained", AlertCategory.GAIN, AlertPriority.STANDARD, "expedition_renown")
+                enqueueWorldAlert("RDNS Earned", AlertCategory.GAIN, AlertPriority.STANDARD, "expedition_renown")
             }
 
-            action == "Recruit" || action == "Reorganize Warband" || action == "Take Contract" -> {
+            action == "Recruit" || action == "Reorganize Squadron" || action == "Take Contract" -> {
                 scoutFromNode(node)
                 startActivity(Intent(this, WarbandActivity::class.java).apply {
                     putExtra("can_recruit", true)
@@ -1396,7 +1396,7 @@ class CampaignActivity : AppCompatActivity() {
             action == "Rest" || action == "Heal" -> {
                 campaignManager.gameState.healWarband(if (node.type == NodeType.TOWN) 1.0f else 0.55f)
                 scoutFromNode(node)
-                enqueueWorldAlert("Warband Recovered", AlertCategory.GAIN, AlertPriority.STANDARD, "warband_recovered")
+                enqueueWorldAlert("Squadron Repaired", AlertCategory.GAIN, AlertPriority.STANDARD, "warband_recovered")
             }
 
             action == "Investigate" || action == "Scout Routes" -> {
@@ -1411,7 +1411,7 @@ class CampaignActivity : AppCompatActivity() {
             roll < 0.55f -> {
                 showOutcomeSheet(
                     title = "Narrow Escape",
-                    summary = "Your scouts found a gap and the warband disengaged.",
+                    summary = "Your recon found a gap and the squadron disengaged.",
                     details = listOf("No losses", "Enemy contact broken")
                 )
                 return
@@ -1422,8 +1422,8 @@ class CampaignActivity : AppCompatActivity() {
                 updateHud()
                 showOutcomeSheet(
                     title = "Retreat Under Pressure",
-                    summary = "You escaped but had to abandon part of the pack train.",
-                    details = listOf("-$loss supplies", "Enemy remains active")
+                    summary = "You broke contact but lost some fuel in the retreat.",
+                    details = listOf("-$loss fuel", "Enemy remains active")
                 )
             }
             else -> {
@@ -1442,7 +1442,7 @@ class CampaignActivity : AppCompatActivity() {
         val cost = getBribeCost(node)
         val gs = campaignManager.gameState
         if (gs.supplies < cost) {
-            enqueueWorldAlert("Need $cost Supplies", AlertCategory.EVENT, AlertPriority.MINOR, "bribe_need_$cost")
+            enqueueWorldAlert("Need $cost Fuel", AlertCategory.EVENT, AlertPriority.MINOR, "bribe_need_$cost")
             return
         }
         gs.supplies -= cost
@@ -1451,7 +1451,7 @@ class CampaignActivity : AppCompatActivity() {
         showOutcomeSheet(
             title = "Negotiated Passage",
             summary = "The opposing party accepted payment and stood down.",
-            details = listOf("-$cost supplies", "Renown -2")
+            details = listOf("-$cost fuel", "RDNS -2")
         )
     }
 
@@ -1692,9 +1692,9 @@ class CampaignActivity : AppCompatActivity() {
         activeTravelStartY = startY
         val routeLabel = mapView.currentPreviewRouteTypeLabel()
         when (routeLabel) {
-            "THREATENED ROUTE" -> enqueueWorldAlert("Intercept Risk Active", AlertCategory.DANGER, AlertPriority.HIGH, "route_risky")
-            "OFF-ROAD ROUTE" -> enqueueWorldAlert("Off-road march speed reduced", AlertCategory.TRAVEL, AlertPriority.STANDARD, "route_offroad")
-            else -> enqueueWorldAlert("Road route secured", AlertCategory.TRAVEL, AlertPriority.MINOR, "route_road")
+            "INTERCEPT RISK VECTOR" -> enqueueWorldAlert("Intercept Risk Active", AlertCategory.DANGER, AlertPriority.HIGH, "route_risky")
+            "CROSS-TERRAIN ROUTE" -> enqueueWorldAlert("Cross-terrain flight, speed reduced", AlertCategory.TRAVEL, AlertPriority.STANDARD, "route_offroad")
+            else -> enqueueWorldAlert("Clear flight path", AlertCategory.TRAVEL, AlertPriority.MINOR, "route_road")
         }
         showMovementPanel()
         updateMapStateText()
@@ -1849,9 +1849,9 @@ class CampaignActivity : AppCompatActivity() {
         if (!phaseOnePocMode || suppressAutoPoiSelection) return
         val nearbyNode = campaignManager.findNearbyRevealedNode(poiInteractionDistance)
         travelHintText.text = if (mapView.isCenteredOnPlayer()) {
-            "SCOUTING  ·  Tap POIs to inspect. Tap terrain to mark travel."
+            "RECON  ·  Tap POIs to inspect. Tap terrain to mark vector."
         } else {
-            "SURVEY MODE  ·  Drag to scout. Tap ⌖ to follow warband."
+            "SURVEY MODE  ·  Drag to scout. Tap ⌖ to follow squadron."
         }
         val filteredNearbyNode = nearbyNode?.takeUnless { it.isCleared && isTemporaryNode(it) }
         if (filteredNearbyNode == null) {
@@ -1902,7 +1902,7 @@ class CampaignActivity : AppCompatActivity() {
         actionButton.text = "  Traveling…"
         actionButton.isEnabled = false
         actionButton.alpha = 0.5f
-        statusText.text = "▶ Marching to ${targetNode.name}…"
+        statusText.text = "▶ Vectoring to ${targetNode.name}…"
         statusText.visibility = View.VISIBLE
 
         mapView.animatePlayerTo(targetNode, onComplete = {
@@ -1932,9 +1932,9 @@ class CampaignActivity : AppCompatActivity() {
             NodeType.ENEMY_PATROL, NodeType.ELITE_CHALLENGE, NodeType.BOSS ->
                 WorldAlert("Enemy Sighted", AlertCategory.DANGER, AlertPriority.HIGH, "pre_event_enemy")
             NodeType.TOWN, NodeType.VILLAGE ->
-                WorldAlert("Settlement Reached", AlertCategory.TRAVEL, AlertPriority.STANDARD, "pre_event_settlement")
+                WorldAlert("Airbase Reached", AlertCategory.TRAVEL, AlertPriority.STANDARD, "pre_event_settlement")
             NodeType.RESOURCE_CACHE ->
-                WorldAlert("Ruins Found", AlertCategory.DISCOVERY, AlertPriority.STANDARD, "pre_event_ruins")
+                WorldAlert("Fuel Cache Located", AlertCategory.DISCOVERY, AlertPriority.STANDARD, "pre_event_ruins")
             else ->
                 WorldAlert("Ambush Detected", AlertCategory.EVENT, AlertPriority.HIGH, "pre_event_ambush")
         }
@@ -1954,7 +1954,7 @@ class CampaignActivity : AppCompatActivity() {
     private fun restAtCamp(node: CampaignNode) {
         val gs = campaignManager.gameState
         if (gs.supplies < 20) {
-            enqueueWorldAlert("Need 20 Supplies", AlertCategory.EVENT, AlertPriority.MINOR, "rest_need_20")
+            enqueueWorldAlert("Need 20 Fuel", AlertCategory.EVENT, AlertPriority.MINOR, "rest_need_20")
             infoPanel.visibility = View.GONE
             return
         }
@@ -1963,7 +1963,7 @@ class CampaignActivity : AppCompatActivity() {
         mapView.currentNodeId = campaignManager.gameState.currentNodeId
         mapView.invalidate()
         updateHud()
-        enqueueWorldAlert("Warband Healed", AlertCategory.GAIN, AlertPriority.STANDARD, "warband_healed")
+        enqueueWorldAlert("Squadron Repaired", AlertCategory.GAIN, AlertPriority.STANDARD, "warband_healed")
         infoPanel.visibility = View.GONE
         mapView.selectedNodeId = null
     }
@@ -1974,7 +1974,7 @@ class CampaignActivity : AppCompatActivity() {
         mapView.currentNodeId = campaignManager.gameState.currentNodeId
         mapView.invalidate()
         updateHud()
-        enqueueWorldAlert("Supplies +${node.suppliesReward}", AlertCategory.GAIN, AlertPriority.STANDARD, "supplies_collected_${node.id}")
+        enqueueWorldAlert("Fuel +${node.suppliesReward}", AlertCategory.GAIN, AlertPriority.STANDARD, "supplies_collected_${node.id}")
         infoPanel.visibility = View.GONE
         mapView.selectedNodeId = null
     }
@@ -1994,7 +1994,7 @@ class CampaignActivity : AppCompatActivity() {
         val cost = if (town) 35 else 15
         val heal = if (town) 1.0f else 0.5f
         if (gs.supplies < cost) {
-            enqueueWorldAlert("Need $cost Supplies", AlertCategory.EVENT, AlertPriority.MINOR, "rest_need_$cost")
+            enqueueWorldAlert("Need $cost Fuel", AlertCategory.EVENT, AlertPriority.MINOR, "rest_need_$cost")
             infoPanel.visibility = View.GONE
             return
         }
@@ -2006,7 +2006,7 @@ class CampaignActivity : AppCompatActivity() {
         mapView.setPlayerPosition(campaignManager.gameState.playerMapX, campaignManager.gameState.playerMapY)
         updateHud()
         enqueueWorldAlert(
-            if (town) "Warband Restored" else "Warband Partially Restored",
+            if (town) "Squadron Restored" else "Squadron Partially Restored",
             AlertCategory.GAIN,
             AlertPriority.STANDARD,
             if (town) "town_restore" else "village_restore"

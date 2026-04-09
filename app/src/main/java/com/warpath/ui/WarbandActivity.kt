@@ -54,7 +54,7 @@ class WarbandActivity : AppCompatActivity() {
         }
         titleRow.addView(backArrow)
         titleRow.addView(TextView(this).apply {
-            text = "YOUR WARBAND"
+            text = "YOUR SQUADRON"
             textSize = UiTheme.TEXT_SECTION
             setTextColor(Color.parseColor(UiTheme.GOLD))
             typeface = UiTheme.TYPEFACE_TITLE
@@ -105,7 +105,7 @@ class WarbandActivity : AppCompatActivity() {
             })
 
             recruitSection.addView(TextView(this).apply {
-                text = "RECRUIT"
+                text = "SCRAMBLE"
                 textSize = UiTheme.TEXT_SECONDARY
                 setTextColor(Color.parseColor(UiTheme.GOLD))
                 typeface = UiTheme.TYPEFACE_LABEL
@@ -144,7 +144,7 @@ class WarbandActivity : AppCompatActivity() {
                     setTextColor(Color.parseColor(UiTheme.TEXT_PRIMARY))
                 }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
                 row.addView(TextView(this).apply {
-                    text = "◈ $cost"
+                    text = "$cost fuel"
                     textSize = UiTheme.TEXT_SECONDARY
                     typeface = UiTheme.TYPEFACE_LABEL
                     setTextColor(Color.parseColor(UiTheme.WARNING))
@@ -188,12 +188,12 @@ class WarbandActivity : AppCompatActivity() {
 
     private fun attemptRecruit(unitType: UnitType, count: Int, cost: Int) {
         if (CampaignActivity.campaignManager.recruitUnit(unitType, count, cost)) {
-            showFeedback("Recruited ${unitType.name}")
+            showFeedback("Scrambled ${unitType.name}")
             refreshUI()
         } else if (gameState.supplies < cost) {
-            showFeedback("Need $cost supplies")
+            showFeedback("Need $cost fuel")
         } else {
-            showFeedback("Warband is full")
+            showFeedback("Squadron is full")
         }
     }
 
@@ -207,7 +207,7 @@ class WarbandActivity : AppCompatActivity() {
             })
             val slotCost = gameState.maxWarbandSlots * 40
             val upgradeBtn = Button(this).apply {
-                text = "Expand Warband (+1 slot) · ◈ $slotCost"
+                text = "Expand Squadron (+1 slot) · $slotCost fuel"
                 applyPrimaryStyle()
                 textSize = UiTheme.TEXT_BODY_SM
                 minHeight = dp(UiTheme.BUTTON_HEIGHT)
@@ -216,11 +216,11 @@ class WarbandActivity : AppCompatActivity() {
                     if (gameState.supplies >= slotCost) {
                         gameState.supplies -= slotCost
                         gameState.maxWarbandSlots++
-                        showFeedback("Warband expanded")
+                        showFeedback("Squadron expanded")
                         refreshUI()
                         rebuildUpgradeSection()
                     } else {
-                        showFeedback("Need $slotCost supplies")
+                        showFeedback("Need $slotCost fuel")
                     }
                 }
             }
@@ -265,13 +265,13 @@ class WarbandActivity : AppCompatActivity() {
             elevation = dpF(UiTheme.SHEET_ELEVATION)
         }
         panel.addView(TextView(this).apply {
-            text = "Dismiss $unitName?"
+            text = "Stand Down $unitName?"
             textSize = UiTheme.TEXT_CARD_TITLE
             typeface = UiTheme.TYPEFACE_HEADING
             setTextColor(Color.parseColor(UiTheme.TEXT_PRIMARY))
         })
         panel.addView(TextView(this).apply {
-            text = "This squad will be permanently removed from your warband."
+            text = "This flight will be permanently stood down from your squadron."
             textSize = UiTheme.TEXT_SECONDARY
             typeface = UiTheme.TYPEFACE_BODY
             setTextColor(Color.parseColor(UiTheme.TEXT_MUTED))
@@ -292,7 +292,7 @@ class WarbandActivity : AppCompatActivity() {
             marginEnd = dp(UiTheme.SPACE_2)
         })
         btnRow.addView(Button(this).apply {
-            text = "Dismiss"
+            text = "Stand Down"
             applyPrimaryStyle(UiTheme.HOSTILE)
             textSize = UiTheme.TEXT_BUTTON_SM
             minHeight = dp(UiTheme.BUTTON_HEIGHT_SM)
@@ -316,8 +316,8 @@ class WarbandActivity : AppCompatActivity() {
     }
 
     private fun refreshUI() {
-        suppliesText.text = "◈ ${gameState.supplies}    ★ ${gameState.renown}"
-        slotsText.text = "SQUADS  ${gameState.warband.size}/${gameState.maxWarbandSlots}"
+        suppliesText.text = "FUEL  ${gameState.supplies}    RDNS  ${gameState.renown}"
+        slotsText.text = "FLIGHTS  ${gameState.warband.size}/${gameState.maxWarbandSlots}"
         squadList.removeAllViews()
 
         for (squad in gameState.warband) {
@@ -377,7 +377,7 @@ class WarbandActivity : AppCompatActivity() {
                 else -> UiTheme.HOSTILE
             }
             card.addView(TextView(this).apply {
-                text = "HP ${"%.0f".format(squad.currentHpPercent * 100)}%  ·  Morale ${"%.0f".format(squad.morale)}%"
+                text = "HULL ${"%.0f".format(squad.currentHpPercent * 100)}%  ·  Confidence ${"%.0f".format(squad.morale)}%"
                 textSize = UiTheme.TEXT_SECONDARY
                 setTextColor(Color.parseColor(hpColor))
                 typeface = UiTheme.TYPEFACE_LABEL
@@ -396,7 +396,7 @@ class WarbandActivity : AppCompatActivity() {
 
             // Dismiss action
             card.addView(TextView(this).apply {
-                text = "Dismiss"
+                text = "Stand Down"
                 textSize = UiTheme.TEXT_SECONDARY
                 setTextColor(Color.parseColor(UiTheme.HOSTILE_MUTED))
                 typeface = UiTheme.TYPEFACE_LABEL
@@ -432,7 +432,7 @@ class WarbandActivity : AppCompatActivity() {
                 }
             }, LinearLayout.LayoutParams(dp(8), dp(8)).apply { marginEnd = dp(UiTheme.SPACE_2) })
             emptyCard.addView(TextView(this).apply {
-                text = "Available Slot"
+                text = "Open Slot"
                 textSize = UiTheme.TEXT_BODY_SM
                 setTextColor(Color.parseColor(UiTheme.TEXT_DISABLED))
                 typeface = UiTheme.TYPEFACE_BODY

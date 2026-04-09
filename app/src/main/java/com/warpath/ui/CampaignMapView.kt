@@ -112,15 +112,15 @@ class CampaignMapView @JvmOverloads constructor(
     private var pulseValue: Float = 0f
     private var ambientValue: Float = 0f
 
-    private val bgPaint = Paint().apply { color = Color.parseColor("#0E1726") }
+    private val bgPaint = Paint().apply { color = Color.parseColor("#080E18") }
     private object Palette {
-        const val MATTE_BASE = "#3E4C41"
+        const val MATTE_BASE = "#0D1820"
         const val STEPPE = UiTheme.BIOME_PLAINS
         const val DRY_GROUND = UiTheme.BIOME_DESERT
         const val SETTLEMENT_SOIL = UiTheme.BIOME_SETTLEMENT
         const val FOREST = UiTheme.BIOME_FOREST
         const val HILLS = UiTheme.BIOME_HILLS
-        const val ROAD = "#9F8660"
+        const val ROAD = "#1A6060"
         const val WATER = UiTheme.BIOME_WATER
         const val HUD_TEXT = UiTheme.TEXT_PRIMARY
         const val HUD_LABEL_BG = "#CC16263A"
@@ -140,9 +140,9 @@ class CampaignMapView @JvmOverloads constructor(
     }
     private val contourPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        color = Color.parseColor("#707985")
+        color = Color.parseColor("#1E5A6A")
         strokeWidth = 1.8f
-        alpha = 65
+        alpha = 90
     }
     private val landShadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
@@ -169,7 +169,7 @@ class CampaignMapView @JvmOverloads constructor(
         color = Color.parseColor("#22162234")
     }
     private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#4E6687")
+        color = Color.parseColor("#1E4A5A")
         strokeWidth = 2f
         style = Paint.Style.STROKE
     }
@@ -286,7 +286,7 @@ class CampaignMapView @JvmOverloads constructor(
     private val nodeRadius = 34f
     private val mapLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textSize = 34f
-        color = Color.parseColor("#B8C2D1")
+        color = Color.parseColor("#2A6878")
         textAlign = Paint.Align.CENTER
         typeface = UiTheme.TYPEFACE_TITLE
         letterSpacing = 0.12f
@@ -546,16 +546,16 @@ class CampaignMapView @JvmOverloads constructor(
 
     fun currentPreviewRouteTypeLabel(): String = when (activeRouteType) {
         RouteType.ROAD -> when (activeRouteRisk) {
-            RouteRisk.INTERCEPT -> "INTERCEPT RISK ROUTE"
-            RouteRisk.THREATENED -> "THREATENED ROAD"
-            RouteRisk.SAFE -> "ROAD ROUTE"
+            RouteRisk.INTERCEPT -> "INTERCEPT RISK VECTOR"
+            RouteRisk.THREATENED -> "THREATENED FLIGHT PATH"
+            RouteRisk.SAFE -> "CLEAR FLIGHT PATH"
         }
         RouteType.OFF_ROAD -> when (activeRouteRisk) {
-            RouteRisk.INTERCEPT -> "INTERCEPT RISK ROUTE"
-            RouteRisk.THREATENED -> "THREATENED OFF-ROAD"
-            RouteRisk.SAFE -> "OFF-ROAD ROUTE"
+            RouteRisk.INTERCEPT -> "INTERCEPT RISK VECTOR"
+            RouteRisk.THREATENED -> "THREATENED ROUTE"
+            RouteRisk.SAFE -> "CROSS-TERRAIN ROUTE"
         }
-        RouteType.RISKY -> "INTERCEPT RISK ROUTE"
+        RouteType.RISKY -> "INTERCEPT RISK VECTOR"
     }
 
     fun cancelMovement() {
@@ -1258,10 +1258,10 @@ class CampaignMapView @JvmOverloads constructor(
         val zoom = zoomState()
         if (zoom == ZoomState.CLOSE) return
         mapLabelPaint.alpha = if (zoom == ZoomState.FAR) 190 else 110
-        canvas.drawText("ASHEN DUNES", screenX(0.77f), screenY(0.16f), mapLabelPaint)
-        canvas.drawText("IRON HILLS", screenX(0.23f), screenY(0.10f), mapLabelPaint)
-        canvas.drawText("SABLE WOODS", screenX(0.58f), screenY(0.80f), mapLabelPaint)
-        canvas.drawText("BROKEN PLAINS", screenX(0.22f), screenY(0.86f), mapLabelPaint)
+        canvas.drawText("SECTOR NOVEMBER", screenX(0.77f), screenY(0.16f), mapLabelPaint)
+        canvas.drawText("SECTOR ALPHA", screenX(0.23f), screenY(0.10f), mapLabelPaint)
+        canvas.drawText("SECTOR DELTA", screenX(0.58f), screenY(0.80f), mapLabelPaint)
+        canvas.drawText("SECTOR GOLF", screenX(0.22f), screenY(0.86f), mapLabelPaint)
         mapLabelPaint.alpha = 255
     }
 

@@ -56,15 +56,15 @@ class HowToPlayActivity : AppCompatActivity() {
         addSection(
             layout,
             "Campaign Map",
-            "Points of interest are revealed through fog-of-war as your warband passes nearby. " +
-                "Scout by dragging the map freely, then tap the recenter button to lock camera focus back on your warband."
+            "Points of interest are revealed through fog-of-war as your squadron passes nearby. " +
+                "Scout by dragging the map freely, then tap the recenter button to lock camera focus back on your squadron."
         )
 
         addSection(
             layout,
             "Movement",
-            "Tap the map to mark a route and tap again to travel. " +
-                "Routes along roads are faster and safer. Off-road travel is slower and riskier near hostile territory. " +
+            "Tap the map to mark a flight vector and tap again to travel. " +
+                "Clear flight paths are faster and safer. Cross-terrain routes are slower and riskier near hostile airspace. " +
                 "Drag the map to free-look without moving."
         )
 
@@ -72,26 +72,26 @@ class HowToPlayActivity : AppCompatActivity() {
             layout,
             "Interactions",
             "When near a discovered point of interest, tap it to open context actions.\n\n" +
-                "Enemy camps: Attack, Ambush, or Bribe.\n" +
-                "Settlements: Recruit, Heal, Trade, Rest.\n" +
-                "Outposts: Recruit, Trade, Take Contracts.\n" +
-                "Caches and Camps: Situational utility actions.\n\n" +
-                "Elite engagements can reveal hidden intel about stronghold locations."
+                "Threat contacts: Engage, Ambush, or Bribe.\n" +
+                "Airbases: Scramble, Repair, Trade Fuel, Rest.\n" +
+                "FOBs: Scramble, Trade Fuel, Take Contracts.\n" +
+                "Fuel Caches and Waypoints: Situational utility actions.\n\n" +
+                "Elite engagements can reveal hidden intel about HVT locations."
         )
 
         addSection(
             layout,
             "Battle",
-            "Issue commands to your squads during engagements. " +
-                "Focus targets, push forward, hold ground, rally retreating units, or order a tactical retreat. " +
+            "Issue commands to your flights during engagements. " +
+                "Lock targets, engage forward, hold pattern, reform retreating flights, or order a tactical disengage. " +
                 "Each command has a cooldown between uses."
         )
 
         addSection(
             layout,
-            "Warband",
-            "Manage your squads from the warband screen. Recruit troops at towns and outposts. " +
-                "Expand your warband slots to field more squads simultaneously."
+            "Squadron",
+            "Manage your flights from the squadron screen. Scramble new flights at airbases and FOBs. " +
+                "Expand your squadron slots to field more flights simultaneously."
         )
 
         // Bottom spacer for scroll comfort

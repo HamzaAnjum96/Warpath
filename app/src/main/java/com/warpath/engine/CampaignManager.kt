@@ -416,11 +416,11 @@ class CampaignManager {
         val boss = campaignMap.find { it.type == NodeType.BOSS }
         val won = boss?.isCleared == true
         return if (won) {
-            "VICTORY! Region conquered!\nBattles: ${gameState.battlesWon}W/${gameState.battlesLost}L\n" +
-            "Nodes Cleared: ${gameState.nodesCleared}\nRenown Earned: ${gameState.renown}"
+            "MISSION COMPLETE! Airspace secured!\nEngagements: ${gameState.battlesWon}W/${gameState.battlesLost}L\n" +
+            "Objectives Cleared: ${gameState.nodesCleared}\nRDNS Earned: ${gameState.renown}"
         } else {
-            "DEFEAT. Your warband has fallen.\nBattles: ${gameState.battlesWon}W/${gameState.battlesLost}L\n" +
-            "Nodes Cleared: ${gameState.nodesCleared}\nRenown Earned: ${gameState.renown}"
+            "MISSION FAILED. Squadron destroyed.\nEngagements: ${gameState.battlesWon}W/${gameState.battlesLost}L\n" +
+            "Objectives Cleared: ${gameState.nodesCleared}\nRDNS Earned: ${gameState.renown}"
         }
     }
 
@@ -429,28 +429,28 @@ class CampaignManager {
 
         // Start node
         nodes.add(CampaignNode(
-            id = "start", type = NodeType.START, name = "War Camp",
-            description = "Your warband's staging ground.",
+            id = "start", type = NodeType.START, name = "Homebase Alpha",
+            description = "Your squadron's staging airbase.",
             mapX = 0.1f, mapY = 0.5f, isCleared = true, isRevealed = true
         ))
 
         // Layer 1 (3 nodes)
         nodes.add(CampaignNode(
-            id = "patrol_1", type = NodeType.ENEMY_PATROL, name = "Bandit Roadblock",
-            description = "A group of bandits blocking the road.",
+            id = "patrol_1", type = NodeType.ENEMY_PATROL, name = "Threat Contact Foxtrot",
+            description = "Hostile aircraft intercepted near the northern corridor.",
             mapX = 0.25f, mapY = 0.2f,
             enemySquads = listOf(EnemyTemplate("bandit_thug", 16), EnemyTemplate("bandit_archer", 10)),
             suppliesReward = 40, renownReward = 12
         ))
         nodes.add(CampaignNode(
-            id = "resource_1", type = NodeType.RESOURCE_CACHE, name = "Abandoned Supply Wagon",
-            description = "An unguarded supply wagon on the road.",
+            id = "resource_1", type = NodeType.RESOURCE_CACHE, name = "Fuel Cache Delta",
+            description = "Abandoned fuel depot. Unguarded and ready to collect.",
             mapX = 0.25f, mapY = 0.5f,
             suppliesReward = 50, renownReward = 5
         ))
         nodes.add(CampaignNode(
-            id = "patrol_2", type = NodeType.ENEMY_PATROL, name = "Wolf Den",
-            description = "Wild wolves have made a den near the path.",
+            id = "patrol_2", type = NodeType.ENEMY_PATROL, name = "Threat Zone India",
+            description = "Enemy drone wing operating in this sector.",
             mapX = 0.25f, mapY = 0.8f,
             enemySquads = listOf(EnemyTemplate("wolf_pack", 14), EnemyTemplate("wolf_pack", 10)),
             suppliesReward = 20, renownReward = 18
@@ -458,20 +458,20 @@ class CampaignManager {
 
         // Layer 2 (3 nodes)
         nodes.add(CampaignNode(
-            id = "camp_1", type = NodeType.RECOVERY_CAMP, name = "Roadside Inn",
-            description = "A safe place to rest and recover.",
+            id = "camp_1", type = NodeType.RECOVERY_CAMP, name = "Waypoint Bravo",
+            description = "Safe waypoint. A good place to regroup and refuel.",
             mapX = 0.45f, mapY = 0.15f,
             suppliesReward = 0, renownReward = 0
         ))
         nodes.add(CampaignNode(
-            id = "outpost_1", type = NodeType.FACTION_OUTPOST, name = "Merchant's Guild Post",
-            description = "A trading outpost. Recruit new troops here.",
+            id = "outpost_1", type = NodeType.FACTION_OUTPOST, name = "FOB Echo",
+            description = "Forward Operating Base. Scramble new flights and resupply here.",
             mapX = 0.45f, mapY = 0.5f,
             suppliesReward = 20, renownReward = 10
         ))
         nodes.add(CampaignNode(
-            id = "patrol_3", type = NodeType.ENEMY_PATROL, name = "Militia Checkpoint",
-            description = "Local militia demands a toll... or a fight.",
+            id = "patrol_3", type = NodeType.ENEMY_PATROL, name = "Threat Contact Charlie",
+            description = "Hostile patrol demanding clearance — or combat.",
             mapX = 0.45f, mapY = 0.85f,
             enemySquads = listOf(
                 EnemyTemplate("militia_guard", 18),
@@ -482,23 +482,23 @@ class CampaignManager {
         ))
 
         nodes.add(CampaignNode(
-            id = "town_1", type = NodeType.TOWN, name = "Stonewatch Town",
-            description = "A fortified town with skilled healers and recruiters.",
+            id = "town_1", type = NodeType.TOWN, name = "Airbase Golf",
+            description = "Major allied airbase with full support, repairs, and reinforcements.",
             mapX = 0.58f, mapY = 0.5f,
             suppliesReward = 0, renownReward = 0
         ))
 
         nodes.add(CampaignNode(
-            id = "village_1", type = NodeType.VILLAGE, name = "Elderfield Village",
-            description = "A quiet village that can patch your warband for fewer supplies.",
+            id = "village_1", type = NodeType.VILLAGE, name = "Airbase Lima",
+            description = "Smaller forward airbase. Can patch your squadron for less fuel.",
             mapX = 0.72f, mapY = 0.15f,
             suppliesReward = 0, renownReward = 0
         ))
 
         // Layer 3 (2 nodes)
         nodes.add(CampaignNode(
-            id = "elite_1", type = NodeType.ELITE_CHALLENGE, name = "Retainer Ambush",
-            description = "Elite soldiers lie in wait. High risk, high reward.",
+            id = "elite_1", type = NodeType.ELITE_CHALLENGE, name = "Elite Wing Kilo",
+            description = "Elite enemy fighter wing lying in wait. High risk, high reward.",
             mapX = 0.65f, mapY = 0.3f,
             enemySquads = listOf(
                 EnemyTemplate("elite_retainer", 16),
@@ -508,16 +508,16 @@ class CampaignManager {
             suppliesReward = 70, renownReward = 35
         ))
         nodes.add(CampaignNode(
-            id = "camp_2", type = NodeType.RECOVERY_CAMP, name = "Forest Clearing",
-            description = "A peaceful clearing to tend wounds.",
+            id = "camp_2", type = NodeType.RECOVERY_CAMP, name = "Waypoint Hotel",
+            description = "Quiet airspace. A safe zone to regroup before the final push.",
             mapX = 0.65f, mapY = 0.7f,
             suppliesReward = 0, renownReward = 0
         ))
 
         // Layer 4 (Boss)
         nodes.add(CampaignNode(
-            id = "boss_1", type = NodeType.BOSS, name = "Warlord's Stronghold",
-            description = "The regional warlord awaits. Defeat him to conquer the region.",
+            id = "boss_1", type = NodeType.BOSS, name = "HVT November",
+            description = "Enemy air command. Destroy it to secure the region.",
             mapX = 0.85f, mapY = 0.5f,
             enemySquads = listOf(
                 EnemyTemplate("elite_retainer", 22),

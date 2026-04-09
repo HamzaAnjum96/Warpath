@@ -80,7 +80,7 @@ class MainMenuActivity : AppCompatActivity() {
         root.addView(title, lp(bottom = UiTheme.SPACE_2))
 
         val tagline = TextView(this).apply {
-            text = "LEAD YOUR WARBAND"
+            text = "LEAD YOUR SQUADRON"
             textSize = UiTheme.TEXT_SECONDARY
             setTextColor(Color.parseColor(UiTheme.TEXT_SUBTLE))
             typeface = UiTheme.TYPEFACE_LABEL
@@ -99,7 +99,7 @@ class MainMenuActivity : AppCompatActivity() {
         root.addView(version, lp(bottom = UiTheme.SPACE_7))
 
         // Buttons
-        val playBtn = buildMenuBtn("Start Campaign", UiTheme.PRIMARY, primary = true)
+        val playBtn = buildMenuBtn("Launch Campaign", UiTheme.PRIMARY, primary = true)
         playBtn.setOnClickListener {
             startActivity(
                 Intent(this, CampaignActivity::class.java).apply {
@@ -132,7 +132,7 @@ class MainMenuActivity : AppCompatActivity() {
         })
 
         val footer = TextView(this).apply {
-            text = "STRATEGY · TACTICS · SURVIVAL"
+            text = "INTERCEPT · STRIKE · DOMINATE"
             textSize = UiTheme.TEXT_MICRO
             setTextColor(Color.parseColor(UiTheme.TEXT_DISABLED))
             typeface = UiTheme.TYPEFACE_LABEL

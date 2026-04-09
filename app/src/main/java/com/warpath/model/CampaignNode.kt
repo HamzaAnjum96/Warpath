@@ -1,15 +1,15 @@
 package com.warpath.model
 
 enum class NodeType(val displayName: String, val color: Long) {
-    ENEMY_PATROL("Enemy Patrol", 0xFFCC3333),
-    RESOURCE_CACHE("Resource Cache", 0xFF33AA33),
-    ELITE_CHALLENGE("Elite Challenge", 0xFFDD2222),
-    RECOVERY_CAMP("Recovery Camp", 0xFF3388CC),
-    FACTION_OUTPOST("Faction Outpost", 0xFFCC8833),
-    TOWN("Town", 0xFF8A4DCC),
-    VILLAGE("Village", 0xFF7A8A33),
-    BOSS("Regional Boss", 0xFFAA0000),
-    START("Start", 0xFF4488AA)
+    ENEMY_PATROL("Threat Contact", 0xFFCC3333),
+    RESOURCE_CACHE("Fuel Cache", 0xFF33AA33),
+    ELITE_CHALLENGE("Elite Wing", 0xFFDD2222),
+    RECOVERY_CAMP("Waypoint", 0xFF3388CC),
+    FACTION_OUTPOST("Forward Operating Base", 0xFFCC8833),
+    TOWN("Airbase", 0xFF8A4DCC),
+    VILLAGE("FOB", 0xFF7A8A33),
+    BOSS("HVT", 0xFFAA0000),
+    START("Home Base", 0xFF4488AA)
 }
 
 data class CampaignNode(

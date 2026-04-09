@@ -59,7 +59,7 @@ class BattleResultActivity : AppCompatActivity() {
 
         // Outcome header
         layout.addView(TextView(this).apply {
-            text = if (playerWon) "BATTLE REPORT" else "BATTLE REPORT"
+            text = "MISSION REPORT"
             textSize = UiTheme.TEXT_CHIP
             setTextColor(Color.parseColor(UiTheme.TEXT_SUBTLE))
             typeface = UiTheme.TYPEFACE_LABEL
@@ -102,17 +102,17 @@ class BattleResultActivity : AppCompatActivity() {
         }
 
         val rows = mutableListOf<Triple<String, String, Int>>()
-        rows.add(Triple("Enemies Defeated", "$enemiesKilled / $enemiesStarted", Color.parseColor(UiTheme.TEXT_PRIMARY)))
-        rows.add(Triple("Morale at End", "$moraleEnd%", Color.parseColor(UiTheme.POSITIVE)))
+        rows.add(Triple("Hostiles Destroyed", "$enemiesKilled / $enemiesStarted", Color.parseColor(UiTheme.TEXT_PRIMARY)))
+        rows.add(Triple("Pilot Confidence", "$moraleEnd%", Color.parseColor(UiTheme.POSITIVE)))
         casualtiesRows.forEach { row ->
-            rows.add(Triple("Casualties", row, Color.parseColor(UiTheme.WARNING)))
+            rows.add(Triple("Aircraft Lost", row, Color.parseColor(UiTheme.WARNING)))
         }
         if (playerWon) {
-            rows.add(Triple("Supplies", "+$suppliesReward", Color.parseColor(UiTheme.POSITIVE)))
-            rows.add(Triple("Renown", "+$renownReward", Color.parseColor(UiTheme.WARNING)))
+            rows.add(Triple("Fuel", "+$suppliesReward", Color.parseColor(UiTheme.POSITIVE)))
+            rows.add(Triple("RDNS", "+$renownReward", Color.parseColor(UiTheme.WARNING)))
         } else {
-            rows.add(Triple("Supplies Lost", "-$suppliesLost", Color.parseColor(UiTheme.HOSTILE)))
-            rows.add(Triple("Warband", warbandStatus, Color.parseColor(UiTheme.HOSTILE)))
+            rows.add(Triple("Fuel Consumed", "-$suppliesLost", Color.parseColor(UiTheme.HOSTILE)))
+            rows.add(Triple("Squadron", warbandStatus, Color.parseColor(UiTheme.HOSTILE)))
         }
 
         var delay = 100L
@@ -138,18 +138,18 @@ class BattleResultActivity : AppCompatActivity() {
 
         // Action buttons
         if (playerWon) {
-            layout.addView(makeActionButton("Continue Campaign", UiTheme.POSITIVE, true) {
+            layout.addView(makeActionButton("Continue Mission", UiTheme.POSITIVE, true) {
                 finish()
             }, marginParams(bottom = 0))
         } else {
-            layout.addView(makeActionButton("Try Again", UiTheme.HOSTILE, true) {
+            layout.addView(makeActionButton("Re-engage", UiTheme.HOSTILE, true) {
                 startActivity(Intent(this, BattleActivity::class.java).apply {
                     putExtra("node_id", nodeId)
                 })
                 finish()
             }, marginParams(bottom = UiTheme.SPACE_3))
 
-            layout.addView(makeActionButton("Retreat", UiTheme.SURFACE_ALT, false) {
+            layout.addView(makeActionButton("Abort Mission", UiTheme.SURFACE_ALT, false) {
                 finish()
             }, marginParams(bottom = 0))
         }

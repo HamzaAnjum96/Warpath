@@ -28,9 +28,9 @@ object UiTheme {
     const val TEXT_DISABLED = "#566880"
 
     // ── State palette ──
-    const val PRIMARY = "#7B1E2B"
-    const val PRIMARY_MUTED = "#5C1822"
-    const val ALLY = "#8E2A38"
+    const val PRIMARY = "#0A4055"
+    const val PRIMARY_MUTED = "#082F3E"
+    const val ALLY = "#0D5060"
     const val HOSTILE = "#C56A5D"
     const val HOSTILE_MUTED = "#8C4A42"
     const val NEUTRAL = "#8FA0B4"
@@ -38,12 +38,12 @@ object UiTheme {
     const val WARNING = "#D4B15A"
 
     // ── Terrain palette by biome ──
-    const val BIOME_PLAINS = "#5D6D54"
-    const val BIOME_FOREST = "#334B3F"
-    const val BIOME_DESERT = "#7A684D"
-    const val BIOME_HILLS = "#56606A"
-    const val BIOME_SETTLEMENT = "#6B5B45"
-    const val BIOME_WATER = "#3B5662"
+    const val BIOME_PLAINS = "#3A4A40"
+    const val BIOME_FOREST = "#1C3530"
+    const val BIOME_DESERT = "#3E4038"
+    const val BIOME_HILLS = "#2E3840"
+    const val BIOME_SETTLEMENT = "#1E3040"
+    const val BIOME_WATER = "#1A3248"
 
     // Legacy aliases
     const val GOLD = WARNING

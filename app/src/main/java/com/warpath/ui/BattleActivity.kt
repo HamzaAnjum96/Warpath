@@ -56,7 +56,7 @@ class BattleActivity : AppCompatActivity() {
             // Intercept battle against a roaming party
             roamingParty = CampaignActivity.campaignManager.gameState.enemyParties.find { it.id == partyId }
             val party = roamingParty ?: run { finish(); return }
-            battleTitle = "Intercept"
+            battleTitle = "Airspace Intercept"
             enemyTemplates = party.unitTemplates
         } else {
             // Node-based battle
@@ -109,7 +109,7 @@ class BattleActivity : AppCompatActivity() {
         })
         val titleCol = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         titleCol.addView(TextView(this).apply {
-            text = "ENGAGEMENT"
+            text = "AIR ENGAGEMENT"
             textSize = UiTheme.TEXT_CHIP
             setTextColor(Color.parseColor(UiTheme.TEXT_SUBTLE))
             typeface = UiTheme.TYPEFACE_LABEL
@@ -132,7 +132,7 @@ class BattleActivity : AppCompatActivity() {
             FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT
         ))
         startBattleButton = Button(this).apply {
-            text = "Begin Engagement"
+            text = "SCRAMBLE!"
             textSize = UiTheme.TEXT_BUTTON
             typeface = UiTheme.TYPEFACE_HEADING
             isAllCaps = false
@@ -300,7 +300,7 @@ class BattleActivity : AppCompatActivity() {
 
         if (party != null) {
             // Roaming party battle
-            battleName = "Intercept"
+            battleName = "Airspace Intercept"
             suppliesReward = if (battleState.playerWon) 20 else 0
             renownReward = if (battleState.playerWon) 8 else 0
             if (battleState.playerWon) {
@@ -343,7 +343,7 @@ class BattleActivity : AppCompatActivity() {
         val avgMorale = if (battleState.playerSquads.isEmpty()) 0 else battleState.playerSquads.map { it.morale }.average().toInt()
         intent.putExtra("morale_end", avgMorale)
         intent.putExtra("supplies_lost", if (battleState.playerWon) 0 else (CampaignActivity.campaignManager.gameState.supplies * 0.3f).toInt())
-        intent.putExtra("warband_status", "${battleState.playerSquads.count { it.isAlive }}/${battleState.playerSquads.size} squads standing")
+        intent.putExtra("warband_status", "${battleState.playerSquads.count { it.isAlive }}/${battleState.playerSquads.size} flights standing")
         intent.putExtra("node_id", currentNode?.id ?: "")
         startActivity(intent)
         finish()

@@ -1,7 +1,7 @@
 package com.warpath.model
 
 data class GameState(
-    var commanderName: String = "Commander",
+    var commanderName: String = "Viper",
     var supplies: Int = 180,
     var renown: Int = 0,
     var warband: MutableList<Squad> = mutableListOf(),

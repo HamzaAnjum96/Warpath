@@ -18,6 +18,7 @@ import android.util.TypedValue
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatImageButton
+import com.warpath.R
 import com.warpath.engine.CampaignManager
 import com.warpath.model.AirPlayerState
 import com.warpath.model.CampaignNode
@@ -241,9 +242,7 @@ class CampaignActivity : AppCompatActivity() {
             setImageResource(R.drawable.ic_lucide_locate_fixed)
             scaleType = ImageView.ScaleType.CENTER_INSIDE
             contentDescription = "Recenter map on flight"
-            minWidth = dp(32)
             minimumWidth = dp(32)
-            minHeight = dp(32)
             minimumHeight = dp(32)
             setColorFilter(Color.parseColor(Palette.HUD_TEXT))
             setPadding(0, 0, 0, 0)
@@ -329,9 +328,7 @@ class CampaignActivity : AppCompatActivity() {
             scaleType = ImageView.ScaleType.CENTER_INSIDE
             contentDescription = "Play or pause time"
             setColorFilter(Color.parseColor(Palette.HUD_TEXT))
-            minHeight = dp(70)
             minimumHeight = dp(70)
-            minWidth = dp(70)
             minimumWidth = dp(70)
             setPadding(0, 0, 0, 0)
             applyHudButtonStyle(cornerRadius = 35f)
@@ -353,9 +350,7 @@ class CampaignActivity : AppCompatActivity() {
         recenterButton.apply {
             setImageResource(R.drawable.ic_lucide_locate_fixed)
             contentDescription = "Recenter map on flight"
-            minWidth = dp(42)
             minimumWidth = dp(42)
-            minHeight = dp(42)
             minimumHeight = dp(42)
             setColorFilter(Color.parseColor(Palette.HUD_TEXT))
             applyHudButtonStyle(cornerRadius = 12f)

@@ -75,3 +75,17 @@ data class Squad(
 enum class SquadState {
     IDLE, ADVANCE, ENGAGE, HOLD, FLANK, RETREAT, RALLY
 }
+
+/** Canonical campaign-layer mission states for player and allied aircraft. */
+enum class AircraftMission {
+    IDLE,
+    ROUTE_PLANNING,
+    TRANSIT,
+    RECON,
+    INTERCEPT,
+    STRIKE,
+    RTB,
+    HOLDING,
+    DAMAGED,
+    EMERGENCY
+}

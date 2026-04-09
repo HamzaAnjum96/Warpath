@@ -76,11 +76,11 @@ class BattleEngine {
         if (state.enemySquads.isEmpty() || state.enemySquads.all { it.isRouted }) {
             state.isOver = true
             state.playerWon = true
-            state.battleLog.add("Victory! The enemy is defeated!")
+            state.battleLog.add("Engagement won. Enemy flight eliminated.")
         } else if (state.playerSquads.isEmpty() || state.playerSquads.all { it.isRouted }) {
             state.isOver = true
             state.playerWon = false
-            state.battleLog.add("Defeat! Your warband has fallen!")
+            state.battleLog.add("Engagement lost. Squadron destroyed.")
         }
     }
 
@@ -99,12 +99,12 @@ class BattleEngine {
             BattleCommand.PUSH -> {
                 currentStance = BattleCommand.PUSH
                 state.playerSquads.forEach { it.state = SquadState.ADVANCE }
-                state.battleLog.add(">> Push forward!")
+                state.battleLog.add(">> Press attack!")
             }
             BattleCommand.HOLD -> {
                 currentStance = BattleCommand.HOLD
                 state.playerSquads.forEach { it.state = SquadState.HOLD }
-                state.battleLog.add(">> Hold the line!")
+                state.battleLog.add(">> Hold position!")
             }
             BattleCommand.RALLY -> {
                 state.playerSquads.forEach {
@@ -114,7 +114,7 @@ class BattleEngine {
             }
             BattleCommand.RETREAT -> {
                 state.playerSquads.forEach { it.state = SquadState.RETREAT }
-                state.battleLog.add(">> Fall back!")
+                state.battleLog.add(">> Disengage!")
             }
         }
         return true

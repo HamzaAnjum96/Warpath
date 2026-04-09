@@ -1,5 +1,8 @@
 package com.warpath.ui
 
+import android.animation.ValueAnimator
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
@@ -23,6 +26,7 @@ import com.warpath.model.PartyFaction
 import java.util.ArrayDeque
 import kotlin.random.Random
 import kotlin.math.hypot
+import android.view.animation.LinearInterpolator
 
 class CampaignActivity : AppCompatActivity() {
 
@@ -54,7 +58,7 @@ class CampaignActivity : AppCompatActivity() {
     private lateinit var travelHintText: TextView
     private lateinit var recenterButton: Button
     private lateinit var stopMovementButton: Button
-    private lateinit var movementPanel: LinearLayout
+    private lateinit var movementPanel: FrameLayout
     private lateinit var movementPanelInfoText: TextView
     private lateinit var pauseButton: Button
     private lateinit var movementStopButton: Button
@@ -86,6 +90,10 @@ class CampaignActivity : AppCompatActivity() {
     private var alertHideRunnable: Runnable? = null
     private val alertQueue = ArrayDeque<WorldAlert>()
     private val recentlyShownAlerts = mutableMapOf<String, Long>()
+    private var isResting: Boolean = false
+    private var restAnimator: ValueAnimator? = null
+    private var restEnemySnapshot: com.warpath.engine.CampaignManager.EnemyMovementSnapshot? = null
+    private val restCycleDistanceNorm = 0.06f
     private val uiHandler = Handler(Looper.getMainLooper())
 
     private val density by lazy { resources.displayMetrics.density }
@@ -262,14 +270,13 @@ class CampaignActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.END
         }
-        controlCluster.addView(recenterButton)
         controlCluster.addView(
             mapStateText,
             LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                topMargin = dp(8)
+                topMargin = dp(2)
             }
         )
-        controlClusterTopMarginPx = dp(142)
+        controlClusterTopMarginPx = dp(134)
         root.addView(
             controlCluster,
             FrameLayout.LayoutParams(
@@ -293,82 +300,98 @@ class CampaignActivity : AppCompatActivity() {
 
         stopMovementButton = Button(this).apply { visibility = View.GONE }
 
-        movementPanel = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(12), dp(16), dp(14))
+        movementPanel = FrameLayout(this).apply {
+            elevation = UiTheme.HUD_ELEVATION
+            visibility = View.GONE
+        }
+
+        val barRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(14), dp(20), dp(14), dp(12))
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
                 cornerRadii = floatArrayOf(dpF(16f), dpF(16f), dpF(16f), dpF(16f), 0f, 0f, 0f, 0f)
                 setColor(Color.parseColor("#F116263A"))
                 setStroke(1, Color.parseColor(Palette.HUD_BORDER))
             }
-            elevation = UiTheme.HUD_ELEVATION
-            visibility = View.GONE
         }
 
         movementPanelInfoText = TextView(this).apply {
-            textSize = if (compactUi) 10f else 12f
+            textSize = if (compactUi) 10f else 11f
             typeface = UiTheme.TYPEFACE_LABEL
             setTextColor(Color.parseColor(Palette.GOLD))
-            text = "➤ ROUTE · 0m · 0%"
-            setPadding(0, 0, 0, dp(10))
+            text = "MODE · IDLE"
+            maxLines = 2
         }
-        movementPanel.addView(movementPanelInfoText)
-
-        val buttonRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-        }
+        barRow.addView(movementPanelInfoText, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
 
         pauseButton = Button(this).apply {
-            text = "⏸ Pause"
-            contentDescription = "Pause movement"
-            textSize = if (compactUi) 10f else 11f
+            text = "▶"
+            contentDescription = "Play or pause time"
+            textSize = if (compactUi) 16f else 18f
             typeface = UiTheme.TYPEFACE_HEADING
             isAllCaps = false
             setTextColor(Color.parseColor(Palette.HUD_TEXT))
-            minHeight = dp(38)
-            minimumHeight = dp(38)
-            applyHudButtonStyle(cornerRadius = 10f)
+            minHeight = dp(70)
+            minimumHeight = dp(70)
+            minWidth = dp(70)
+            minimumWidth = dp(70)
+            setPadding(0, 0, 0, 0)
+            applyHudButtonStyle(cornerRadius = 35f)
             setOnClickListener {
-                if (mapView.isPaused) {
-                    val redirect = pendingRedirectTarget
-                    if (redirect != null) {
-                        pendingRedirectTarget = null
-                        redirectMovement(redirect.first, redirect.second)
-                    } else {
-                        mapView.resumeMovement()
-                    }
-                    text = "⏸ Pause"
-                    enqueueWorldAlert("Sortie Resumed", AlertCategory.TRAVEL, AlertPriority.MINOR, "movement_resumed")
+                if (mapView.isMovementActive()) {
+                    mapView.stopMovement()
+                    enqueueWorldAlert("Movement Halted", AlertCategory.TRAVEL, AlertPriority.MINOR, "movement_abort_ui")
+                } else if (isResting) {
+                    stopRestMode(showAlert = true)
                 } else {
-                    mapView.pauseMovement()
-                    text = "▶ Resume"
-                    enqueueWorldAlert("Sortie Paused", AlertCategory.TRAVEL, AlertPriority.MINOR, "movement_paused")
+                    startRestMode()
+                    enqueueWorldAlert("Holding Pattern Active", AlertCategory.TRAVEL, AlertPriority.MINOR, "rest_start")
                 }
+                updateMovementPanel()
                 updateMapStateText()
             }
         }
-        buttonRow.addView(pauseButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-            marginEnd = dp(8)
-        })
 
-        movementStopButton = Button(this).apply {
-            text = "■ Stop"
-            contentDescription = "Stop and cancel movement"
-            textSize = if (compactUi) 10f else 11f
-            typeface = UiTheme.TYPEFACE_HEADING
-            isAllCaps = false
-            setTextColor(Color.parseColor(Palette.DANGER))
-            minHeight = dp(38)
-            minimumHeight = dp(38)
-            applyHudButtonStyle(cornerRadius = 10f)
+        recenterButton.apply {
+            text = "⌖"
+            contentDescription = "Recenter map on flight"
+            textSize = if (compactUi) 12f else 13f
+            minWidth = dp(42)
+            minimumWidth = dp(42)
+            minHeight = dp(42)
+            minimumHeight = dp(42)
+            visibility = View.VISIBLE
+            applyHudButtonStyle(cornerRadius = 12f)
             setOnClickListener {
-                mapView.stopMovement()
+                mapView.recenterOnPlayer()
+                enqueueWorldAlert("Squadron Radar Restored", AlertCategory.TRAVEL, AlertPriority.MINOR, "camera_recentered")
+                updateMovementPanel()
             }
         }
-        buttonRow.addView(movementStopButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        barRow.addView(recenterButton, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+        movementPanel.addView(
+            barRow,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM
+            )
+        )
 
-        movementPanel.addView(buttonRow)
+        movementPanel.addView(
+            pauseButton,
+            FrameLayout.LayoutParams(
+                dp(70),
+                dp(70),
+                Gravity.TOP or Gravity.CENTER_HORIZONTAL
+            ).apply {
+                topMargin = dp(-14)
+            }
+        )
+
+        movementStopButton = Button(this).apply { visibility = View.GONE }
 
         root.addView(
             movementPanel,
@@ -539,7 +562,8 @@ class CampaignActivity : AppCompatActivity() {
 
     private fun updateControlClusterVisibility() {
         if (!::controlCluster.isInitialized) return
-        recenterButton.visibility = if (mapView.isCenteredOnPlayer()) View.GONE else View.VISIBLE
+        recenterButton.visibility = View.VISIBLE
+        updateMovementPanel()
     }
 
     private fun compactRowText() = TextView(this).apply {
@@ -886,7 +910,6 @@ class CampaignActivity : AppCompatActivity() {
     private fun showMovementPanel() {
         if (!::movementPanel.isInitialized) return
         infoPanel.visibility = View.GONE
-        pauseButton.text = "⏸ Pause"
         updateMovementPanel()
         movementPanel.visibility = View.VISIBLE
         movementPanel.alpha = 0f
@@ -905,10 +928,92 @@ class CampaignActivity : AppCompatActivity() {
 
     private fun updateMovementPanel() {
         if (!::movementPanelInfoText.isInitialized) return
-        val routeLabel = mapView.currentPreviewRouteTypeLabel()
-        val progress = (mapView.currentTravelProgress() * 100f).toInt()
-        val distMeters = (mapView.currentRouteLength() * 1000f).toInt()
-        movementPanelInfoText.text = "➤ $routeLabel · ${distMeters}m · $progress%"
+        val moving = mapView.isMovementActive()
+        val centered = mapView.isCenteredOnPlayer()
+        movementPanelInfoText.text = when {
+            moving -> {
+                val routeLabel = mapView.currentPreviewRouteTypeLabel().replace(" FLIGHT PATH", "")
+                val progress = (mapView.currentTravelProgress() * 100f).toInt()
+                val distMeters = (mapView.currentRouteLength() * 1000f).toInt()
+                "MODE · TRANSIT\n$routeLabel · ${distMeters}m · $progress%"
+            }
+            isResting -> "MODE · HOLDING\nTime advancing while position is fixed"
+            else -> if (centered) "MODE · IDLE\nTap map to plot route" else "MODE · RECON\nCamera detached · recenter available"
+        }
+        pauseButton.text = if (moving || isResting) "⏸" else "▶"
+        pauseButton.setTextColor(
+            Color.parseColor(
+                if (moving || isResting) Palette.DANGER else Palette.HUD_TEXT
+            )
+        )
+        recenterButton.alpha = if (centered) 0.6f else 1f
+    }
+
+    private fun startRestMode() {
+        if (mapView.isMovementActive() || isResting) return
+        isResting = true
+        restEnemySnapshot = campaignManager.createEnemyMovementSnapshot()
+        restAnimator?.cancel()
+        restAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 2000L
+            interpolator = LinearInterpolator()
+            addUpdateListener { anim ->
+                val snapshot = restEnemySnapshot ?: return@addUpdateListener
+                val progress = anim.animatedValue as Float
+                val movedNorm = restCycleDistanceNorm * progress
+                mapView.enemyDisplayPositions = campaignManager.enemyPreviewPositions(
+                    snapshot = snapshot,
+                    playerMovedNorm = movedNorm,
+                    totalPlayerTravelNorm = restCycleDistanceNorm,
+                    playerMetersPerAction = playerSpeedNorm
+                )
+            }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    if (!isResting) return
+                    val snapshot = restEnemySnapshot ?: return
+                    campaignManager.setPlayerPosition(mapView.currentPlayerNormX, mapView.currentPlayerNormY)
+                    val playerHit = campaignManager.applyReactiveEnemyMovement(
+                        snapshot = snapshot,
+                        playerMovedNorm = restCycleDistanceNorm,
+                        totalPlayerTravelNorm = restCycleDistanceNorm,
+                        playerMetersPerAction = playerSpeedNorm
+                    )
+                    mapView.enemyParties = campaignManager.gameState.enemyParties
+                    mapView.enemyDisplayPositions = campaignManager.gameState.enemyParties.associate { party ->
+                        party.id to campaignManager.getEnemyPartyPosition(party)
+                    }
+                    checkFogDiscovery(showToast = false)
+                    if (playerHit) {
+                        stopRestMode(showAlert = false)
+                        forceEnemyEngagement()
+                    } else {
+                        restEnemySnapshot = campaignManager.createEnemyMovementSnapshot()
+                        start()
+                    }
+                }
+            })
+        }
+        showMovementPanel()
+        updateMovementPanel()
+        updateMapStateText()
+        restAnimator?.start()
+    }
+
+    private fun stopRestMode(showAlert: Boolean = false) {
+        if (!isResting) return
+        isResting = false
+        restEnemySnapshot = null
+        restAnimator?.cancel()
+        restAnimator = null
+        mapView.enemyDisplayPositions = campaignManager.gameState.enemyParties.associate { party ->
+            party.id to campaignManager.getEnemyPartyPosition(party)
+        }
+        if (showAlert) {
+            enqueueWorldAlert("Holding Pattern Ended", AlertCategory.TRAVEL, AlertPriority.MINOR, "rest_stop")
+        }
+        updateMovementPanel()
+        updateMapStateText()
     }
 
     private fun Button.applyHudButtonStyle(cornerRadius: Float = 11f) {
@@ -951,6 +1056,7 @@ class CampaignActivity : AppCompatActivity() {
         val hasTarget = selectedNode != null
         val centered = mapView.isCenteredOnPlayer()
         val airState = when {
+            isResting -> AirPlayerState.HOLDING
             moving && paused -> AirPlayerState.HOLDING
             moving -> AirPlayerState.TRANSIT
             hasTarget -> AirPlayerState.ROUTE_PLANNING
@@ -958,7 +1064,7 @@ class CampaignActivity : AppCompatActivity() {
             else -> AirPlayerState.IDLE
         }
         val (label, color) = when (airState) {
-            AirPlayerState.HOLDING -> "HOLDING" to Palette.GOLD
+            AirPlayerState.HOLDING -> if (isResting) "RESTING" to Palette.GOLD else "HOLDING" to Palette.GOLD
             AirPlayerState.TRANSIT -> "TRANSIT" to Palette.SUCCESS
             AirPlayerState.ROUTE_PLANNING -> "ROUTE PLANNING" to Palette.PRIMARY
             AirPlayerState.RECON -> "RECON" to Palette.HUD_SURFACE_ALT
@@ -1014,7 +1120,8 @@ class CampaignActivity : AppCompatActivity() {
         mapView.inputEnabled = true
         mapView.showPaths = false
         mapView.invalidate()
-        recenterButton.visibility = if (mapView.isCenteredOnPlayer()) View.GONE else View.VISIBLE
+        recenterButton.visibility = View.VISIBLE
+        updateMovementPanel()
         updateMapStateText()
         updateHud()
         checkFogDiscovery(showToast = false)
@@ -1030,6 +1137,7 @@ class CampaignActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        stopRestMode(showAlert = false)
         uiHandler.removeCallbacksAndMessages(null)
         alertHideRunnable = null
         hintHideRunnable = null
@@ -1038,6 +1146,7 @@ class CampaignActivity : AppCompatActivity() {
     }
 
     override fun onPause() {
+        stopRestMode(showAlert = false)
         super.onPause()
         alertHideRunnable?.let { uiHandler.removeCallbacks(it) }
         alertHideRunnable = null
@@ -1065,7 +1174,11 @@ class CampaignActivity : AppCompatActivity() {
         if ((mapView.isMovementActive() || mapView.isPaused) && ::movementPanel.isInitialized && movementPanel.visibility != View.VISIBLE) {
             showMovementPanel()
         }
-        if (mapView.isMovementActive() && !mapView.isPaused) {
+        if (isResting) {
+            stopRestMode(showAlert = false)
+            mapView.previewRouteTo(normX, normY, committed = true)
+            moveWarbandTo(normX, normY)
+        } else if (mapView.isMovementActive() && !mapView.isPaused) {
             redirectMovement(normX, normY)
         } else if (mapView.isPaused) {
             pendingRedirectTarget = Pair(normX, normY)
@@ -1666,6 +1779,7 @@ class CampaignActivity : AppCompatActivity() {
     }
 
     private fun moveWarbandTo(normX: Float, normY: Float) {
+        stopRestMode(showAlert = false)
         pendingRedirectTarget = null
         infoPanel.visibility = View.GONE
         val startX = campaignManager.gameState.playerMapX

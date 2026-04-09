@@ -4,6 +4,11 @@ plugins {
 }
 
 android {
+    val stableDebugKeystorePath = providers.environmentVariable("WARPATH_DEBUG_KEYSTORE_PATH").orNull
+    val stableDebugKeystorePassword = providers.environmentVariable("WARPATH_DEBUG_KEYSTORE_PASSWORD").orNull
+    val stableDebugKeyAlias = providers.environmentVariable("WARPATH_DEBUG_KEY_ALIAS").orNull
+    val stableDebugKeyPassword = providers.environmentVariable("WARPATH_DEBUG_KEY_PASSWORD").orNull
+
     namespace = "com.warpath"
     compileSdk = 35
     buildToolsVersion = "35.0.1"
@@ -20,6 +25,13 @@ android {
 
     signingConfigs {
         getByName("debug") {
+            // TODO: Before production launch, switch to a secret-managed signing key path in CI.
+            if (stableDebugKeystorePath != null) {
+                storeFile = file(stableDebugKeystorePath)
+                storePassword = stableDebugKeystorePassword
+                keyAlias = stableDebugKeyAlias
+                keyPassword = stableDebugKeyPassword
+            }
             enableV1Signing = true
             enableV2Signing = true
         }

@@ -23,6 +23,12 @@ Release/versioned APK distribution is handled by the CI pipeline artifacts. Do n
 
 ## Notes
 - The project targets Android and uses Kotlin + Gradle.
+- To keep debug APK upgrades installable in-place, set a stable keystore via environment variables:
+  - `WARPATH_DEBUG_KEYSTORE_PATH`
+  - `WARPATH_DEBUG_KEYSTORE_PASSWORD`
+  - `WARPATH_DEBUG_KEY_ALIAS`
+  - `WARPATH_DEBUG_KEY_PASSWORD`
+- TODO before production launch: keep this key in CI secret storage (not committed in git).
 - If local Android SDK configuration is missing, create `local.properties` with your SDK path, for example:
   ```bash
   echo "sdk.dir=/opt/android-sdk" > local.properties

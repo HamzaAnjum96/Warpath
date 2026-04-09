@@ -503,6 +503,7 @@ class CampaignMapView @JvmOverloads constructor(
         movementRoutePoints = route.points
         activeRouteType = route.type
         activeRouteRisk = route.risk
+        alignPlayerLookWithRoute(movementRoutePoints)
         val routeLength = routeNormLength(movementRoutePoints).coerceAtLeast(0.04f)
 
         isMoving = true
@@ -649,6 +650,7 @@ class CampaignMapView @JvmOverloads constructor(
         movementRoutePoints = route.points
         activeRouteType = route.type
         activeRouteRisk = route.risk
+        alignPlayerLookWithRoute(movementRoutePoints)
         val routeLength = routeNormLength(movementRoutePoints).coerceAtLeast(0.04f)
 
         isMoving = true
@@ -796,6 +798,17 @@ class CampaignMapView @JvmOverloads constructor(
         activeRouteRisk = RouteRisk.SAFE
         invalidate()
         post { onComplete(cancelled) }
+    }
+
+    private fun alignPlayerLookWithRoute(points: List<Pair<Float, Float>>) {
+        if (points.size < 2) return
+        val next = points[1]
+        val dx = next.first - playerNormX
+        val dy = next.second - playerNormY
+        if (dx * dx + dy * dy < 0.000001f) return
+        val len = hypot(dx, dy)
+        playerLookDirX = dx / len
+        playerLookDirY = dy / len
     }
 
     private fun animateCameraTo(targetX: Float, targetY: Float) {

@@ -12,6 +12,7 @@ enum class PartyFaction {
 data class EnemyParty(
     val id: String,
     var nodeId: String,
+    var lastNodeId: String? = null,
     val homeNodeId: String,
     val unitTemplates: List<EnemyTemplate>,
     val faction: PartyFaction = PartyFaction.HOSTILE,

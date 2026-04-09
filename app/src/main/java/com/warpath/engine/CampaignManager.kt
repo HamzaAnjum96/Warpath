@@ -25,6 +25,7 @@ class CampaignManager {
     data class PartyMovementState(
         val id: String,
         val nodeId: String,
+        val lastNodeId: String?,
         val patrolForward: Boolean,
         val travelFromNodeId: String?,
         val travelToNodeId: String?,
@@ -34,6 +35,7 @@ class CampaignManager {
     private data class SimulatedPartyResult(
         val partyId: String,
         val nodeId: String,
+        val lastNodeId: String?,
         val patrolForward: Boolean,
         val travelFromNodeId: String?,
         val travelToNodeId: String?,
@@ -151,14 +153,19 @@ class CampaignManager {
 
             val nextId = when (party.behaviorType) {
                 EnemyPartyBehaviorType.PATROL -> {
-                    val sorted = node.connections.sorted()
-                    val choice = if (party.patrolForward) sorted.first() else sorted.last()
-                    if (sorted.size > 1) {
+                    val choice = selectNextNodeId(
+                        behavior = party.behaviorType,
+                        currentNode = node,
+                        lastNodeId = party.lastNodeId,
+                        patrolForward = party.patrolForward
+                    )
+                    if (node.connections.size > 2) {
                         party.patrolForward = !party.patrolForward
                     }
                     choice
                 }
             }
+            party.lastNodeId = node.id
             party.nodeId = nextId
             party.travelFromNodeId = null
             party.travelToNodeId = null
@@ -176,6 +183,7 @@ class CampaignManager {
             PartyMovementState(
                 id = party.id,
                 nodeId = party.nodeId,
+                lastNodeId = party.lastNodeId,
                 patrolForward = party.patrolForward,
                 travelFromNodeId = party.travelFromNodeId,
                 travelToNodeId = party.travelToNodeId,
@@ -217,6 +225,7 @@ class CampaignManager {
             val enemyTravelNorm = totalPlayerTravelNorm * progress * enemyMovementSpeedRatio(party, playerMetersPerAction)
             val sim = simulatePartyMovement(party, state, enemyTravelNorm)
             party.nodeId = sim.nodeId
+            party.lastNodeId = sim.lastNodeId
             party.patrolForward = sim.patrolForward
             party.travelFromNodeId = sim.travelFromNodeId
             party.travelToNodeId = sim.travelToNodeId
@@ -240,6 +249,7 @@ class CampaignManager {
     ): SimulatedPartyResult {
         var remaining = travelNorm.coerceAtLeast(0f)
         var nodeId = start.nodeId
+        var lastNodeId = start.lastNodeId
         var patrolForward = start.patrolForward
         var edgeFrom = start.travelFromNodeId
         var edgeTo = start.travelToNodeId
@@ -264,6 +274,7 @@ class CampaignManager {
                     remaining = 0f
                 } else {
                     remaining -= left
+                    lastNodeId = fromNode.id
                     nodeId = toNode.id
                     edgeFrom = null
                     edgeTo = null
@@ -272,11 +283,17 @@ class CampaignManager {
             } else {
                 val currentNode = campaignMap.find { it.id == nodeId } ?: break
                 if (currentNode.connections.isEmpty()) break
-                val nextId = selectNextNodeId(party.behaviorType, currentNode, patrolForward)
-                if (currentNode.connections.size > 1) patrolForward = !patrolForward
+                val nextId = selectNextNodeId(
+                    behavior = party.behaviorType,
+                    currentNode = currentNode,
+                    lastNodeId = lastNodeId,
+                    patrolForward = patrolForward
+                )
+                if (currentNode.connections.size > 2) patrolForward = !patrolForward
                 val nextNode = campaignMap.find { it.id == nextId } ?: break
                 val edgeLen = distanceNorm(currentNode.mapX, currentNode.mapY, nextNode.mapX, nextNode.mapY)
                 if (edgeLen <= 0.00001f) {
+                    lastNodeId = currentNode.id
                     nodeId = nextId
                     continue
                 }
@@ -287,6 +304,7 @@ class CampaignManager {
                     remaining = 0f
                 } else {
                     remaining -= edgeLen
+                    lastNodeId = currentNode.id
                     nodeId = nextId
                 }
             }
@@ -296,6 +314,7 @@ class CampaignManager {
         return SimulatedPartyResult(
             partyId = party.id,
             nodeId = nodeId,
+            lastNodeId = lastNodeId,
             patrolForward = patrolForward,
             travelFromNodeId = edgeFrom,
             travelToNodeId = edgeTo,
@@ -308,12 +327,16 @@ class CampaignManager {
     private fun selectNextNodeId(
         behavior: EnemyPartyBehaviorType,
         currentNode: CampaignNode,
+        lastNodeId: String?,
         patrolForward: Boolean
     ): String {
         return when (behavior) {
             EnemyPartyBehaviorType.PATROL -> {
                 val sorted = currentNode.connections.sorted()
-                if (patrolForward) sorted.first() else sorted.last()
+                if (sorted.size <= 1) return sorted.first()
+                val filtered = sorted.filter { it != lastNodeId }
+                val candidates = if (filtered.isNotEmpty()) filtered else sorted
+                if (patrolForward) candidates.first() else candidates.last()
             }
         }
     }

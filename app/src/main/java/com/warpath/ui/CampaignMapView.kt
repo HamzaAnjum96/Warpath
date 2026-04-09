@@ -1972,7 +1972,7 @@ class CampaignMapView @JvmOverloads constructor(
                 pulseRingPaint.pathEffect = null
             }
 
-            val partyHeading = enemyHeadings[party.id] ?: (-Math.PI / 2).toFloat()
+            val partyHeading = partyHeadingRadians(party, partyPos)
             pulseRingPaint.strokeWidth = 1.6f
             pulseRingPaint.alpha = 180
             drawPartyMarker(canvas, party.faction, x, y, iconRadius, markerPaint, pulseRingPaint, partyHeading)
@@ -2054,6 +2054,27 @@ class CampaignMapView @JvmOverloads constructor(
             isMovingParty && distToPlayer > 0.30f -> "RETREATING"
             else -> "ROAMING"
         }
+    }
+
+    private fun partyHeadingRadians(party: EnemyParty, resolvedPos: Pair<Float, Float>): Float {
+        val fromId = party.travelFromNodeId
+        val toId = party.travelToNodeId
+        if (fromId != null && toId != null && party.travelProgress in 0.001f..0.999f) {
+            val from = nodes.find { it.id == fromId }
+            val to = nodes.find { it.id == toId }
+            if (from != null && to != null) {
+                return atan2(to.mapY - from.mapY, to.mapX - from.mapX)
+            }
+        }
+        val lastNode = party.lastNodeId?.let { id -> nodes.find { it.id == id } }
+        if (lastNode != null) {
+            val dx = resolvedPos.first - lastNode.mapX
+            val dy = resolvedPos.second - lastNode.mapY
+            if (dx * dx + dy * dy > 0.000001f) {
+                return atan2(dy, dx)
+            }
+        }
+        return enemyHeadings[party.id] ?: (-Math.PI / 2).toFloat()
     }
 
     private fun enemyFamilyForBiome(biome: BiomeType): String = when (biome) {
@@ -2223,9 +2244,12 @@ class CampaignMapView @JvmOverloads constructor(
             if (party.faction != PartyFaction.HOSTILE) continue
             val node = nodes.find { it.id == party.nodeId } ?: continue
             if (!node.isRevealed) continue
+            val profile = partyVisualProfile(party)
             val pos = enemyDisplayPositions[party.id] ?: Pair(node.mapX, node.mapY)
-            val sx = screenX(pos.first)
-            val sy = screenY(pos.second)
+            val drawPosX = (pos.first + profile.offsetNormX).coerceIn(0.02f, 0.98f)
+            val drawPosY = (pos.second + profile.offsetNormY).coerceIn(0.02f, 0.98f)
+            val sx = screenX(drawPosX)
+            val sy = screenY(drawPosY)
             val dx = screenTapX - sx
             val dy = screenTapY - sy
             if (dx * dx + dy * dy <= hitRadiusSq) return party

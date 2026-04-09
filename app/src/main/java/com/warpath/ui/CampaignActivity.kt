@@ -17,6 +17,7 @@ import android.view.View
 import android.util.TypedValue
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.AppCompatImageButton
 import com.warpath.engine.CampaignManager
 import com.warpath.model.AirPlayerState
 import com.warpath.model.CampaignNode
@@ -56,11 +57,11 @@ class CampaignActivity : AppCompatActivity() {
     private lateinit var panelAccentBar: View
     private lateinit var statusText: TextView
     private lateinit var travelHintText: TextView
-    private lateinit var recenterButton: Button
+    private lateinit var recenterButton: AppCompatImageButton
     private lateinit var stopMovementButton: Button
     private lateinit var movementPanel: FrameLayout
     private lateinit var movementPanelInfoText: TextView
-    private lateinit var pauseButton: Button
+    private lateinit var pauseButton: AppCompatImageButton
     private lateinit var movementStopButton: Button
     private lateinit var mapStateText: TextView
     private lateinit var controlCluster: LinearLayout
@@ -236,20 +237,17 @@ class CampaignActivity : AppCompatActivity() {
             )
         )
 
-        recenterButton = Button(this).apply {
-            text = "⌖"
+        recenterButton = AppCompatImageButton(this).apply {
+            setImageResource(R.drawable.ic_lucide_locate_fixed)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
             contentDescription = "Recenter map on flight"
-            textSize = if (compactUi) 9f else 10f
-            typeface = UiTheme.TYPEFACE_HEADING
-            isAllCaps = false
             minWidth = dp(32)
             minimumWidth = dp(32)
             minHeight = dp(32)
             minimumHeight = dp(32)
-            setTextColor(Color.parseColor(Palette.HUD_TEXT))
+            setColorFilter(Color.parseColor(Palette.HUD_TEXT))
             setPadding(0, 0, 0, 0)
             stateListAnimator = null
-            visibility = View.GONE
             applyHudButtonStyle(cornerRadius = 16f)
             setOnClickListener {
                 mapView.recenterOnPlayer()
@@ -302,7 +300,7 @@ class CampaignActivity : AppCompatActivity() {
 
         movementPanel = FrameLayout(this).apply {
             elevation = UiTheme.HUD_ELEVATION
-            visibility = View.GONE
+            visibility = View.VISIBLE
         }
 
         val barRow = LinearLayout(this).apply {
@@ -326,13 +324,11 @@ class CampaignActivity : AppCompatActivity() {
         }
         barRow.addView(movementPanelInfoText, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
 
-        pauseButton = Button(this).apply {
-            text = "▶"
+        pauseButton = AppCompatImageButton(this).apply {
+            setImageResource(R.drawable.ic_lucide_play)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
             contentDescription = "Play or pause time"
-            textSize = if (compactUi) 16f else 18f
-            typeface = UiTheme.TYPEFACE_HEADING
-            isAllCaps = false
-            setTextColor(Color.parseColor(Palette.HUD_TEXT))
+            setColorFilter(Color.parseColor(Palette.HUD_TEXT))
             minHeight = dp(70)
             minimumHeight = dp(70)
             minWidth = dp(70)
@@ -355,14 +351,13 @@ class CampaignActivity : AppCompatActivity() {
         }
 
         recenterButton.apply {
-            text = "⌖"
+            setImageResource(R.drawable.ic_lucide_locate_fixed)
             contentDescription = "Recenter map on flight"
-            textSize = if (compactUi) 12f else 13f
             minWidth = dp(42)
             minimumWidth = dp(42)
             minHeight = dp(42)
             minimumHeight = dp(42)
-            visibility = View.VISIBLE
+            setColorFilter(Color.parseColor(Palette.HUD_TEXT))
             applyHudButtonStyle(cornerRadius = 12f)
             setOnClickListener {
                 mapView.recenterOnPlayer()
@@ -912,17 +907,13 @@ class CampaignActivity : AppCompatActivity() {
         infoPanel.visibility = View.GONE
         updateMovementPanel()
         movementPanel.visibility = View.VISIBLE
-        movementPanel.alpha = 0f
-        movementPanel.translationY = dpF(60f)
-        movementPanel.animate().alpha(1f).translationY(0f).setDuration(220L).start()
         statusText.visibility = View.GONE
     }
 
     private fun hideMovementPanel() {
         if (!::movementPanel.isInitialized) return
-        movementPanel.animate().alpha(0f).translationY(dpF(60f)).setDuration(180L)
-            .withEndAction { movementPanel.visibility = View.GONE }
-            .start()
+        movementPanel.visibility = View.VISIBLE
+        updateMovementPanel()
         statusText.visibility = View.GONE
     }
 
@@ -940,12 +931,9 @@ class CampaignActivity : AppCompatActivity() {
             isResting -> "MODE · HOLDING\nTime advancing while position is fixed"
             else -> if (centered) "MODE · IDLE\nTap map to plot route" else "MODE · RECON\nCamera detached · recenter available"
         }
-        pauseButton.text = if (moving || isResting) "⏸" else "▶"
-        pauseButton.setTextColor(
-            Color.parseColor(
-                if (moving || isResting) Palette.DANGER else Palette.HUD_TEXT
-            )
-        )
+        pauseButton.setImageResource(if (moving || isResting) R.drawable.ic_lucide_pause else R.drawable.ic_lucide_play)
+        pauseButton.setColorFilter(Color.parseColor(if (moving || isResting) Palette.DANGER else Palette.HUD_TEXT))
+        recenterButton.setColorFilter(Color.parseColor(Palette.HUD_TEXT))
         recenterButton.alpha = if (centered) 0.6f else 1f
     }
 
@@ -1025,6 +1013,19 @@ class CampaignActivity : AppCompatActivity() {
         )
     }
 
+    private fun AppCompatImageButton.applyHudButtonStyle(cornerRadius: Float = 11f) {
+        background = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            orientation = GradientDrawable.Orientation.TOP_BOTTOM
+            colors = intArrayOf(
+                Color.parseColor(Palette.HUD_SURFACE_ALT),
+                Color.parseColor(Palette.HUD_SURFACE_ALT)
+            )
+            setStroke(dp(1), Color.parseColor(Palette.HUD_BORDER))
+            this.cornerRadius = cornerRadius
+        }
+    }
+
     private fun Button.applyPrimaryButtonStyle() {
         applyRoundedStyle(
             backgroundColor = Palette.PRIMARY,
@@ -1083,7 +1084,6 @@ class CampaignActivity : AppCompatActivity() {
     private fun maybeShowScoutingHint(centered: Boolean, moving: Boolean) {
         if (!::travelHintText.isInitialized) return
         if (centered || moving) {
-            hasShownScoutingHint = false
             hideTravelHint()
             return
         }
@@ -1094,11 +1094,13 @@ class CampaignActivity : AppCompatActivity() {
         travelHintText.alpha = 0f
         travelHintText.animate().alpha(1f).setDuration(140L).start()
         hintHideRunnable = Runnable { hideTravelHint() }
-        uiHandler.postDelayed(hintHideRunnable!!, 3200L)
+        uiHandler.postDelayed(hintHideRunnable!!, 1800L)
     }
 
     private fun hideTravelHint() {
         if (!::travelHintText.isInitialized || travelHintText.visibility != View.VISIBLE) return
+        hintHideRunnable?.let { uiHandler.removeCallbacks(it) }
+        hintHideRunnable = null
         travelHintText.animate().alpha(0f).setDuration(120L).withEndAction {
             travelHintText.visibility = View.GONE
         }.start()
@@ -1240,7 +1242,11 @@ class CampaignActivity : AppCompatActivity() {
             return
         }
 
-        if (node.isCleared) {
+        val allowRepeatUse = node.type == NodeType.START ||
+            node.type == NodeType.FACTION_OUTPOST ||
+            node.type == NodeType.TOWN ||
+            node.type == NodeType.VILLAGE
+        if (node.isCleared && !allowRepeatUse) {
             nodeDescText.text = node.description
             nodeStatsText.text = "✓ Objective cleared"
             nodeStatsText.setTextColor(Color.parseColor("#5FAF7A"))
@@ -2084,7 +2090,6 @@ class CampaignActivity : AppCompatActivity() {
 
     private fun visitOutpost(node: CampaignNode) {
         campaignManager.moveToNode(node.id)
-        node.isCleared = true
         infoPanel.visibility = View.GONE
         mapView.selectedNodeId = null
         startActivity(Intent(this, WarbandActivity::class.java).apply {
@@ -2104,7 +2109,6 @@ class CampaignActivity : AppCompatActivity() {
         campaignManager.moveToNode(node.id)
         gs.supplies -= cost
         gs.healWarband(heal)
-        node.isCleared = true
         mapView.currentNodeId = campaignManager.gameState.currentNodeId
         mapView.setPlayerPosition(campaignManager.gameState.playerMapX, campaignManager.gameState.playerMapY)
         updateHud()

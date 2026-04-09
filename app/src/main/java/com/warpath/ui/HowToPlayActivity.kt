@@ -63,9 +63,9 @@ class HowToPlayActivity : AppCompatActivity() {
         addSection(
             layout,
             "Movement",
-            "Tap the map to mark a flight vector and tap again to travel. " +
-                "Clear flight paths are faster and safer. Cross-terrain routes are slower and riskier near hostile airspace. " +
-                "Drag the map to free-look without moving."
+            "Tap the map to set a flight path and tap again to begin transit. " +
+                "Flight paths default to direct bearing lines; threat warnings mark unsafe airspace. " +
+                "Drag the map to survey without changing your flight command."
         )
 
         addSection(

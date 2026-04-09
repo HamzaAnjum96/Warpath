@@ -2,23 +2,22 @@
 
 This document freezes the production-facing overworld presentation contract so future iteration does not regress into prototype styling.
 
-## Locked travel/readability rules
+## Locked flight/readability rules
 
-- Route visuals communicate **both** path type (road/off-road) and tactical risk (safe/threatened/intercept).
-- Intercept-grade paths are always upgraded to the risky route treatment, even when a road spline is available.
+- Route visuals communicate both flight path status and tactical risk (direct/threatened/intercept).
+- Intercept-grade paths are always upgraded to threat-avoidance treatment.
 - Preview labels must remain concise and stateful:
-  - `ROAD ROUTE`
-  - `THREATENED ROAD`
-  - `OFF-ROAD ROUTE`
-  - `THREATENED OFF-ROAD`
-  - `INTERCEPT RISK ROUTE`
-- The committed destination lock marker and movement chevron are the only dominant motion cues during travel.
+  - `DIRECT FLIGHT PATH`
+  - `THREATENED FLIGHT PATH`
+  - `THREAT-AVOIDANCE FLIGHT PATH`
+  - `INTERCEPT RISK VECTOR`
+- The committed destination lock marker and movement chevron are the only dominant motion cues during transit.
 - Threat vectors are advisory only and should never overpower the selected/targeted route stroke.
 
 ## HUD / panel consistency lock
 
 - Top HUD, mode strip, alerts, and bottom panel share one spacing/radius/elevation language sourced from `UiTheme`.
-- A single dominant map state is shown at a time (`FOLLOW WARBAND`, `SCOUTING`, route preview state, or `TRAVELLING`).
+- A single dominant map state is shown at a time (`IDLE`, `RECON`, route preview state, or `TRANSIT`).
 - Alert queue priority and timing remains:
   - Minor: 1400ms
   - Standard: 1900ms
@@ -34,12 +33,12 @@ This document freezes the production-facing overworld presentation contract so f
 
 Use this as the canonical Phase 1 validation sweep before Phase 2 work:
 
-1. Overworld idle (follow warband).
+1. Overworld idle (`IDLE`).
 2. Scouting camera (manual pan, no target).
 3. Preview route (safe).
 4. Preview route (threatened).
 5. Preview route (intercept risk).
-6. Travelling state with stop control.
+6. Transit state with stop control.
 7. Nearby POI selected with bottom panel expanded.
 8. Hostile presence with alert banner.
 9. Event/decision panel state.

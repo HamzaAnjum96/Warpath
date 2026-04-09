@@ -80,7 +80,7 @@ class CampaignMapView @JvmOverloads constructor(
     private var routePreviewCommitted: Boolean = false
     private var previewRoutePoints: List<Pair<Float, Float>> = emptyList()
     private var movementRoutePoints: List<Pair<Float, Float>> = emptyList()
-    private var activeRouteType: RouteType = RouteType.OFF_ROAD
+    private var activeRouteType: RouteType = RouteType.DIRECT
     private var activeRouteRisk: RouteRisk = RouteRisk.SAFE
 
     private var cameraZoom = 1.6f
@@ -120,7 +120,7 @@ class CampaignMapView @JvmOverloads constructor(
         const val SETTLEMENT_SOIL = UiTheme.BIOME_SETTLEMENT
         const val FOREST = UiTheme.BIOME_FOREST
         const val HILLS = UiTheme.BIOME_HILLS
-        const val ROAD = "#1A6060"
+        const val AIRWAY_MARK = "#1A6060"
         const val WATER = UiTheme.BIOME_WATER
         const val HUD_TEXT = UiTheme.TEXT_PRIMARY
         const val HUD_LABEL_BG = "#CC16263A"
@@ -131,12 +131,6 @@ class CampaignMapView @JvmOverloads constructor(
         style = Paint.Style.STROKE
         strokeWidth = 1.6f
         alpha = 28
-    }
-    private val roadPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        color = Color.parseColor(Palette.ROAD)
-        strokeWidth = 3f
-        strokeCap = Paint.Cap.ROUND
     }
     private val contourPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
@@ -297,9 +291,33 @@ class CampaignMapView @JvmOverloads constructor(
         color = Color.parseColor("#B89C6B")
         alpha = 120
     }
+    private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        color = Color.parseColor("#2A4A63")
+        strokeWidth = 1.1f
+        alpha = 62
+    }
+    private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        color = Color.parseColor(UiTheme.RADAR_CYAN)
+        strokeWidth = 1.5f
+        alpha = 46
+    }
+    private val scanlinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        color = Color.parseColor("#33A9BED2")
+        strokeWidth = 1f
+        alpha = 16
+    }
+    private val sweepOverlayPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = Color.parseColor("#2F4EC7D9")
+    }
+    private val vignettePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private val radarSweepRect = RectF()
 
     private enum class ZoomState { FAR, MID, CLOSE }
-    private enum class RouteType { ROAD, OFF_ROAD, RISKY }
+    private enum class RouteType { DIRECT, THREAT_AVOIDANCE }
     private enum class RouteRisk { SAFE, THREATENED, INTERCEPT }
 
     override fun onAttachedToWindow() {
@@ -472,17 +490,11 @@ class CampaignMapView @JvmOverloads constructor(
 
         moveAnimator?.cancel()
         val durationFactor = when (route.type) {
-            RouteType.ROAD -> 0.92f
-            RouteType.OFF_ROAD -> 1.0f
-            RouteType.RISKY -> 1.06f
-        }
-        val terrainFactor = when (dominantBiomeOnRoute(movementRoutePoints)) {
-            BiomeType.FOREST -> 1.10f
-            BiomeType.HILLS -> 1.16f
-            else -> 0.96f
+            RouteType.THREAT_AVOIDANCE -> 1.06f
+            RouteType.DIRECT -> 0.98f
         }
         moveAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = (800f + routeLength * 4400f * durationFactor * terrainFactor).roundToInt().toLong()
+            duration = (800f + routeLength * 4400f * durationFactor).roundToInt().toLong()
             interpolator = LinearInterpolator()
             addUpdateListener { anim ->
                 val t = anim.animatedValue as Float
@@ -539,23 +551,19 @@ class CampaignMapView @JvmOverloads constructor(
         routePreviewTargetNorm = null
         routePreviewCommitted = false
         previewRoutePoints = emptyList()
-        activeRouteType = RouteType.OFF_ROAD
+        activeRouteType = RouteType.DIRECT
         activeRouteRisk = RouteRisk.SAFE
         invalidate()
     }
 
-    fun currentPreviewRouteTypeLabel(): String = when (activeRouteType) {
-        RouteType.ROAD -> when (activeRouteRisk) {
-            RouteRisk.INTERCEPT -> "INTERCEPT RISK VECTOR"
-            RouteRisk.THREATENED -> "THREATENED FLIGHT PATH"
-            RouteRisk.SAFE -> "CLEAR FLIGHT PATH"
+    fun currentPreviewRouteTypeLabel(): String = when (activeRouteRisk) {
+        RouteRisk.INTERCEPT -> "INTERCEPT RISK VECTOR"
+        RouteRisk.THREATENED -> "THREATENED FLIGHT PATH"
+        RouteRisk.SAFE -> if (activeRouteType == RouteType.THREAT_AVOIDANCE) {
+            "THREAT-AVOIDANCE FLIGHT PATH"
+        } else {
+            "DIRECT FLIGHT PATH"
         }
-        RouteType.OFF_ROAD -> when (activeRouteRisk) {
-            RouteRisk.INTERCEPT -> "INTERCEPT RISK VECTOR"
-            RouteRisk.THREATENED -> "THREATENED ROUTE"
-            RouteRisk.SAFE -> "CROSS-TERRAIN ROUTE"
-        }
-        RouteType.RISKY -> "INTERCEPT RISK VECTOR"
     }
 
     fun cancelMovement() {
@@ -617,17 +625,11 @@ class CampaignMapView @JvmOverloads constructor(
         previewRoutePoints = movementRoutePoints
 
         val durationFactor = when (route.type) {
-            RouteType.ROAD -> 0.92f
-            RouteType.OFF_ROAD -> 1.0f
-            RouteType.RISKY -> 1.06f
-        }
-        val terrainFactor = when (dominantBiomeOnRoute(movementRoutePoints)) {
-            BiomeType.FOREST -> 1.10f
-            BiomeType.HILLS -> 1.16f
-            else -> 0.96f
+            RouteType.THREAT_AVOIDANCE -> 1.06f
+            RouteType.DIRECT -> 0.98f
         }
         moveAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = (800f + routeLength * 4400f * durationFactor * terrainFactor).roundToInt().toLong()
+            duration = (800f + routeLength * 4400f * durationFactor).roundToInt().toLong()
             interpolator = LinearInterpolator()
             addUpdateListener { anim ->
                 val t = anim.animatedValue as Float
@@ -747,7 +749,7 @@ class CampaignMapView @JvmOverloads constructor(
         routePreviewCommitted = false
         previewRoutePoints = emptyList()
         movementRoutePoints = emptyList()
-        activeRouteType = RouteType.OFF_ROAD
+        activeRouteType = RouteType.DIRECT
         activeRouteRisk = RouteRisk.SAFE
         invalidate()
         post { onComplete(cancelled) }
@@ -819,6 +821,7 @@ class CampaignMapView @JvmOverloads constructor(
         cameraNormY = clampCameraY(cameraNormY)
 
         drawBackground(canvas)
+        drawTacticalGrid(canvas)
         drawWorldAtmosphere(canvas)
         drawFogOfWar(canvas)
         drawTravelProjection(canvas)
@@ -827,6 +830,9 @@ class CampaignMapView @JvmOverloads constructor(
         drawNodes(canvas)
         drawEnemyParties(canvas)
         drawPlayerMarker(canvas)
+        drawRadarSweep(canvas)
+        drawScanlines(canvas)
+        drawVignette(canvas)
     }
 
     private fun drawBackground(canvas: Canvas) {
@@ -844,7 +850,6 @@ class CampaignMapView @JvmOverloads constructor(
         drawRiverbeds(canvas)
 
         drawLandmarks(canvas)
-        drawRoads(canvas)
         drawRegionLabels(canvas)
     }
 
@@ -921,6 +926,65 @@ class CampaignMapView @JvmOverloads constructor(
         }
         canvas.drawArc(RectF(birdX - 8f, birdY - 3f, birdX, birdY + 3f), 180f, 170f, false, birdPaint)
         canvas.drawArc(RectF(birdX, birdY - 3f, birdX + 8f, birdY + 3f), 190f, 170f, false, birdPaint)
+    }
+
+    private fun drawTacticalGrid(canvas: Canvas) {
+        val majorStep = width / 6f
+        val minorStep = width / 18f
+        var x = 0f
+        while (x <= width) {
+            val majorLine = (x % majorStep) < 1f
+            gridPaint.alpha = if (majorLine) 72 else 38
+            gridPaint.strokeWidth = if (majorLine) 1.5f else 1f
+            canvas.drawLine(x, 0f, x, height.toFloat(), gridPaint)
+            x += minorStep
+        }
+        var y = 0f
+        while (y <= height) {
+            gridPaint.alpha = if ((y % (height / 6f)) < 1f) 72 else 34
+            gridPaint.strokeWidth = if ((y % (height / 6f)) < 1f) 1.5f else 1f
+            canvas.drawLine(0f, y, width.toFloat(), y, gridPaint)
+            y += height / 18f
+        }
+        val cx = screenX(playerNormX)
+        val cy = screenY(playerNormY)
+        for (i in 1..3) {
+            ringPaint.alpha = 44 - i * 8
+            canvas.drawCircle(cx, cy, i * 90f, ringPaint)
+        }
+    }
+
+    private fun drawRadarSweep(canvas: Canvas) {
+        val cx = screenX(playerNormX)
+        val cy = screenY(playerNormY)
+        val radius = (width.coerceAtLeast(height) * 0.42f)
+        val sweepAngle = ambientValue * 360f
+        radarSweepRect.set(cx - radius, cy - radius, cx + radius, cy + radius)
+        val alphaBase = (28 + pulseValue * 20f).toInt().coerceIn(20, 52)
+        sweepOverlayPaint.alpha = alphaBase
+        canvas.drawArc(radarSweepRect, sweepAngle - 18f, 36f, true, sweepOverlayPaint)
+    }
+
+    private fun drawScanlines(canvas: Canvas) {
+        var y = 0f
+        while (y <= height) {
+            scanlinePaint.alpha = if (((y / 4f).toInt() % 2) == 0) 16 else 10
+            canvas.drawLine(0f, y, width.toFloat(), y, scanlinePaint)
+            y += 4f
+        }
+    }
+
+    private fun drawVignette(canvas: Canvas) {
+        val shader = RadialGradient(
+            width / 2f,
+            height / 2f,
+            width * 0.72f,
+            intArrayOf(Color.parseColor("#00000000"), Color.parseColor("#8A050A12")),
+            floatArrayOf(0.52f, 1f),
+            Shader.TileMode.CLAMP
+        )
+        vignettePaint.shader = shader
+        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), vignettePaint)
     }
 
     private enum class BiomeType { DESERT, PLAINS, FOREST, HILLS }
@@ -1166,7 +1230,7 @@ class CampaignMapView @JvmOverloads constructor(
         }
 
         // Scattered props along travel corridors
-        landmarkPaint.color = Color.parseColor(Palette.ROAD)
+        landmarkPaint.color = Color.parseColor(Palette.AIRWAY_MARK)
         canvas.drawRect(screenX(0.76f) - 9f, screenY(0.28f) - 4f, screenX(0.76f) + 9f, screenY(0.28f) + 4f, landmarkPaint)
         landmarkPaint.color = Color.parseColor(Palette.FOREST)
         canvas.drawCircle(screenX(0.54f), screenY(0.66f), 6f, landmarkPaint)
@@ -1175,7 +1239,7 @@ class CampaignMapView @JvmOverloads constructor(
         landmarkPaint.color = Color.parseColor(Palette.SETTLEMENT_SOIL)
         canvas.drawRect(screenX(0.29f) - 10f, screenY(0.78f) - 3f, screenX(0.29f) + 10f, screenY(0.78f) + 3f, landmarkPaint)
 
-        // Scattered stones along road corridor
+        // Scattered stones along a low-level airway corridor
         landmarkPaint.color = Color.parseColor("#58606A")
         landmarkPaint.alpha = 80
         repeat(8) { i ->
@@ -1202,57 +1266,6 @@ class CampaignMapView @JvmOverloads constructor(
         }
     }
 
-    private fun drawRoads(canvas: Canvas) {
-        val drawn = mutableSetOf<String>()
-        for (node in nodes) {
-            for (connId in node.connections) {
-                val toNode = nodes.find { it.id == connId } ?: continue
-                val key = if (node.id < toNode.id) "${node.id}-${toNode.id}" else "${toNode.id}-${node.id}"
-                if (!drawn.add(key)) continue
-                roadPaint.color = when (biomeAt((node.mapX + toNode.mapX) / 2f, (node.mapY + toNode.mapY) / 2f)) {
-                    BiomeType.DESERT -> Color.parseColor("#9A805E")
-                    BiomeType.PLAINS -> Color.parseColor("#8D7556")
-                    BiomeType.FOREST -> Color.parseColor("#63765C")
-                    BiomeType.HILLS -> Color.parseColor("#737D86")
-                }
-                roadPaint.alpha = if (showPaths) 150 else 105
-                roadPaint.strokeWidth = 2.5f
-                val sx = screenX(node.mapX)
-                val sy = screenY(node.mapY)
-                val tx = screenX(toNode.mapX)
-                val ty = screenY(toNode.mapY)
-                val midNX = (node.mapX + toNode.mapX) / 2f
-                val midNY = (node.mapY + toNode.mapY) / 2f
-                val terrainDeflection = when (biomeAt(midNX, midNY)) {
-                    BiomeType.HILLS -> 0.032f
-                    BiomeType.FOREST -> 0.020f
-                    else -> 0.012f
-                }
-                val dx = toNode.mapX - node.mapX
-                val dy = toNode.mapY - node.mapY
-                val len = hypot(dx, dy).coerceAtLeast(0.001f)
-                val nx = -dy / len
-                val ny = dx / len
-                val cx = screenX((midNX + nx * terrainDeflection).coerceIn(0.02f, 0.98f))
-                val cy = screenY((midNY + ny * terrainDeflection).coerceIn(0.02f, 0.98f))
-                val roadPath = Path().apply {
-                    moveTo(sx, sy)
-                    quadTo(cx, cy, tx, ty)
-                }
-                canvas.drawPath(roadPath, roadPaint)
-            }
-        }
-        // Main road spine from settlement heart to frontier.
-        roadPaint.alpha = 130
-        roadPaint.strokeWidth = 2.2f
-        roadPaint.color = Color.parseColor(Palette.ROAD)
-        val spine = Path().apply {
-            moveTo(screenX(0.18f), screenY(0.58f))
-            cubicTo(screenX(0.30f), screenY(0.55f), screenX(0.44f), screenY(0.50f), screenX(0.58f), screenY(0.46f))
-            cubicTo(screenX(0.67f), screenY(0.43f), screenX(0.78f), screenY(0.38f), screenX(0.86f), screenY(0.30f))
-        }
-        canvas.drawPath(spine, roadPaint)
-    }
 
     private fun drawRegionLabels(canvas: Canvas) {
         val zoom = zoomState()
@@ -1274,56 +1287,14 @@ class CampaignMapView @JvmOverloads constructor(
     private data class TravelRoute(val points: List<Pair<Float, Float>>, val type: RouteType, val risk: RouteRisk)
 
     private fun buildTravelRoute(startX: Float, startY: Float, endX: Float, endY: Float): TravelRoute {
-        val start = Pair(startX, startY)
-        val end = Pair(endX, endY)
-        val nearestA = nearestNode(startX, startY)
-        val nearestB = nearestNode(endX, endY)
-        val nearRoad = nearestA != null && nearestB != null &&
-            distanceNorm(startX, startY, nearestA.mapX, nearestA.mapY) < 0.08f &&
-            distanceNorm(endX, endY, nearestB.mapX, nearestB.mapY) < 0.08f
-
+        val points = mutableListOf(Pair(startX, startY), Pair(endX, endY))
         val endpointRisk = routeRiskTo(endX, endY)
-
-        val points = mutableListOf(start)
-        if (nearRoad) {
-            val ax = nearestA!!.mapX
-            val ay = nearestA.mapY
-            val bx = nearestB!!.mapX
-            val by = nearestB.mapY
-            points.add(Pair((startX + ax) / 2f, (startY + ay) / 2f))
-            points.add(Pair((ax + bx) / 2f + (ay - by) * 0.05f, (ay + by) / 2f + (bx - ax) * 0.05f))
-            points.add(Pair((endX + bx) / 2f, (endY + by) / 2f))
-        } else {
-            val mx = (startX + endX) / 2f
-            val my = (startY + endY) / 2f
-            val dx = endX - startX
-            val dy = endY - startY
-            val len = hypot(dx, dy).coerceAtLeast(0.001f)
-            val nx = -dy / len
-            val ny = dx / len
-            val terrain = biomeAt(mx, my)
-            val bend = when (terrain) {
-                BiomeType.FOREST -> 0.032f
-                BiomeType.HILLS -> 0.028f
-                else -> 0.018f
-            }
-            points.add(Pair((mx + nx * bend).coerceIn(0.02f, 0.98f), (my + ny * bend).coerceIn(0.02f, 0.98f)))
-            if (terrain == BiomeType.FOREST) {
-                points.add(Pair((mx - nx * (bend * 0.8f)).coerceIn(0.02f, 0.98f), (my - ny * (bend * 0.8f)).coerceIn(0.02f, 0.98f)))
-            }
-        }
-        points.add(end)
         val sampledRisk = routeRiskForPath(points)
         val finalRisk = if (sampledRisk.ordinal > endpointRisk.ordinal) sampledRisk else endpointRisk
-        val routeType = when {
-            finalRisk == RouteRisk.INTERCEPT -> RouteType.RISKY
-            nearRoad -> RouteType.ROAD
-            else -> RouteType.OFF_ROAD
-        }
+        val routeType = if (finalRisk == RouteRisk.INTERCEPT) RouteType.THREAT_AVOIDANCE else RouteType.DIRECT
         return TravelRoute(points, routeType, finalRisk)
     }
 
-    private fun nearestNode(x: Float, y: Float): CampaignNode? = nodes.minByOrNull { distanceNorm(x, y, it.mapX, it.mapY) }
 
     private fun routeNormLength(points: List<Pair<Float, Float>>): Float {
         if (points.size < 2) return 0f
@@ -1334,12 +1305,6 @@ class CampaignMapView @JvmOverloads constructor(
         return total
     }
 
-    private fun dominantBiomeOnRoute(points: List<Pair<Float, Float>>): BiomeType {
-        if (points.isEmpty()) return BiomeType.PLAINS
-        val counts = mutableMapOf(BiomeType.DESERT to 0, BiomeType.PLAINS to 0, BiomeType.FOREST to 0, BiomeType.HILLS to 0)
-        points.forEach { (x, y) -> counts[biomeAt(x, y)] = (counts[biomeAt(x, y)] ?: 0) + 1 }
-        return counts.maxByOrNull { it.value }?.key ?: BiomeType.PLAINS
-    }
 
     private fun pointOnRoute(points: List<Pair<Float, Float>>, progress: Float): Pair<Float, Float> {
         if (points.size < 2) return points.firstOrNull() ?: Pair(playerNormX, playerNormY)
@@ -1368,17 +1333,15 @@ class CampaignMapView @JvmOverloads constructor(
             else -> return
         }
 
-        routePaint.strokeWidth = if (activeRouteType == RouteType.RISKY) 3.6f else 3f
+        routePaint.strokeWidth = if (activeRouteType == RouteType.THREAT_AVOIDANCE) 3.6f else 3f
         routePaint.color = when (activeRouteType) {
-            RouteType.ROAD -> Color.parseColor("#B89C6B")
-            RouteType.OFF_ROAD -> Color.parseColor("#A3AFBF")
-            RouteType.RISKY -> Color.parseColor("#C65A5A")
+            RouteType.DIRECT -> Color.parseColor("#A3AFBF")
+            RouteType.THREAT_AVOIDANCE -> Color.parseColor("#C65A5A")
         }
         routePaint.alpha = if (routePreviewCommitted) 240 else 185
         routePaint.pathEffect = when (activeRouteType) {
-            RouteType.ROAD -> DashPathEffect(floatArrayOf(26f, 14f), pulseValue * 30f)
-            RouteType.OFF_ROAD -> DashPathEffect(floatArrayOf(10f, 8f), pulseValue * 18f)
-            RouteType.RISKY -> DashPathEffect(floatArrayOf(7f, 6f), pulseValue * 16f)
+            RouteType.DIRECT -> DashPathEffect(floatArrayOf(12f, 8f), pulseValue * 18f)
+            RouteType.THREAT_AVOIDANCE -> DashPathEffect(floatArrayOf(7f, 6f), pulseValue * 16f)
         }
         routeUnderlayPaint.strokeWidth = routePaint.strokeWidth + 2.4f
         routePath.reset()
@@ -1417,16 +1380,15 @@ class CampaignMapView @JvmOverloads constructor(
         val endX = screenX(destination.first)
         val endY = screenY(destination.second)
         routeDestinationPaint.color = when (activeRouteType) {
-            RouteType.RISKY -> Color.parseColor("#E48787")
-            RouteType.OFF_ROAD -> Color.parseColor("#D0D8E3")
-            RouteType.ROAD -> Color.parseColor("#F2F0EA")
+            RouteType.THREAT_AVOIDANCE -> Color.parseColor("#E48787")
+            RouteType.DIRECT -> Color.parseColor("#D0D8E3")
         }
         val pulse = if (routePreviewCommitted) 1f + pulseValue * 1.8f else 1f + pulseValue * 1.1f
         val markerRadius = 8.5f + pulse * 2f
         canvas.drawCircle(endX, endY, markerRadius, routeDestinationPaint)
         canvas.drawLine(endX - 7f, endY, endX + 7f, endY, routeDestinationPaint)
         canvas.drawLine(endX, endY - 7f, endX, endY + 7f, routeDestinationPaint)
-        if (activeRouteType == RouteType.RISKY) {
+        if (activeRouteType == RouteType.THREAT_AVOIDANCE) {
             routeDestinationPaint.alpha = 120
             canvas.drawCircle(endX, endY, markerRadius + 8f + pulseValue * 4f, routeDestinationPaint)
             routeDestinationPaint.alpha = 210
@@ -1435,8 +1397,8 @@ class CampaignMapView @JvmOverloads constructor(
         val targetLabel = when {
             activeRouteRisk == RouteRisk.INTERCEPT -> "INTERCEPT RISK"
             activeRouteRisk == RouteRisk.THREATENED -> "THREAT RANGE"
-            activeRouteType == RouteType.ROAD -> "ROAD LOCKED"
-            else -> "OFF-ROAD LOCKED"
+            activeRouteType == RouteType.THREAT_AVOIDANCE -> "THREAT-AVOIDANCE LOCKED"
+            else -> "DIRECT FLIGHT LOCKED"
         }
         drawLabel(canvas, targetLabel, endX, endY - 20f, LabelState.ROUTE_TARGET)
         drawThreatVectors(canvas, points)
@@ -1459,9 +1421,8 @@ class CampaignMapView @JvmOverloads constructor(
         val ny = dy / len
         val size = 8f
         routeChevronPaint.color = when (type) {
-            RouteType.ROAD -> Color.parseColor("#F2E7D4")
-            RouteType.OFF_ROAD -> Color.parseColor("#D0D8E3")
-            RouteType.RISKY -> Color.parseColor("#F3B1B1")
+            RouteType.DIRECT -> Color.parseColor("#D0D8E3")
+            RouteType.THREAT_AVOIDANCE -> Color.parseColor("#F3B1B1")
         }
         routeChevronPath.reset()
         routeChevronPath.moveTo(fx + nx * size, fy + ny * size)
@@ -1986,7 +1947,7 @@ class CampaignMapView @JvmOverloads constructor(
     private fun partyMovementState(party: EnemyParty): String {
         val isMovingParty = party.travelFromNodeId != null && party.travelToNodeId != null && party.travelProgress in 0.01f..0.99f
         if (party.faction == PartyFaction.FRIENDLY) {
-            return if (isMovingParty) "TRAVELLING" else "IDLE"
+            return if (isMovingParty) "TRANSIT" else "IDLE"
         }
         val pos = enemyDisplayPositions[party.id] ?: (nodes.find { it.id == party.nodeId }?.let { it.mapX to it.mapY } ?: (0.5f to 0.5f))
         val distToPlayer = hypot(pos.first - playerNormX, pos.second - playerNormY)

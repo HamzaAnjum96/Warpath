@@ -56,15 +56,15 @@ class HowToPlayActivity : AppCompatActivity() {
         addSection(
             layout,
             "Campaign Map",
-            "Points of interest are revealed through fog-of-war as your squadron passes nearby. " +
-                "Scout by dragging the map freely, then tap the recenter button to lock camera focus back on your squadron."
+            "Points of interest are revealed through fog-of-war as your flight passes nearby. " +
+                "Scout by dragging the map freely, then tap the recenter button to lock camera focus back on your flight."
         )
 
         addSection(
             layout,
             "Movement",
-            "Tap the map to mark a flight vector and tap again to travel. " +
-                "Clear flight paths are faster and safer. Cross-terrain routes are slower and riskier near hostile airspace. " +
+            "Tap the map to mark a flight vector and tap again to begin transit. " +
+                "Direct flight paths are fastest unless threat avoidance is needed near hostile airspace. " +
                 "Drag the map to free-look without moving."
         )
 
@@ -90,8 +90,8 @@ class HowToPlayActivity : AppCompatActivity() {
         addSection(
             layout,
             "Squadron",
-            "Manage your flights from the squadron screen. Scramble new flights at airbases and FOBs. " +
-                "Expand your squadron slots to field more flights simultaneously."
+            "Manage your flights from the flight roster screen. Scramble new flights at airbases and FOBs. " +
+                "Expand your flight slots to field more flights simultaneously."
         )
 
         // Bottom spacer for scroll comfort

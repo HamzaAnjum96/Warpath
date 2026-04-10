@@ -18,10 +18,10 @@ class BattleView @JvmOverloads constructor(
     var onEnemyTapped: ((Squad) -> Unit)? = null
     var selectedEnemyId: String? = null
 
-    private val bgPaint = Paint().apply { color = Color.parseColor("#1a2a1a") }
+    private val bgPaint = Paint().apply { color = Color.parseColor(UiTheme.BASE_BG) }
 
     private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#223322")
+        color = Color.parseColor(UiTheme.BATTLE_GRID)
         strokeWidth = 1f
         style = Paint.Style.STROKE
     }
@@ -33,25 +33,25 @@ class BattleView @JvmOverloads constructor(
         style = Paint.Style.FILL
     }
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
+        color = Color.parseColor(UiTheme.TEXT_PRIMARY)
         textSize = 22f
         textAlign = Paint.Align.CENTER
         typeface = UiTheme.TYPEFACE_HEADING
     }
     private val smallText = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#cccccc")
+        color = Color.parseColor(UiTheme.TEXT_MUTED)
         textSize = 16f
         textAlign = Paint.Align.CENTER
     }
     private val hpBarBg = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#333333")
+        color = Color.parseColor(UiTheme.HP_BAR_BG)
     }
     private val hpBarFill = Paint(Paint.ANTI_ALIAS_FLAG)
     private val moralePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#4488cc")
+        color = Color.parseColor(UiTheme.MORALE_BAR)
     }
     private val selectionPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#ffcc00")
+        color = Color.parseColor(UiTheme.WARNING)
         style = Paint.Style.STROKE
         strokeWidth = 3f
     }
@@ -60,6 +60,11 @@ class BattleView @JvmOverloads constructor(
         style = Paint.Style.STROKE
         strokeWidth = 1f
         pathEffect = DashPathEffect(floatArrayOf(8f, 8f), 0f)
+    }
+    // Terrain feature paint — initialized once, not per-frame
+    private val treePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor(UiTheme.BATTLE_TREE)
+        style = Paint.Style.FILL
     }
 
     // Battle field is 16x12 units
@@ -100,11 +105,6 @@ class BattleView @JvmOverloads constructor(
     }
 
     private fun drawTerrainFeatures(canvas: Canvas) {
-        val treePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.parseColor("#1a3a1a")
-            style = Paint.Style.FILL
-        }
-        // Some decorative trees
         val trees = listOf(5f to 0.5f, 7f to 9.5f, 11f to 2f, 9f to 10f, 3f to 8f)
         for ((tx, ty) in trees) {
             val sx = toScreenX(tx)
@@ -168,16 +168,16 @@ class BattleView @JvmOverloads constructor(
         val barW = size * 2.2f
         val barH = 5f
         val barY = cy - size - 12f
-        hpBarBg.color = Color.parseColor("#333333")
+        hpBarBg.color = Color.parseColor(UiTheme.HP_BAR_BG)
         canvas.drawRect(cx - barW / 2, barY, cx + barW / 2, barY + barH, hpBarBg)
         hpBarFill.color = when {
-            squad.currentHpPercent > 0.6f -> Color.parseColor("#33cc33")
-            squad.currentHpPercent > 0.3f -> Color.parseColor("#cccc33")
-            else -> Color.parseColor("#cc3333")
+            squad.currentHpPercent > 0.6f -> Color.parseColor(UiTheme.HP_HIGH)
+            squad.currentHpPercent > 0.3f -> Color.parseColor(UiTheme.HP_MED)
+            else -> Color.parseColor(UiTheme.HP_LOW)
         }
         canvas.drawRect(cx - barW / 2, barY, cx - barW / 2 + barW * squad.currentHpPercent, barY + barH, hpBarFill)
 
-        // Morale bar (thin blue bar below hp)
+        // Morale bar (thin bar below hp)
         val moraleY = barY + barH + 2f
         moralePaint.alpha = 150
         canvas.drawRect(cx - barW / 2, moraleY, cx - barW / 2 + barW * (squad.morale / 100f), moraleY + 3f, moralePaint)
@@ -188,30 +188,30 @@ class BattleView @JvmOverloads constructor(
 
         // State indicator
         if (squad.state == SquadState.RETREAT) {
-            val retreatPaint = Paint(smallText).apply { color = Color.parseColor("#ff6666") }
+            val retreatPaint = Paint(smallText).apply { color = Color.parseColor(UiTheme.HOSTILE) }
             canvas.drawText("RETREAT", cx, cy + size + 36f, retreatPaint)
         } else if (squad.state == SquadState.RALLY) {
-            val rallyPaint = Paint(smallText).apply { color = Color.parseColor("#66ccff") }
+            val rallyPaint = Paint(smallText).apply { color = Color.parseColor(UiTheme.PRIMARY) }
             canvas.drawText("RALLY", cx, cy + size + 36f, rallyPaint)
         }
     }
 
     private fun getCategoryColor(category: UnitCategory, isPlayer: Boolean): Int {
-        if (isPlayer) {
-            return when (category) {
-                UnitCategory.FIGHTER -> Color.parseColor("#3366aa")
-                UnitCategory.INTERCEPTOR -> Color.parseColor("#6699cc")
-                UnitCategory.BOMBER -> Color.parseColor("#339966")
-                UnitCategory.RECON -> Color.parseColor("#6633aa")
-                UnitCategory.SUPPORT -> Color.parseColor("#3399aa")
+        return if (isPlayer) {
+            when (category) {
+                UnitCategory.FIGHTER      -> Color.parseColor(UiTheme.UNIT_PLAYER_FIGHTER)
+                UnitCategory.INTERCEPTOR  -> Color.parseColor(UiTheme.UNIT_PLAYER_INTERCEPTOR)
+                UnitCategory.BOMBER       -> Color.parseColor(UiTheme.UNIT_PLAYER_BOMBER)
+                UnitCategory.RECON        -> Color.parseColor(UiTheme.UNIT_PLAYER_RECON)
+                UnitCategory.SUPPORT      -> Color.parseColor(UiTheme.UNIT_PLAYER_SUPPORT)
             }
         } else {
-            return when (category) {
-                UnitCategory.FIGHTER -> Color.parseColor("#aa3333")
-                UnitCategory.INTERCEPTOR -> Color.parseColor("#cc6633")
-                UnitCategory.BOMBER -> Color.parseColor("#993333")
-                UnitCategory.RECON -> Color.parseColor("#aa3366")
-                UnitCategory.SUPPORT -> Color.parseColor("#996633")
+            when (category) {
+                UnitCategory.FIGHTER      -> Color.parseColor(UiTheme.UNIT_ENEMY_FIGHTER)
+                UnitCategory.INTERCEPTOR  -> Color.parseColor(UiTheme.UNIT_ENEMY_INTERCEPTOR)
+                UnitCategory.BOMBER       -> Color.parseColor(UiTheme.UNIT_ENEMY_BOMBER)
+                UnitCategory.RECON        -> Color.parseColor(UiTheme.UNIT_ENEMY_RECON)
+                UnitCategory.SUPPORT      -> Color.parseColor(UiTheme.UNIT_ENEMY_SUPPORT)
             }
         }
     }

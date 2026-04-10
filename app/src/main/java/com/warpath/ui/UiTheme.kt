@@ -62,6 +62,43 @@ object UiTheme {
     const val SUCCESS = POSITIVE
     const val DANGER = HOSTILE
 
+    // ── Battle view colors ──
+    const val BATTLE_GRID = "#182835"          // subtle grid lines on dark bg
+    const val BATTLE_TREE = "#1C3024"          // dark forest green terrain feature
+    const val HP_BAR_BG = "#1B2A37"            // dark bar background
+    const val HP_HIGH = POSITIVE               // reuse #5FAF7A
+    const val HP_MED = WARNING                 // reuse #C9A45E
+    const val HP_LOW = HOSTILE                 // reuse #C45A5A
+    const val MORALE_BAR = ALLY               // reuse #5F9DD6
+
+    // Player unit colors (blue/cyan spectrum matching theme)
+    const val UNIT_PLAYER_FIGHTER     = "#3D6BAA"
+    const val UNIT_PLAYER_INTERCEPTOR = "#5080BB"
+    const val UNIT_PLAYER_BOMBER      = "#3D8A68"
+    const val UNIT_PLAYER_RECON       = RADAR_CYAN   // #4EC7D9
+    const val UNIT_PLAYER_SUPPORT     = "#3D7A8A"
+
+    // Enemy unit colors (red/amber spectrum)
+    const val UNIT_ENEMY_FIGHTER      = "#8A3030"
+    const val UNIT_ENEMY_INTERCEPTOR  = "#9A5030"
+    const val UNIT_ENEMY_BOMBER       = "#7A2828"
+    const val UNIT_ENEMY_RECON        = "#8A3055"
+    const val UNIT_ENEMY_SUPPORT      = "#7A5030"
+
+    // ── Overlay / scrim ──
+    const val SCRIM_DARK = "#CC0A0F1A"         // dark modal overlay
+
+    // ── Joystick ──
+    const val JOYSTICK_BASE_ALPHA = "#660B1524" // BG_PANEL 40% opacity
+    const val JOYSTICK_RING_ALPHA = "#88375874" // BORDER_LIGHT 53% opacity
+    const val JOYSTICK_KNOB_ALPHA = "#CC4EC7D9" // PRIMARY 80% opacity
+
+    // ── Battle result glows / decorative rules ──
+    const val GLOW_VICTORY = "#20C9A45E"        // WARNING 12% opacity
+    const val GLOW_DEFEAT  = "#20C45A5A"        // HOSTILE 12% opacity
+    const val RULE_VICTORY = "#44C9A45E"        // WARNING 27% opacity
+    const val RULE_DEFEAT  = "#44C45A5A"        // HOSTILE 27% opacity
+
     // ── Layout spacing scale (dp) ──
     const val SPACE_1 = 4
     const val SPACE_2 = 8

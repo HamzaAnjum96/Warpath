@@ -20,15 +20,15 @@ class JoystickView @JvmOverloads constructor(
     private var stickY = 0f
 
     private val basePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#66333344")
+        color = Color.parseColor(UiTheme.JOYSTICK_BASE_ALPHA)
     }
     private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#88aaaacc")
+        color = Color.parseColor(UiTheme.JOYSTICK_RING_ALPHA)
         style = Paint.Style.STROKE
         strokeWidth = 4f
     }
     private val knobPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#cce6c84c")
+        color = Color.parseColor(UiTheme.JOYSTICK_KNOB_ALPHA)
     }
 
     override fun onDraw(canvas: Canvas) {

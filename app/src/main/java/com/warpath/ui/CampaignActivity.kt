@@ -18,6 +18,9 @@ import android.util.TypedValue
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatImageButton
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.warpath.R
 import com.warpath.engine.CampaignManager
 import com.warpath.model.AirPlayerState
@@ -142,12 +145,11 @@ class CampaignActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         supportActionBar?.hide()
-        @Suppress("DEPRECATION")
-        window.decorView.systemUiVisibility = (
-            View.SYSTEM_UI_FLAG_FULLSCREEN or
-                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-            )
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            hide(WindowInsetsCompat.Type.systemBars())
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
 
         if (intent.getBooleanExtra("new_game", false)) {
             campaignManager.startNewCampaign()
@@ -482,7 +484,7 @@ class CampaignActivity : AppCompatActivity() {
         }
         bar.addView(warbandBtn)
 
-        val divider = View(this).apply { setBackgroundColor(Color.parseColor("#324660")) }
+        val divider = View(this).apply { setBackgroundColor(Color.parseColor(UiTheme.BORDER_LIGHT)) }
         val shell = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         shell.addView(bar)
         shell.addView(divider, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1))

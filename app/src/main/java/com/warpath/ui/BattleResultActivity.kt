@@ -13,6 +13,9 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 
 class BattleResultActivity : AppCompatActivity() {
 
@@ -21,12 +24,11 @@ class BattleResultActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         supportActionBar?.hide()
-        @Suppress("DEPRECATION")
-        window.decorView.systemUiVisibility = (
-            View.SYSTEM_UI_FLAG_FULLSCREEN or
-            View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-        )
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            hide(WindowInsetsCompat.Type.systemBars())
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
 
         val playerWon = intent.getBooleanExtra("player_won", false)
         val nodeName = intent.getStringExtra("node_name") ?: "Battle"
@@ -47,7 +49,7 @@ class BattleResultActivity : AppCompatActivity() {
         // Atmospheric top glow
         frame.addView(View(this).apply {
             background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(
-                Color.parseColor(if (playerWon) "#20D4B15A" else "#20C56A5D"),
+                Color.parseColor(if (playerWon) UiTheme.GLOW_VICTORY else UiTheme.GLOW_DEFEAT),
                 Color.TRANSPARENT
             ))
         }, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, dp(200), Gravity.TOP))
@@ -79,7 +81,7 @@ class BattleResultActivity : AppCompatActivity() {
 
         // Decorative rule
         layout.addView(View(this).apply {
-            setBackgroundColor(Color.parseColor(if (playerWon) "#44D4B15A" else "#44C56A5D"))
+            setBackgroundColor(Color.parseColor(if (playerWon) UiTheme.RULE_VICTORY else UiTheme.RULE_DEFEAT))
         }, LinearLayout.LayoutParams(dp(UiTheme.SHEET_HANDLE_WIDTH), dp(2)).apply {
             gravity = Gravity.CENTER_HORIZONTAL
             bottomMargin = dp(UiTheme.SPACE_2)

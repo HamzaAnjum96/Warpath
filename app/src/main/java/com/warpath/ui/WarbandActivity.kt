@@ -7,6 +7,12 @@ import android.view.Gravity
 import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.content.res.AppCompatResources
+import androidx.core.graphics.drawable.DrawableCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import com.warpath.R
 import com.warpath.model.UnitCategory
 import com.warpath.model.UnitType
 
@@ -22,12 +28,11 @@ class WarbandActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         supportActionBar?.hide()
-        @Suppress("DEPRECATION")
-        window.decorView.systemUiVisibility = (
-            View.SYSTEM_UI_FLAG_FULLSCREEN or
-            View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-        )
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            hide(WindowInsetsCompat.Type.systemBars())
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
 
         val canRecruit = intent.getBooleanExtra("can_recruit", false)
 
@@ -316,8 +321,20 @@ class WarbandActivity : AppCompatActivity() {
     }
 
     private fun refreshUI() {
-        suppliesText.text = "FUEL  ${gameState.supplies}    RDNS  ${gameState.renown}"
-        slotsText.text = "FLIGHTS  ${gameState.warband.size}/${gameState.maxWarbandSlots}"
+        suppliesText.text = "  ${gameState.supplies} FUEL   ${gameState.renown} RDNS"
+        AppCompatResources.getDrawable(this, R.drawable.ic_lucide_fuel)?.let { d ->
+            DrawableCompat.setTint(d.mutate(), Color.parseColor(UiTheme.WARNING))
+            d.setBounds(0, 0, dp(12), dp(12))
+            suppliesText.setCompoundDrawables(d, null, null, null)
+            suppliesText.compoundDrawablePadding = dp(4)
+        }
+        slotsText.text = "  ${gameState.warband.size}/${gameState.maxWarbandSlots} FLIGHTS"
+        AppCompatResources.getDrawable(this, R.drawable.ic_lucide_users)?.let { d ->
+            DrawableCompat.setTint(d.mutate(), Color.parseColor(UiTheme.TEXT_MUTED))
+            d.setBounds(0, 0, dp(12), dp(12))
+            slotsText.setCompoundDrawables(d, null, null, null)
+            slotsText.compoundDrawablePadding = dp(4)
+        }
         squadList.removeAllViews()
 
         for (squad in gameState.warband) {

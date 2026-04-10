@@ -11,18 +11,23 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.content.res.AppCompatResources
+import androidx.core.graphics.drawable.DrawableCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import com.warpath.R
 
 class MainMenuActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         supportActionBar?.hide()
-        @Suppress("DEPRECATION")
-        window.decorView.systemUiVisibility = (
-            View.SYSTEM_UI_FLAG_FULLSCREEN or
-                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-            )
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            hide(WindowInsetsCompat.Type.systemBars())
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
 
         val frame = FrameLayout(this).apply {
             setBackgroundColor(Color.parseColor(UiTheme.BASE_BG))
@@ -99,7 +104,7 @@ class MainMenuActivity : AppCompatActivity() {
         root.addView(version, lp(bottom = UiTheme.SPACE_7))
 
         // Buttons
-        val playBtn = buildMenuBtn("Launch Campaign", UiTheme.PRIMARY, primary = true)
+        val playBtn = buildMenuBtn("Launch Campaign", UiTheme.PRIMARY, primary = true, iconRes = R.drawable.ic_lucide_play)
         playBtn.setOnClickListener {
             startActivity(
                 Intent(this, CampaignActivity::class.java).apply {
@@ -109,13 +114,13 @@ class MainMenuActivity : AppCompatActivity() {
         }
         root.addView(playBtn, lp(bottom = UiTheme.SPACE_3, hMargin = UiTheme.SPACE_4))
 
-        val howToPlayBtn = buildMenuBtn("How to Play", UiTheme.SURFACE_ALT)
+        val howToPlayBtn = buildMenuBtn("How to Play", UiTheme.SURFACE_ALT, iconRes = R.drawable.ic_lucide_book_open)
         howToPlayBtn.setOnClickListener {
             startActivity(Intent(this, HowToPlayActivity::class.java))
         }
         root.addView(howToPlayBtn, lp(bottom = UiTheme.SPACE_3, hMargin = UiTheme.SPACE_4))
 
-        val quitBtn = buildMenuBtn("Exit", UiTheme.SURFACE)
+        val quitBtn = buildMenuBtn("Exit", UiTheme.SURFACE, iconRes = R.drawable.ic_lucide_log_out)
         quitBtn.setOnClickListener { finish() }
         root.addView(quitBtn, lp(bottom = 0, hMargin = UiTheme.SPACE_4))
 
@@ -150,7 +155,7 @@ class MainMenuActivity : AppCompatActivity() {
         setContentView(frame)
     }
 
-    private fun buildMenuBtn(label: String, bgHex: String, primary: Boolean = false): Button {
+    private fun buildMenuBtn(label: String, bgHex: String, primary: Boolean = false, iconRes: Int = 0): Button {
         return Button(this).apply {
             text = label
             textSize = UiTheme.TEXT_BUTTON
@@ -165,6 +170,14 @@ class MainMenuActivity : AppCompatActivity() {
                 UiTheme.rippleDrawable(bgHex, null, UiTheme.RADIUS_MD)
             } else {
                 UiTheme.rippleDrawable(bgHex, UiTheme.BORDER, UiTheme.RADIUS_MD)
+            }
+            if (iconRes != 0) {
+                AppCompatResources.getDrawable(context, iconRes)?.let { d ->
+                    DrawableCompat.setTint(d.mutate(), Color.parseColor(UiTheme.TEXT_PRIMARY))
+                    d.setBounds(0, 0, dp(18), dp(18))
+                    setCompoundDrawables(d, null, null, null)
+                    compoundDrawablePadding = dp(UiTheme.SPACE_2)
+                }
             }
         }
     }

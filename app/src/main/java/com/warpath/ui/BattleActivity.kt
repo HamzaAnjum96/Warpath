@@ -10,6 +10,12 @@ import android.view.Gravity
 import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.content.res.AppCompatResources
+import androidx.core.graphics.drawable.DrawableCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import com.warpath.R
 import com.warpath.engine.BattleEngine
 import com.warpath.engine.BattleState
 import com.warpath.model.BattleCommand
@@ -37,12 +43,11 @@ class BattleActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         supportActionBar?.hide()
-        @Suppress("DEPRECATION")
-        window.decorView.systemUiVisibility = (
-            View.SYSTEM_UI_FLAG_FULLSCREEN or
-            View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-        )
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            hide(WindowInsetsCompat.Type.systemBars())
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
 
         val nodeId = intent.getStringExtra("node_id")
         val partyId = intent.getStringExtra("party_id")
@@ -210,6 +215,13 @@ class BattleActivity : AppCompatActivity() {
                 minimumHeight = dp(UiTheme.BUTTON_HEIGHT_SM)
                 background = UiTheme.rippleDrawable(getCommandColor(cmd), UiTheme.BORDER, UiTheme.RADIUS_SM)
                 setOnClickListener { onCommand(cmd) }
+                // Add icon above text
+                AppCompatResources.getDrawable(context, getCommandIcon(cmd))?.let { d ->
+                    DrawableCompat.setTint(d.mutate(), Color.parseColor(UiTheme.TEXT_PRIMARY))
+                    d.setBounds(0, 0, dp(14), dp(14))
+                    setCompoundDrawables(null, d, null, null)
+                    compoundDrawablePadding = dp(2)
+                }
             }
             commandButtons[cmd] = btn
             commandBar.addView(btn, LinearLayout.LayoutParams(
@@ -235,6 +247,14 @@ class BattleActivity : AppCompatActivity() {
             BattleCommand.RALLY -> UiTheme.SUCCESS
             BattleCommand.RETREAT -> UiTheme.SURFACE_ALT
         }
+    }
+
+    private fun getCommandIcon(cmd: BattleCommand): Int = when (cmd) {
+        BattleCommand.FOCUS_TARGET -> R.drawable.ic_lucide_crosshair
+        BattleCommand.PUSH         -> R.drawable.ic_lucide_zap
+        BattleCommand.HOLD         -> R.drawable.ic_lucide_shield
+        BattleCommand.RALLY        -> R.drawable.ic_lucide_flag
+        BattleCommand.RETREAT      -> R.drawable.ic_lucide_arrow_left
     }
 
     private fun onCommand(cmd: BattleCommand) {
